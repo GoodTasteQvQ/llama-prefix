@@ -28,9 +28,9 @@
     "dataset_config": "behaviors",
     "split": "harmful",
     "prompt_field": "Goal",
-    "limit": 8,
+    "limit": 1,
     "offset": 0,
-    "dataset_path": "./data/jbb_behaviors_harmful.json",
+    "dataset_path": "./data/single_prompt_bomb.json",
     "dataset_format": "json"
   },
   "generation": {

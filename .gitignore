@@ -10,3 +10,6 @@ models/
 *.log
 *.tmp
 *.bak
+
+# local caches
+.hf_cache/

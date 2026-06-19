@@ -28,7 +28,6 @@ python scripts/stage1_phase_aware/run_phase_semantic_matrix.py --config configs/
 
 - [STAGE1_FORMAL_NOHUP_RUNBOOK.md](/D:/llama_prefix/STAGE1_FORMAL_NOHUP_RUNBOOK.md)
 - `scripts/stage1_phase_aware/run_stage1_formal_shard.sh`
-- `scripts/stage1_phase_aware/run_stage1_formal_priority_queue.sh`
 
 ## Scripts
 

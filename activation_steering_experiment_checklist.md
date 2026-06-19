@@ -120,11 +120,11 @@
 | E   | prefill + first-k decode steering                    | 检查生成早期 token 是否是关键窗口        |
 | F   | prefill + decode decay steering                      | 降低 decode 阶段退化风险            |
 
-
 本组实验应拆成两条并行线：
 
 - `Track A`: `fixed-alpha semantic audit`
 - `Track B`: `Rogue-calibrated alpha = c * mu`
+
 
 ### P1.2 层与强度设置
 
@@ -133,6 +133,10 @@
 - `1/3 depth`
 - `1/2 depth`
 - `2/3 depth`
+- 额外加入已有实验中发现的 best layers
+  - Qwen：例如 layer 9 / 14 / 18
+  - Llama：已有实验中安全/攻击敏感层
+  - Mistral：已有实验中 best layer，例如 layer 13 附近
 
 攻击强度：
 

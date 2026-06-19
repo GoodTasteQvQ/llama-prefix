@@ -5,6 +5,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
+import time
 from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -96,8 +97,13 @@ def main() -> int:
             else parse_float_grid(args.c_grid, C_GRID)
         )
         runs = []
-        for vector_index in vector_indices:
-            for coefficient_c in c_grid:
+        total_tasks = len(vector_indices) * len(c_grid)
+        completed_tasks = 0
+        t_start_all = time.time()
+        print(f"[progress] START total_tasks={total_tasks} vectors={len(vector_indices)} c_values={len(c_grid)}", flush=True)
+        for v_idx, vector_index in enumerate(vector_indices):
+            t_vec_start = time.time()
+            for a_idx, coefficient_c in enumerate(c_grid):
                 effective_alpha = coefficient_c * mu_value
                 attack_override = {
                     "vector_source": "tensor_file",
@@ -137,6 +143,23 @@ def main() -> int:
                     "mean_latency_seconds": summary["mean_latency_seconds"],
                     "phase_audit_summary": summary["phase_audit_summary"],
                 })
+                completed_tasks += 1
+                elapsed_all = time.time() - t_start_all
+                avg_per_task = elapsed_all / completed_tasks
+                remaining = avg_per_task * (total_tasks - completed_tasks)
+                print(
+                    f"[progress] {completed_tasks}/{total_tasks} "
+                    f"vector={vector_index} c={coefficient_c:.2f} "
+                    f"elapsed={elapsed_all:.0f}s eta={remaining:.0f}s "
+                    f"mean_arr={summary['mean_arr']:.4f}",
+                    flush=True,
+                )
+            vec_elapsed = time.time() - t_vec_start
+            print(
+                f"[progress] VECTOR_DONE vector={vector_index} ({v_idx+1}/{len(vector_indices)}) "
+                f"took={vec_elapsed:.0f}s",
+                flush=True,
+            )
     finally:
         runner.close()
 
@@ -158,7 +181,8 @@ def main() -> int:
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Saved stage1 Track B summary to {output_path}")
+    total_elapsed = time.time() - t_start_all
+    print(f"[progress] ALL_DONE total_elapsed={total_elapsed:.0f}s saved_to={output_path}", flush=True)
     return 0
 
 
