@@ -1,0 +1,70 @@
+{
+  "output_dir": "./results/stage1_phase_aware",
+  "tags": [
+    "paper1",
+    "stage1",
+    "phase-aware-reproduction",
+    "track-a",
+    "fixed-alpha",
+    "group-F"
+  ],
+  "model": {
+    "model_name": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "layer_index": 9,
+    "device_map": "auto",
+    "torch_dtype": "bfloat16",
+    "padding_side": "left"
+  },
+  "prompt_template": {
+    "use_chat_template": true,
+    "system_prompt": "",
+    "add_generation_prompt": true,
+    "filter_special_tokens": true,
+    "filter_role_markers": false,
+    "filter_newlines": false
+  },
+  "dataset": {
+    "dataset_name": "JailbreakBench/JBB-Behaviors",
+    "dataset_config": "behaviors",
+    "split": "harmful",
+    "prompt_field": "Goal",
+    "limit": 8,
+    "offset": 0,
+    "dataset_path": "./data/jbb_behaviors_harmful.json",
+    "dataset_format": "json"
+  },
+  "generation": {
+    "max_new_tokens": 512,
+    "do_sample": false,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": 50,
+    "repetition_penalty": 1.0,
+    "use_cache": true,
+    "num_beams": 1,
+    "seed": 42
+  },
+  "intervention": {
+    "attack": {
+      "enabled": true,
+      "vector_source": "tensor_file",
+      "vector_path": "./results/stage1_phase_aware/random_vector_pools/qwen25_stage1_vectors.pt",
+      "vector_index": 0,
+      "normalize_vector": true,
+      "coefficient": 1.0,
+      "strength_mode": "fixed_alpha",
+      "coefficient_c": null,
+      "activation_norm_mu": null,
+      "effective_alpha": null,
+      "mu_source": null,
+      "mu_config": {},
+      "phase_mode": "decode_only",
+      "first_k_decode_tokens": 0,
+      "decode_decay": 0.85
+    },
+    "defense": {
+      "enabled": false
+    }
+  },
+  "experiment_name": "stage1_trackA_qwen25_decay_localdata"
+}

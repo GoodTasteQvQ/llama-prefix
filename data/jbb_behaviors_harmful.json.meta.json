@@ -1,0 +1,8 @@
+{
+  "dataset_name": "JailbreakBench/JBB-Behaviors",
+  "dataset_config": "behaviors",
+  "split": "harmful",
+  "format": "json",
+  "num_rows": 100,
+  "output": "D:\\llama_prefix\\data\\jbb_behaviors_harmful.json"
+}

@@ -1,0 +1,70 @@
+{
+  "experiment_name": "defense_qwen25_prefill_only",
+  "output_dir": "./results/defense",
+  "tags": [
+    "defense",
+    "baseline",
+    "prefill-only",
+    "qwen25"
+  ],
+  "model": {
+    "model_name": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "layer_index": 9,
+    "device_map": "auto",
+    "torch_dtype": "float32",
+    "padding_side": "left"
+  },
+  "prompt_template": {
+    "use_chat_template": true,
+    "system_prompt": "",
+    "add_generation_prompt": true,
+    "filter_special_tokens": true,
+    "filter_role_markers": true,
+    "filter_newlines": true
+  },
+  "dataset": {
+    "dataset_name": "JailbreakBench/JBB-Behaviors",
+    "dataset_config": "behaviors",
+    "split": "harmful",
+    "prompt_field": "Goal",
+    "limit": 8,
+    "offset": 0
+  },
+  "generation": {
+    "max_new_tokens": 128,
+    "do_sample": false,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": 50,
+    "repetition_penalty": 1.0,
+    "use_cache": true,
+    "num_beams": 1,
+    "seed": 42
+  },
+  "intervention": {
+    "attack": {
+      "enabled": true,
+      "vector_source": "random",
+      "vector_index": 0,
+      "normalize_vector": true,
+      "coefficient": 1.25,
+      "phase_mode": "prefill_and_decode",
+      "first_k_decode_tokens": 0,
+      "decode_decay": 1.0
+    },
+    "defense": {
+      "enabled": true,
+      "vector_path": "./results/vectors/qwen25/safe_vectors.pt",
+      "vector_layer": 9,
+      "vector_manifest_path": "./results/vectors/qwen25/vector_manifest.json",
+      "normalize_vector": true,
+      "base_coefficient": 0.2,
+      "relu_scale": 0.0,
+      "threshold": 0.0,
+      "phase_mode": "prefill_only",
+      "first_k_decode_tokens": 0,
+      "decode_decay": 1.0,
+      "score_mode": "projection"
+    }
+  }
+}

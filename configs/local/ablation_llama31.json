@@ -1,0 +1,17 @@
+{
+  "model_name": "/data/goodtaste_workspace/models/Meta-Llama-3.1-8B-Instruct",
+  "pairs": "./data/safe_pairs.json",
+  "vector_path": "./results/vectors/llama31/safe_vectors.pt",
+  "vector_layer": 10,
+  "vector_manifest": "./results/vectors/llama31/vector_manifest.json",
+  "layer": 10,
+  "output_path": "./results/ablations/llama31_layer10.json",
+  "batch_size": 4,
+  "threshold": 0.5,
+  "target_tpr": 0.9,
+  "target_fpr": 0.1,
+  "padding_side": "left",
+  "torch_dtype": "float32",
+  "filter_role_markers": true,
+  "filter_newlines": true
+}

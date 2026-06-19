@@ -1,0 +1,61 @@
+{
+  "experiment_name": "phase_matrix_qwen25_decode_decay_localdata",
+  "output_dir": "./results/phase_matrix",
+  "tags": [
+    "phase-matrix",
+    "qwen25",
+    "decay",
+    "local-data"
+  ],
+  "model": {
+    "model_name": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "layer_index": 9,
+    "device_map": "auto",
+    "torch_dtype": "float32",
+    "padding_side": "left"
+  },
+  "prompt_template": {
+    "use_chat_template": true,
+    "system_prompt": "",
+    "add_generation_prompt": true,
+    "filter_special_tokens": true,
+    "filter_role_markers": true,
+    "filter_newlines": false
+  },
+  "dataset": {
+    "dataset_name": "JailbreakBench/JBB-Behaviors",
+    "dataset_config": "behaviors",
+    "split": "harmful",
+    "prompt_field": "Goal",
+    "dataset_path": "./data/jbb_behaviors_harmful.json",
+    "dataset_format": "json",
+    "limit": 8,
+    "offset": 0
+  },
+  "generation": {
+    "max_new_tokens": 128,
+    "do_sample": false,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": 50,
+    "repetition_penalty": 1.0,
+    "use_cache": true,
+    "num_beams": 1,
+    "seed": 42
+  },
+  "intervention": {
+    "attack": {
+      "enabled": true,
+      "vector_source": "random",
+      "vector_index": 0,
+      "normalize_vector": true,
+      "coefficient": 1.25,
+      "phase_mode": "decode_only",
+      "first_k_decode_tokens": 0,
+      "decode_decay": 0.85
+    },
+    "defense": {
+      "enabled": false
+    }
+  }
+}

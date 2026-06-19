@@ -1,0 +1,17 @@
+{
+  "model_name": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+  "pairs": "./data/safe_pairs.json",
+  "vector_path": "./results/vectors/qwen25/safe_vectors.pt",
+  "vector_layer": 9,
+  "vector_manifest": "./results/vectors/qwen25/vector_manifest.json",
+  "layer": 9,
+  "output_path": "./results/ablations/qwen25_layer9.json",
+  "batch_size": 4,
+  "threshold": 0.5,
+  "target_tpr": 0.9,
+  "target_fpr": 0.1,
+  "padding_side": "left",
+  "torch_dtype": "float32",
+  "filter_role_markers": true,
+  "filter_newlines": true
+}

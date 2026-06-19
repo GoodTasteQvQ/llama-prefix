@@ -1,0 +1,17 @@
+{
+  "model_name": "/data/goodtaste_workspace/models/Mistral-7B-Instruct-v0.3",
+  "pairs": "./data/safe_pairs.json",
+  "vector_path": "./results/vectors/mistral/safe_vectors.pt",
+  "vector_layer": 13,
+  "vector_manifest": "./results/vectors/mistral/vector_manifest.json",
+  "layer": 13,
+  "output_path": "./results/ablations/mistral_layer13.json",
+  "batch_size": 4,
+  "threshold": 0.5,
+  "target_tpr": 0.9,
+  "target_fpr": 0.1,
+  "padding_side": "left",
+  "torch_dtype": "float32",
+  "filter_role_markers": true,
+  "filter_newlines": true
+}
