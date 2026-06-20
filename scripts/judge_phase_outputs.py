@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import torch
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
@@ -333,12 +334,14 @@ def main() -> int:
         tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(
         args.judge_model,
-        device_map="auto",
-        torch_dtype=resolve_dtype(args.torch_dtype),
+        device_map="cuda:0",
+        dtype=resolve_dtype(args.torch_dtype),
     ).eval()
 
     records = payload.get("records", [])
-    for record in records:
+    label_counts: dict[str, int] = {}
+    pbar = tqdm(records, desc="Judging", unit="sample")
+    for record in pbar:
         response = record.get("output", "")
         result = judge_four_class(
             tokenizer,
@@ -365,6 +368,12 @@ def main() -> int:
                 args.rogue_max_new_tokens,
             )
         record["judge"] = judge_payload
+
+        # Update progress bar with label counts
+        label = result["judgment"]
+        label_counts[label] = label_counts.get(label, 0) + 1
+        stats = " | ".join(f"{k}:{v}" for k, v in sorted(label_counts.items()))
+        pbar.set_postfix_str(stats)
 
     payload["judge_summary"] = build_summary(
         records=records,
