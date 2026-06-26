@@ -56,6 +56,16 @@ run_group() {
 
   build_single_prompt_config "$base_config_path" "$config_path"
 
+  if [[ -s "$out_path" ]]; then
+    if python -m json.tool "$out_path" >/dev/null 2>&1; then
+      echo "[$(date "+%F %T")] SKIP valid existing $out_path" | tee -a "$LOG_ROOT/remaining_phase_queue.log"
+      return
+    fi
+    local corrupt_path="${out_path}.corrupt.$(date +%Y%m%d_%H%M%S)"
+    echo "[$(date "+%F %T")] MOVE corrupt $out_path -> $corrupt_path" | tee -a "$LOG_ROOT/remaining_phase_queue.log"
+    mv "$out_path" "$corrupt_path"
+  fi
+
   if [[ "$track" == "trackA" ]]; then
     run_step "${track}_${group}_v0000_0999" "$log_path" \
       bash ./scripts/stage1_phase_aware/run_stage1_formal_shard.sh \

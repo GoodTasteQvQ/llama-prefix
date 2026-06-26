@@ -7,6 +7,7 @@ from time import perf_counter
 from typing import Any
 import gc
 import json
+import os
 import random
 
 from datasets import load_dataset
@@ -374,8 +375,12 @@ class ExperimentRunner:
             else self.output_dir / f"{summary['experiment_name']}.json"
         )
         resolved_path.parent.mkdir(parents=True, exist_ok=True)
-        with resolved_path.open("w", encoding="utf-8") as handle:
+        tmp_path = resolved_path.with_name(f".{resolved_path.name}.{os.getpid()}.tmp")
+        with tmp_path.open("w", encoding="utf-8") as handle:
             json.dump(summary, handle, ensure_ascii=False, indent=2)
+            handle.flush()
+            os.fsync(handle.fileno())
+        tmp_path.replace(resolved_path)
         return resolved_path
 
     def run(

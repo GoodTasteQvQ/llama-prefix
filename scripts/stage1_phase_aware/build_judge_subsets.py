@@ -84,6 +84,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Overwrite existing subset files.",
     )
+    parser.add_argument(
+        "--index-name",
+        default="index.json",
+        help="Index filename to write inside output-dir.",
+    )
     return parser
 
 
@@ -115,7 +120,10 @@ def float_equal(left: Any, right: float) -> bool:
 
 
 def load_record(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in individual file {path}: {exc}") from exc
     records = payload.get("records", [])
     if not records:
         raise ValueError(f"No records found in {path}")
@@ -152,7 +160,11 @@ def build_subset(
     selected_runs: list[dict[str, Any]] = []
     for run in selected:
         vector_index = int(run["vector_index"])
-        filename = individual_filename(track, variant, vector_index, strength)
+        filename = (
+            f"{run['experiment_name']}.json"
+            if run.get("experiment_name")
+            else individual_filename(track, variant, vector_index, strength)
+        )
         path = individual_dir / filename
         selected_runs.append(
             {
@@ -248,7 +260,7 @@ def main() -> int:
             f"Missing {len(all_missing)} individual files. See {missing_path}"
         )
 
-    index_path = output_dir / "index.json"
+    index_path = output_dir / args.index_name
     index_path.write_text(json.dumps(index_rows, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Saved {len(index_rows)} judge subsets to {output_dir}")
     return 0

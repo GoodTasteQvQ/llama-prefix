@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -180,7 +181,9 @@ def main() -> int:
     }
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path = output_path.with_name(f".{output_path.name}.{os.getpid()}.tmp")
+    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(output_path)
     total_elapsed = time.time() - t_start_all
     print(f"[progress] ALL_DONE total_elapsed={total_elapsed:.0f}s saved_to={output_path}", flush=True)
     return 0

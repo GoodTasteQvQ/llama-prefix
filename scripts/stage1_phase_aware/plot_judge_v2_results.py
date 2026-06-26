@@ -21,12 +21,21 @@ from typing import Any
 
 
 EXPERIMENT_RE = re.compile(
-    r"^stage1_(?P<track>track[AB])_(?P<model>.+?)_(?P<method>rogue_v1|decode_only|full)_"
+    r"^stage1_(?P<track>track[AB])_(?P<model>.+?)_"
+    r"(?P<method>rogue_v1|no_cache|decode_only|full|first_k|decay)_"
     r"(?P<strength_name>alpha|c)(?P<strength>[0-9]+(?:\.[0-9]+)?)_judge_subset$"
 )
 
-METHOD_ORDER = ["rogue_v1", "decode_only", "full"]
+METHOD_ORDER = ["rogue_v1", "no_cache", "decode_only", "full", "first_k", "decay"]
 TRACK_ORDER = {"trackA": 0, "trackB": 1}
+METHOD_COLORS = {
+    "rogue_v1": "#2f6fdd",
+    "no_cache": "#8a5cf6",
+    "decode_only": "#d14b3f",
+    "full": "#20845a",
+    "first_k": "#e08d1a",
+    "decay": "#6f7f8f",
+}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -274,7 +283,7 @@ def plot_single_metric_svg(
     ys = [row[metric_key] for row in rows]
     x_min, x_max = min(xs), max(xs)
     y_max = max(max(ys) * 1.12, 0.05)
-    colors = {"rogue_v1": "#2f6fdd", "decode_only": "#d14b3f", "full": "#20845a"}
+    colors = METHOD_COLORS
 
     def sx(x: float) -> float:
         return left + (x - x_min) / (x_max - x_min) * plot_w
@@ -337,7 +346,7 @@ def plot_arr_repetition_svg(rows: list[dict[str, Any]], output_path: Path, title
     grouped = grouped_by_method(rows)
     xs = [row["strength"] for row in rows]
     x_min, x_max = min(xs), max(xs)
-    colors = {"rogue_v1": "#2f6fdd", "decode_only": "#d14b3f", "full": "#20845a"}
+    colors = METHOD_COLORS
 
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
