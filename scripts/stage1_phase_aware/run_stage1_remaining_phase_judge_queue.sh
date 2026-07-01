@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /data/goodtaste_workspace/prefix
+cd /data/goodtaste_workspace/llama-prefix
 
 ROOT=results/stage1_phase_aware/formal/qwen25
-SUBSET_DIR="$ROOT/judge_subsets"
-JUDGED_DIR="$ROOT/judged_qwen3_v2"
+SUBSET_DIR="$ROOT/judge_subsets_remaining_phase"
+JUDGED_DIR="$ROOT/judged_qwen3_v2_remaining_phase"
 SUMMARY_DIR="$ROOT/judge_summaries"
 BAD_CASE_DIR="$SUMMARY_DIR/qwen25_stage1_remaining_phase_qwen3_v2_bad_cases"
-LOG_DIR=logs/stage1_formal/qwen25/judge_remaining_phase
+LOG_DIR=logs/judge/qwen3_v2_remaining_phase
 SUBSET_INDEX="$SUBSET_DIR/index_remaining_phase.json"
 JUDGED_LIST="$LOG_DIR/judged_remaining_phase_files.txt"
 
 JUDGE_MODEL="${JUDGE_MODEL:-/data/goodtaste_workspace/models/Qwen3-8B}"
 TORCH_DTYPE="${TORCH_DTYPE:-bfloat16}"
-GROUPS="trackA:no_cache,trackA:first_k,trackA:decay,trackB:no_cache,trackB:first_k,trackB:decay"
+JUDGE_GROUPS="trackA:no_cache,trackA:first_k,trackA:decay,trackB:no_cache,trackB:first_k,trackB:decay"
 STRENGTHS="0.0,0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0"
 SAMPLES_PER_STRENGTH=100
 SEED=42
@@ -26,7 +26,7 @@ python -u scripts/stage1_phase_aware/build_judge_subsets.py \
   --formal-dir "$ROOT" \
   --individual-dir results/stage1_phase_aware \
   --output-dir "$SUBSET_DIR" \
-  --groups "$GROUPS" \
+  --groups "$JUDGE_GROUPS" \
   --strengths "$STRENGTHS" \
   --samples-per-strength "$SAMPLES_PER_STRENGTH" \
   --seed "$SEED" \

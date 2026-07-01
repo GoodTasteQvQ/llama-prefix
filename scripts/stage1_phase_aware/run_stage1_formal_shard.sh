@@ -15,7 +15,7 @@ VECTOR_END="$6"
 PROMPT_LIMIT="$7"
 MU_JSON="${8:-}"
 
-cd /data/goodtaste_workspace/prefix
+cd /data/goodtaste_workspace/llama-prefix
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
