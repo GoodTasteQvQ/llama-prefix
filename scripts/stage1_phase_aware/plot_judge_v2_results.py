@@ -44,11 +44,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--summary",
-        default=(
-            "results/stage1_phase_aware/formal/qwen25/judge_summaries/"
-            "qwen25_stage1_qwen3_v2_judge_summary.json"
-        ),
-        help="Input summary JSON from summarize_phase_results.py.",
+        nargs="+",
+        default=[
+            (
+                "results/stage1_phase_aware/formal/qwen25/judge_summaries/"
+                "qwen25_stage1_qwen3_v2_judge_summary.json"
+            )
+        ],
+        help="One or more summary JSON files from summarize_phase_results.py.",
     )
     parser.add_argument(
         "--output-dir",
@@ -85,8 +88,12 @@ def metric(row: dict[str, Any], key: str, default: float = 0.0) -> float:
     return float(value) if value is not None else default
 
 
-def parse_rows(summary_path: Path) -> list[dict[str, Any]]:
-    raw_rows = json.loads(summary_path.read_text(encoding="utf-8"))
+def parse_rows(summary_paths: list[Path]) -> list[dict[str, Any]]:
+    raw_rows = []
+    for summary_path in summary_paths:
+        for row in json.loads(summary_path.read_text(encoding="utf-8")):
+            row["_summary_source"] = str(summary_path)
+            raw_rows.append(row)
     parsed: list[dict[str, Any]] = []
     failures: list[str] = []
     for row in raw_rows:
@@ -100,6 +107,7 @@ def parse_rows(summary_path: Path) -> list[dict[str, Any]]:
         parsed.append(
             {
                 "experiment_name": name,
+                "summary_source": row.get("_summary_source", ""),
                 "track": info["track"],
                 "model": info["model"],
                 "method": info["method"],
@@ -404,13 +412,13 @@ def plot_arr_repetition_svg(rows: list[dict[str, Any]], output_path: Path, title
 
 def main() -> int:
     args = build_parser().parse_args()
-    summary_path = Path(args.summary)
+    summary_paths = [Path(item) for item in args.summary]
     output_dir = Path(args.output_dir)
     table_dir = output_dir / "tables"
     figure_dir = output_dir / "figures"
     formats = {item.strip().lower() for item in args.formats.split(",") if item.strip()}
 
-    rows = parse_rows(summary_path)
+    rows = parse_rows(summary_paths)
     track_a = [row for row in rows if row["track"] == "trackA"]
     track_b = [row for row in rows if row["track"] == "trackB"]
 
@@ -484,7 +492,7 @@ def main() -> int:
         )
 
     manifest = {
-        "summary": str(summary_path),
+        "summary": [str(path) for path in summary_paths],
         "output_dir": str(output_dir),
         "num_rows": len(rows),
         "trackA_rows": len(track_a),

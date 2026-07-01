@@ -1,0 +1,78 @@
+{
+  "output_dir": "./results/stage1_phase_aware",
+  "tags": [
+    "paper1",
+    "stage1",
+    "phase-aware-reproduction",
+    "track-b",
+    "rogue-calibrated",
+    "group-D"
+  ],
+  "model": {
+    "model_name": "/data/goodtaste_workspace/models/Meta-Llama-3___1-8B-Instruct",
+    "layer_index": 11,
+    "device_map": "auto",
+    "torch_dtype": "bfloat16",
+    "padding_side": "right"
+  },
+  "prompt_template": {
+    "use_chat_template": true,
+    "system_prompt": "",
+    "add_generation_prompt": true,
+    "filter_special_tokens": true,
+    "filter_role_markers": false,
+    "filter_newlines": false
+  },
+  "dataset": {
+    "dataset_name": "JailbreakBench/JBB-Behaviors",
+    "dataset_config": "behaviors",
+    "split": "harmful",
+    "prompt_field": "Goal",
+    "limit": 8,
+    "offset": 0
+  },
+  "generation": {
+    "max_new_tokens": 512,
+    "do_sample": false,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": 50,
+    "repetition_penalty": 1.0,
+    "use_cache": true,
+    "num_beams": 1,
+    "seed": 42
+  },
+  "intervention": {
+    "attack": {
+      "enabled": true,
+      "vector_source": "tensor_file",
+      "vector_path": "./results/stage1_phase_aware/random_vector_pools/llama31_stage1_vectors.pt",
+      "vector_index": 0,
+      "normalize_vector": true,
+      "coefficient": 0.0,
+      "strength_mode": "rogue_calibrated",
+      "coefficient_c": 1.0,
+      "activation_norm_mu": null,
+      "effective_alpha": null,
+      "mu_source": "stage1_measure_activation_norm",
+      "mu_config": {
+        "filter_special_tokens": true,
+        "filter_role_markers": false,
+        "filter_newlines": false,
+        "drop_first_k_valid_tokens": 5,
+        "padding_side": "right",
+        "torch_dtype": "bfloat16",
+        "max_new_tokens": 512,
+        "do_sample": false,
+        "num_random_vectors": 1000
+      },
+      "phase_mode": "prefill_and_decode",
+      "first_k_decode_tokens": 0,
+      "decode_decay": 1.0
+    },
+    "defense": {
+      "enabled": false
+    }
+  },
+  "experiment_name": "stage1_trackB_llama31_full"
+}

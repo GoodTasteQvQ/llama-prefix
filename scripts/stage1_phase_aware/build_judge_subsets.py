@@ -68,6 +68,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="results/stage1_phase_aware/formal/qwen25/judge_subsets",
     )
     parser.add_argument(
+        "--model-key",
+        default="qwen25",
+        help="Model key used in stage1 filenames, e.g. qwen25 or llama31.",
+    )
+    parser.add_argument(
         "--groups",
         default=",".join(f"{track}:{variant}" for track, variant in DEFAULT_GROUPS),
         help="Comma-separated groups, e.g. trackA:rogue_v1,trackB:decode_only.",
@@ -92,27 +97,33 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def formal_path(formal_dir: Path, track: str, variant: str) -> Path:
+def formal_path(formal_dir: Path, track: str, variant: str, model_key: str) -> Path:
     prefix = "stage1_trackA" if track == "trackA" else "stage1_trackB"
-    return formal_dir / track / f"{prefix}_qwen25_{variant}_formal_v0000_0999.json"
+    return formal_dir / track / f"{prefix}_{model_key}_{variant}_formal_v0000_0999.json"
 
 
 def strength_key(track: str) -> str:
     return "alpha" if track == "trackA" else "coefficient_c"
 
 
-def individual_filename(track: str, variant: str, vector_index: int, strength: float) -> str:
+def individual_filename(
+    track: str,
+    variant: str,
+    vector_index: int,
+    strength: float,
+    model_key: str,
+) -> str:
     track_name = "trackA" if track == "trackA" else "trackB"
     strength_name = "alpha" if track == "trackA" else "c"
     return (
-        f"stage1_{track_name}_qwen25_{variant}_localdata_"
+        f"stage1_{track_name}_{model_key}_{variant}_localdata_"
         f"vector{vector_index:04d}_{strength_name}{strength:.2f}.json"
     )
 
 
-def output_filename(track: str, variant: str, strength: float) -> str:
+def output_filename(track: str, variant: str, strength: float, model_key: str) -> str:
     strength_name = "alpha" if track == "trackA" else "c"
-    return f"stage1_{track}_qwen25_{variant}_{strength_name}{strength:.2f}_judge_subset.json"
+    return f"stage1_{track}_{model_key}_{variant}_{strength_name}{strength:.2f}_judge_subset.json"
 
 
 def float_equal(left: Any, right: float) -> bool:
@@ -141,6 +152,7 @@ def build_subset(
     track: str,
     variant: str,
     strength: float,
+    model_key: str,
     sample_count: int,
     rng: random.Random,
 ) -> tuple[list[dict[str, Any]], list[str], list[dict[str, Any]]]:
@@ -163,7 +175,7 @@ def build_subset(
         filename = (
             f"{run['experiment_name']}.json"
             if run.get("experiment_name")
-            else individual_filename(track, variant, vector_index, strength)
+            else individual_filename(track, variant, vector_index, strength, model_key)
         )
         path = individual_dir / filename
         selected_runs.append(
@@ -195,6 +207,7 @@ def main() -> int:
     individual_dir = Path(args.individual_dir)
     output_dir = Path(args.output_dir)
     groups = parse_groups(args.groups)
+    model_key = args.model_key
     strengths = parse_strengths(args.strengths)
     rng = random.Random(args.seed)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -202,7 +215,7 @@ def main() -> int:
     index_rows = []
     all_missing: list[str] = []
     for track, variant in groups:
-        aggregate_path = formal_path(formal_dir, track, variant)
+        aggregate_path = formal_path(formal_dir, track, variant, model_key)
         if not aggregate_path.exists():
             raise FileNotFoundError(f"Missing formal aggregate: {aggregate_path}")
         formal_payload = json.loads(aggregate_path.read_text(encoding="utf-8"))
@@ -213,6 +226,7 @@ def main() -> int:
                 track=track,
                 variant=variant,
                 strength=strength,
+                model_key=model_key,
                 sample_count=args.samples_per_strength,
                 rng=rng,
             )
@@ -220,7 +234,7 @@ def main() -> int:
             if missing:
                 continue
 
-            out_path = output_dir / output_filename(track, variant, strength)
+            out_path = output_dir / output_filename(track, variant, strength, model_key)
             if out_path.exists() and not args.overwrite:
                 raise FileExistsError(f"Refusing to overwrite {out_path}; pass --overwrite")
 

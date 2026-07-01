@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import argparse
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -13,8 +14,24 @@ TRACK_A_GRID = [round(0.25 * index, 2) for index in range(0, 9)]
 TRACK_B_GRID = [round(0.25 * index, 2) for index in range(0, 9)]
 NUM_RANDOM_VECTORS = 1000
 
-QWEN_LAYER = 9
-QWEN_MODEL_NAME = "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct"
+MODEL_PROFILES = {
+    "qwen25": {
+        "model_key": "qwen25",
+        "model_name": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+        "layer_index": 9,
+        "torch_dtype": "bfloat16",
+        "padding_side": "left",
+        "vector_path": "./results/stage1_phase_aware/random_vector_pools/qwen25_stage1_vectors.pt",
+    },
+    "llama31": {
+        "model_key": "llama31",
+        "model_name": "/data/goodtaste_workspace/models/Meta-Llama-3___1-8B-Instruct",
+        "layer_index": 11,
+        "torch_dtype": "bfloat16",
+        "padding_side": "right",
+        "vector_path": "./results/stage1_phase_aware/random_vector_pools/llama31_stage1_vectors.pt",
+    },
+}
 
 PHASE_VARIANTS = {
     "A": {
@@ -62,7 +79,7 @@ PHASE_VARIANTS = {
 }
 
 
-def stage1_base(local: bool) -> dict:
+def stage1_base(local: bool, profile: dict) -> dict:
     dataset = {
         "dataset_name": "JailbreakBench/JBB-Behaviors",
         "dataset_config": "behaviors",
@@ -78,11 +95,11 @@ def stage1_base(local: bool) -> dict:
         "output_dir": "./results/stage1_phase_aware",
         "tags": ["paper1", "stage1", "phase-aware-reproduction"],
         "model": {
-            "model_name": QWEN_MODEL_NAME,
-            "layer_index": QWEN_LAYER,
+            "model_name": profile["model_name"],
+            "layer_index": profile["layer_index"],
             "device_map": "auto",
-            "torch_dtype": "bfloat16",
-            "padding_side": "left",
+            "torch_dtype": profile["torch_dtype"],
+            "padding_side": profile["padding_side"],
         },
         "prompt_template": {
             "use_chat_template": True,
@@ -108,7 +125,7 @@ def stage1_base(local: bool) -> dict:
             "attack": {
                 "enabled": True,
                 "vector_source": "tensor_file",
-                "vector_path": "./results/stage1_phase_aware/random_vector_pools/qwen25_stage1_vectors.pt",
+                "vector_path": profile["vector_path"],
                 "vector_index": 0,
                 "normalize_vector": True,
                 "coefficient": 0.0,
@@ -132,13 +149,14 @@ def write_config(config: dict, path: Path) -> None:
     path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def build_track_a(local: bool) -> None:
-    base = stage1_base(local=local)
+def build_track_a(local: bool, profile: dict) -> None:
+    model_key = profile["model_key"]
+    base = stage1_base(local=local, profile=profile)
     env_dir = CONFIGS_DIR / ("local" if local else "remote")
     for label, variant in PHASE_VARIANTS.items():
         config = deepcopy(base)
         config["experiment_name"] = (
-            f"stage1_trackA_qwen25_{variant['name']}" + ("_localdata" if local else "")
+            f"stage1_trackA_{model_key}_{variant['name']}" + ("_localdata" if local else "")
         )
         config["tags"] = config["tags"] + ["track-a", "fixed-alpha", f"group-{label}"]
         config["generation"]["use_cache"] = variant["use_cache"]
@@ -147,17 +165,18 @@ def build_track_a(local: bool) -> None:
         config["intervention"]["attack"]["decode_decay"] = variant["decode_decay"]
         config["intervention"]["attack"]["strength_mode"] = "fixed_alpha"
         config["intervention"]["attack"]["coefficient"] = 1.25 if label == "A" else 1.0
-        output_path = env_dir / f"stage1_trackA_qwen25_{variant['name']}.json"
+        output_path = env_dir / f"stage1_trackA_{model_key}_{variant['name']}.json"
         write_config(config, output_path)
 
 
-def build_track_b(local: bool) -> None:
-    base = stage1_base(local=local)
+def build_track_b(local: bool, profile: dict) -> None:
+    model_key = profile["model_key"]
+    base = stage1_base(local=local, profile=profile)
     env_dir = CONFIGS_DIR / ("local" if local else "remote")
     for label, variant in PHASE_VARIANTS.items():
         config = deepcopy(base)
         config["experiment_name"] = (
-            f"stage1_trackB_qwen25_{variant['name']}" + ("_localdata" if local else "")
+            f"stage1_trackB_{model_key}_{variant['name']}" + ("_localdata" if local else "")
         )
         config["tags"] = config["tags"] + ["track-b", "rogue-calibrated", f"group-{label}"]
         config["generation"]["use_cache"] = variant["use_cache"]
@@ -175,21 +194,47 @@ def build_track_b(local: bool) -> None:
             "filter_role_markers": False,
             "filter_newlines": False,
             "drop_first_k_valid_tokens": 5,
-            "padding_side": "left",
-            "torch_dtype": "bfloat16",
+            "padding_side": profile["padding_side"],
+            "torch_dtype": profile["torch_dtype"],
             "max_new_tokens": 512,
             "do_sample": False,
             "num_random_vectors": NUM_RANDOM_VECTORS,
         }
-        output_path = env_dir / f"stage1_trackB_qwen25_{variant['name']}.json"
+        output_path = env_dir / f"stage1_trackB_{model_key}_{variant['name']}.json"
         write_config(config, output_path)
 
 
+def parse_models(raw: str) -> list[str]:
+    if raw == "all":
+        return list(MODEL_PROFILES)
+    models = [item.strip() for item in raw.split(",") if item.strip()]
+    if not models:
+        raise ValueError("--models cannot be empty")
+    unknown = sorted(set(models) - set(MODEL_PROFILES))
+    if unknown:
+        raise ValueError(f"Unknown model profile(s): {', '.join(unknown)}")
+    return models
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Generate stage1 phase-aware configs.")
+    parser.add_argument(
+        "--models",
+        default="qwen25",
+        help="Comma-separated model profiles to generate, or 'all'. Choices: qwen25,llama31.",
+    )
+    return parser
+
+
 def main() -> int:
-    for local in (True, False):
-        build_track_a(local=local)
-        build_track_b(local=local)
-    print("Generated stage1 configs for local and remote environments.")
+    args = build_parser().parse_args()
+    models = parse_models(args.models)
+    for model_key in models:
+        profile = MODEL_PROFILES[model_key]
+        for local in (True, False):
+            build_track_a(local=local, profile=profile)
+            build_track_b(local=local, profile=profile)
+    print(f"Generated stage1 configs for: {', '.join(models)}")
     return 0
 
 

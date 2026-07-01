@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /data/goodtaste_workspace/llama-prefix
+cd /data/goodtaste_workspace/prefix
 
 LOG_ROOT=logs/stage1_formal/qwen25
 OUT_ROOT=results/stage1_phase_aware/formal/qwen25

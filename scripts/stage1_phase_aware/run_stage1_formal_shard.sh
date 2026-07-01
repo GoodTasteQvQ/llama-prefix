@@ -15,7 +15,13 @@ VECTOR_END="$6"
 PROMPT_LIMIT="$7"
 MU_JSON="${8:-}"
 
-cd /data/goodtaste_workspace/llama-prefix
+REPO_ROOT="${STAGE1_REPO_ROOT:-/data/goodtaste_workspace/llama-prefix}"
+VECTOR_POOL_ARG=()
+if [[ -n "${STAGE1_VECTOR_POOL:-}" ]]; then
+  VECTOR_POOL_ARG=(--vector-pool "$STAGE1_VECTOR_POOL")
+fi
+
+cd "$REPO_ROOT"
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
@@ -26,6 +32,7 @@ if [[ "$TRACK" == "trackA" ]]; then
     --mode formal \
     --vector-start "$VECTOR_START" \
     --vector-end "$VECTOR_END" \
+    "${VECTOR_POOL_ARG[@]}" \
     --prompt-limit "$PROMPT_LIMIT" \
     --prompt-offset 0
 elif [[ "$TRACK" == "trackB" ]]; then
@@ -40,6 +47,7 @@ elif [[ "$TRACK" == "trackB" ]]; then
     --mode formal \
     --vector-start "$VECTOR_START" \
     --vector-end "$VECTOR_END" \
+    "${VECTOR_POOL_ARG[@]}" \
     --prompt-limit "$PROMPT_LIMIT" \
     --prompt-offset 0
 else

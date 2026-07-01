@@ -13,3 +13,6 @@ models/
 
 # local caches
 .hf_cache/
+
+# results
+result/stage1_phase_aware/
