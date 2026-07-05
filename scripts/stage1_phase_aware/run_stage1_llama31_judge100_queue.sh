@@ -16,7 +16,7 @@ BAD_CASE_DIR="${SUMMARY_DIR}/${MODEL_KEY}_stage1_qwen3_v2_100sample_bad_cases"
 PLOT_DIR="${SUMMARY_DIR}/${MODEL_KEY}_stage1_qwen3_v2_100sample_plots"
 LOG_ROOT="logs/stage1_formal/${MODEL_KEY}"
 STRENGTHS="0.0,0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0"
-GROUPS="trackA:rogue_v1,trackA:no_cache,trackA:decode_only,trackA:full,trackA:first_k,trackA:decay,trackB:rogue_v1,trackB:no_cache,trackB:decode_only,trackB:full,trackB:first_k,trackB:decay"
+JUDGE_GROUPS="trackA:rogue_v1,trackA:no_cache,trackA:decode_only,trackA:full,trackA:first_k,trackA:decay,trackB:rogue_v1,trackB:no_cache,trackB:decode_only,trackB:full,trackB:first_k,trackB:decay"
 
 mkdir -p "$SUBSET_DIR" "$JUDGED_DIR" "$SUMMARY_DIR" "$LOG_ROOT/judge"
 
@@ -36,7 +36,7 @@ run_step "build_judge_subsets_${MODEL_KEY}" "$LOG_ROOT/judge/build_subsets.log" 
     --individual-dir "$INDIVIDUAL_DIR" \
     --output-dir "$SUBSET_DIR" \
     --model-key "$MODEL_KEY" \
-    --groups "$GROUPS" \
+    --groups "$JUDGE_GROUPS" \
     --strengths "$STRENGTHS" \
     --samples-per-strength 100 \
     --seed 42 \
@@ -57,8 +57,8 @@ while IFS= read -r subset_path; do
       --output "$out_path" \
       --judge-model "$JUDGE_MODEL" \
       --torch-dtype bfloat16 \
-      --max-new-tokens 256 \
-      --rogue-max-new-tokens 128
+      --max-new-tokens 1296 \
+      --rogue-max-new-tokens 1296
 done < <(python - "$SUBSET_DIR/index.json" <<'PY'
 import json
 import sys
