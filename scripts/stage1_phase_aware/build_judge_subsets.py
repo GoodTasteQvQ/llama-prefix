@@ -130,6 +130,31 @@ def float_equal(left: Any, right: float) -> bool:
     return abs(float(left) - float(right)) < 1e-9
 
 
+def resolve_individual_path(
+    *,
+    individual_dir: Path,
+    filename: str,
+    track: str,
+    variant: str,
+    strength: float,
+    model_key: str,
+) -> Path:
+    flat_path = individual_dir / filename
+    if flat_path.exists():
+        return flat_path
+
+    strength_name = "alpha" if track == "trackA" else "c"
+    return (
+        individual_dir
+        / "individual_json"
+        / f"model={model_key}"
+        / track
+        / variant
+        / f"{strength_name}{strength:.2f}"
+        / filename
+    )
+
+
 def load_record(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -177,7 +202,14 @@ def build_subset(
             if run.get("experiment_name")
             else individual_filename(track, variant, vector_index, strength, model_key)
         )
-        path = individual_dir / filename
+        path = resolve_individual_path(
+            individual_dir=individual_dir,
+            filename=filename,
+            track=track,
+            variant=variant,
+            strength=strength,
+            model_key=model_key,
+        )
         selected_runs.append(
             {
                 "vector_index": vector_index,

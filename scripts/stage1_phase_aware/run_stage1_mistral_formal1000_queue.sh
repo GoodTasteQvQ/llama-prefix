@@ -12,10 +12,13 @@ MU_JSON="${VALIDATION_DIR}/${MODEL_KEY}_mu_trackB_rogue_v1.json"
 DATASET_PATH="./data/single_prompt_bomb.json"
 RUN_CONFIG_ROOT="${OUT_ROOT}/generated_single_prompt_configs"
 VECTOR_POOL="./results/stage1_phase_aware/random_vector_pools/${MODEL_KEY}_stage1_vectors.pt"
+INDIVIDUAL_OUTPUT_ROOT="results/stage1_phase_aware/individual_json"
 PROMPT_LIMIT=1
 
 export STAGE1_REPO_ROOT="$REPO_ROOT"
 export STAGE1_VECTOR_POOL="$VECTOR_POOL"
+export STAGE1_MODEL_KEY="$MODEL_KEY"
+export STAGE1_INDIVIDUAL_OUTPUT_ROOT="$INDIVIDUAL_OUTPUT_ROOT"
 
 mkdir -p \
   "$LOG_ROOT/trackA" \

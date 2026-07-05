@@ -53,6 +53,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--vector-pool", default="./results/stage1_phase_aware/random_vector_pools/qwen25_stage1_vectors.pt")
+    parser.add_argument("--model-key", default=None)
+    parser.add_argument("--method-name", default=None)
+    parser.add_argument("--individual-output-root", default=None)
     parser.add_argument("--num-vectors", type=int, default=1000)
     parser.add_argument("--mode", choices=["debug", "formal"], default="formal")
     parser.add_argument("--single-vector-index", type=int, default=0)
@@ -63,6 +66,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--prompt-limit", type=int, default=None)
     parser.add_argument("--prompt-offset", type=int, default=None)
     return parser
+
+
+def individual_output_path(
+    *,
+    root: str | None,
+    model_key: str | None,
+    method_name: str | None,
+    experiment_name: str,
+    alpha: float,
+) -> Path | None:
+    if root is None:
+        return None
+    if not model_key or not method_name:
+        raise ValueError("--model-key and --method-name are required with --individual-output-root")
+    return (
+        Path(root)
+        / f"model={model_key}"
+        / "trackA"
+        / method_name
+        / f"alpha{alpha:.2f}"
+        / f"{experiment_name}.json"
+    )
 
 
 def main() -> int:
@@ -120,7 +145,13 @@ def main() -> int:
                     attack_override=attack_override,
                     experiment_name=experiment_name,
                     tags=list(config.tags) + ["stage1", "track-a", args.mode],
-                    output_path=None,
+                    output_path=individual_output_path(
+                        root=args.individual_output_root,
+                        model_key=args.model_key,
+                        method_name=args.method_name,
+                        experiment_name=experiment_name,
+                        alpha=alpha,
+                    ),
                 )
                 runs.append({
                     "experiment_name": experiment_name,

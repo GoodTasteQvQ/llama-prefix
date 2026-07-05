@@ -20,6 +20,14 @@ VECTOR_POOL_ARG=()
 if [[ -n "${STAGE1_VECTOR_POOL:-}" ]]; then
   VECTOR_POOL_ARG=(--vector-pool "$STAGE1_VECTOR_POOL")
 fi
+INDIVIDUAL_OUTPUT_ARG=()
+if [[ -n "${STAGE1_INDIVIDUAL_OUTPUT_ROOT:-}" ]]; then
+  INDIVIDUAL_OUTPUT_ARG=(
+    --individual-output-root "$STAGE1_INDIVIDUAL_OUTPUT_ROOT"
+    --model-key "${STAGE1_MODEL_KEY:-}"
+    --method-name "$GROUP_NAME"
+  )
+fi
 
 cd "$REPO_ROOT"
 
@@ -33,6 +41,7 @@ if [[ "$TRACK" == "trackA" ]]; then
     --vector-start "$VECTOR_START" \
     --vector-end "$VECTOR_END" \
     "${VECTOR_POOL_ARG[@]}" \
+    "${INDIVIDUAL_OUTPUT_ARG[@]}" \
     --prompt-limit "$PROMPT_LIMIT" \
     --prompt-offset 0
 elif [[ "$TRACK" == "trackB" ]]; then
@@ -48,6 +57,7 @@ elif [[ "$TRACK" == "trackB" ]]; then
     --vector-start "$VECTOR_START" \
     --vector-end "$VECTOR_END" \
     "${VECTOR_POOL_ARG[@]}" \
+    "${INDIVIDUAL_OUTPUT_ARG[@]}" \
     --prompt-limit "$PROMPT_LIMIT" \
     --prompt-offset 0
 else
