@@ -121,6 +121,35 @@ def individual_filename(
     )
 
 
+def resolve_individual_path(
+    individual_dir: Path,
+    filename: str,
+    track: str,
+    variant: str,
+    strength: float,
+    model_key: str,
+) -> Path:
+    """Resolve individual JSON path, checking flat layout then archived layout.
+
+    Flat layout: individual_dir/{filename}
+    Archived layout: individual_dir/individual_json/model={model_key}/{track}/{variant}/{sk}{strength}/{filename}
+    """
+    flat_path = individual_dir / filename
+    if flat_path.exists():
+        return flat_path
+    sk = "alpha" if track == "trackA" else "c"
+    archived_path = (
+        individual_dir
+        / "individual_json"
+        / f"model={model_key}"
+        / track
+        / variant
+        / f"{sk}{strength:.2f}"
+        / filename
+    )
+    return archived_path
+
+
 def output_filename(track: str, variant: str, strength: float, model_key: str) -> str:
     strength_name = "alpha" if track == "trackA" else "c"
     return f"stage1_{track}_{model_key}_{variant}_{strength_name}{strength:.2f}_judge_subset.json"
