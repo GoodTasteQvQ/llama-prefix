@@ -31,6 +31,14 @@ MODEL_PROFILES = {
         "padding_side": "right",
         "vector_path": "./results/stage1_phase_aware/random_vector_pools/llama31_stage1_vectors.pt",
     },
+    "mistral": {
+        "model_key": "mistral",
+        "model_name": "/data/goodtaste_workspace/models/Mistral-7B-Instruct-v0___3",
+        "layer_index": 11,
+        "torch_dtype": "bfloat16",
+        "padding_side": "right",
+        "vector_path": "./results/stage1_phase_aware/random_vector_pools/mistral_stage1_vectors.pt",
+    },
 }
 
 PHASE_VARIANTS = {
@@ -221,7 +229,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--models",
         default="qwen25",
-        help="Comma-separated model profiles to generate, or 'all'. Choices: qwen25,llama31.",
+        help="Comma-separated model profiles to generate, or 'all'. Choices: qwen25,llama31,mistral.",
     )
     return parser
 

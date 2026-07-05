@@ -1,0 +1,13 @@
+track,method,representative_strength,phase_mode,use_cache,first_k_decode_tokens,decode_decay,prefill_attack_expected,num_runs,mean_prefill_calls,mean_decode_cached_calls,mean_decode_full_calls,mean_generated_steered_calls,mean_decode_mask_count,mean_decode_mask_sum,max_decode_mask_sum,nonzero_decode_mask_rate
+trackA,rogue_v1,alpha=1.0,rogue_v1_cache_semantics,True,0,1.0,True,1000,1.0,124.203,0.0,0.0,124.203,0.0,0.0,0.0
+trackA,no_cache,alpha=1.0,prefill_and_decode,False,0,1.0,True,1000,1.0,0.0,125.188,125.188,125.188,96.29978112918171,172.0,1.0
+trackA,decode_only,alpha=1.0,decode_only,True,0,1.0,False,1000,1.0,124.393,0.0,124.393,124.393,1.0,1.0,1.0
+trackA,first_k,alpha=1.0,first_k_decode,True,3,1.0,False,1000,1.0,124.736,0.0,3.0,124.736,1.0,1.0,1.0
+trackA,decay,alpha=1.0,decode_only,True,0,0.85,False,1000,1.0,125.0,0.0,125.0,125.0,1.0,1.0,1.0
+trackA,full,alpha=1.0,prefill_and_decode,True,0,1.0,True,1000,1.0,122.738,0.0,122.738,122.738,1.0,1.0,1.0
+trackB,rogue_v1,c=1.0,rogue_v1_cache_semantics,True,0,1.0,True,1000,1.0,70.834,0.0,0.0,70.834,0.0,0.0,0.0
+trackB,no_cache,c=1.0,prefill_and_decode,False,0,1.0,True,1000,1.0,0.0,154.206,154.206,154.206,181.81684240561327,544.0,1.0
+trackB,decode_only,c=1.0,decode_only,True,0,1.0,False,1000,1.0,189.017,0.0,189.017,189.017,1.0,1.0,1.0
+trackB,first_k,c=1.0,first_k_decode,True,3,1.0,False,1000,1.0,95.099,0.0,3.0,95.099,1.0,1.0,1.0
+trackB,decay,c=1.0,decode_only,True,0,0.85,False,1000,1.0,91.508,0.0,91.508,91.508,1.0,1.0,1.0
+trackB,full,c=1.0,prefill_and_decode,True,0,1.0,True,1000,1.0,159.443,0.0,159.443,159.443,1.0,1.0,1.0
