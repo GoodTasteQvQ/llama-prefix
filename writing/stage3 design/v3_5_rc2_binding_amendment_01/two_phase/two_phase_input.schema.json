@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:paper1-stage3:v3.5-rc2:binding-amendment-01:two-phase-input-v1",
+  "title": "Matched two-phase simultaneous-CI input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "synthetic_data",
+    "data_origin",
+    "master_seed",
+    "prompt_frame",
+    "vector_frame",
+    "phase_two_frame",
+    "members"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "v3.5-rc2-binding-amendment-01-two-phase-input-v1"
+    },
+    "synthetic_data": {"type": "boolean"},
+    "data_origin": {
+      "enum": ["SYNTHETIC_GOLDEN_ONLY", "FORMAL_FROZEN_INPUT"]
+    },
+    "master_seed": {"const": 42},
+    "prompt_frame": {"$ref": "#/$defs/promptFrame"},
+    "vector_frame": {"$ref": "#/$defs/vectorFrame"},
+    "phase_two_frame": {"$ref": "#/$defs/phaseTwoFrame"},
+    "members": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {"$ref": "#/$defs/memberA"},
+        {"$ref": "#/$defs/memberT"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "promptFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame_id", "frame_sha256", "strata"],
+      "properties": {
+        "frame_id": {"const": "D_behavior_confirm"},
+        "frame_sha256": {"$ref": "#/$defs/sha256"},
+        "strata": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["stratum_id", "prompt_ids"],
+            "properties": {
+              "stratum_id": {"$ref": "#/$defs/id"},
+              "prompt_ids": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"$ref": "#/$defs/id"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "vectorFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame_id", "frame_sha256", "vector_ids"],
+      "properties": {
+        "frame_id": {"const": "V_confirm"},
+        "frame_sha256": {"$ref": "#/$defs/sha256"},
+        "vector_ids": {
+          "type": "array",
+          "minItems": 20,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/id"}
+        }
+      }
+    },
+    "phaseTwoStratum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stratum_id", "member_id", "arm", "N_h", "n_h", "population_response_ids", "sampled_response_ids"],
+      "properties": {
+        "stratum_id": {"$ref": "#/$defs/id"},
+        "member_id": {"enum": ["P2-U(A)", "P2-B(T)"]},
+        "arm": {"enum": ["all-token", "content-token"]},
+        "N_h": {"type": "integer", "minimum": 1},
+        "n_h": {"type": "integer", "minimum": 0},
+        "population_response_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/id"}
+        },
+        "sampled_response_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/id"}
+        }
+      }
+    },
+    "phaseTwoFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame_id", "frame_sha256", "strata"],
+      "properties": {
+        "frame_id": {"const": "human_validation_sample"},
+        "frame_sha256": {"$ref": "#/$defs/sha256"},
+        "strata": {
+          "type": "array",
+          "minItems": 4,
+          "items": {"$ref": "#/$defs/phaseTwoStratum"}
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "response_id",
+        "pair_id",
+        "prompt_id",
+        "prompt_category",
+        "vector_id",
+        "anchor",
+        "arm",
+        "judge",
+        "selected",
+        "phase2_stratum_id"
+      ],
+      "properties": {
+        "response_id": {"$ref": "#/$defs/id"},
+        "pair_id": {"$ref": "#/$defs/id"},
+        "prompt_id": {"$ref": "#/$defs/id"},
+        "prompt_category": {"$ref": "#/$defs/id"},
+        "vector_id": {"$ref": "#/$defs/id"},
+        "anchor": {"enum": ["A", "T"]},
+        "arm": {"enum": ["all-token", "content-token"]},
+        "judge": {"type": "integer", "minimum": 0, "maximum": 1},
+        "selected": {"type": "boolean"},
+        "gold": {"type": "integer", "minimum": 0, "maximum": 1},
+        "pi": {"type": "string", "pattern": "^[1-9][0-9]*/[1-9][0-9]*$"},
+        "phase2_stratum_id": {"$ref": "#/$defs/id"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"selected": {"const": true}}},
+          "then": {"required": ["gold", "pi"]},
+          "else": {
+            "not": {
+              "anyOf": [
+                {"required": ["gold"]},
+                {"required": ["pi"]}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "memberBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["member_id", "anchor", "endpoint", "frame_id", "frame_sha256", "rows"],
+      "properties": {
+        "member_id": {"enum": ["P2-U(A)", "P2-B(T)"]},
+        "anchor": {"enum": ["A", "T"]},
+        "endpoint": {"enum": ["unsafe", "broken"]},
+        "frame_id": {"enum": ["M_A", "M_T"]},
+        "frame_sha256": {"$ref": "#/$defs/sha256"},
+        "rows": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/row"}
+        }
+      }
+    },
+    "memberA": {
+      "allOf": [
+        {"$ref": "#/$defs/memberBase"},
+        {
+          "properties": {
+            "member_id": {"const": "P2-U(A)"},
+            "anchor": {"const": "A"},
+            "endpoint": {"const": "unsafe"},
+            "frame_id": {"const": "M_A"}
+          }
+        }
+      ]
+    },
+    "memberT": {
+      "allOf": [
+        {"$ref": "#/$defs/memberBase"},
+        {
+          "properties": {
+            "member_id": {"const": "P2-B(T)"},
+            "anchor": {"const": "T"},
+            "endpoint": {"const": "broken"},
+            "frame_id": {"const": "M_T"}
+          }
+        }
+      ]
+    }
+  }
+}

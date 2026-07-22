@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "v3.5-rc2-amendment-01-retained-bootstrap-input-v1",
+  "title": "Paper 1 Stage 3 retained-bootstrap production input",
+  "description": "Production frames only. Synthetic reduced-size fixtures are explicitly marked and exercised by the bound verifier.",
+  "oneOf": [
+    {"$ref": "#/$defs/k1"},
+    {"$ref": "#/$defs/harmfulClean"},
+    {"$ref": "#/$defs/benignBroken"}
+  ],
+  "$defs": {
+    "header": {
+      "type": "object",
+      "properties": {
+        "schema_version": {"const": "v3.5-rc2-amendment-01-retained-bootstrap-input-v1"},
+        "synthetic_data": {"const": false}
+      }
+    },
+    "promptUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "prompt_id"],
+      "properties": {
+        "position": {"type": "integer", "minimum": 0},
+        "prompt_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "vectorUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "vector_id"],
+      "properties": {
+        "position": {"type": "integer", "minimum": 0},
+        "vector_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "harmfulLabel": {"enum": ["broken", "unsafe", "refusal", "safe"]},
+    "benignLabel": {"enum": ["broken", "unsafe", "refusal", "helpful"]},
+    "k1Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["row_id", "prompt_id", "vector_id", "label"],
+      "properties": {
+        "row_id": {"type": "string", "minLength": 1},
+        "prompt_id": {"type": "string", "minLength": 1},
+        "vector_id": {"type": "string", "minLength": 1},
+        "label": {"$ref": "#/$defs/harmfulLabel"}
+      }
+    },
+    "k1Cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cell_id", "records"],
+      "properties": {
+        "cell_id": {"enum": ["P2_A_all", "P2_A_content", "P2_T_all", "P2_T_content"]},
+        "records": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/k1Row"}}
+      }
+    },
+    "k1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "synthetic_data", "block_type", "prompt_frame", "vector_frame", "cells"],
+      "properties": {
+        "schema_version": {"const": "v3.5-rc2-amendment-01-retained-bootstrap-input-v1"},
+        "synthetic_data": {"const": false},
+        "block_type": {"const": "k1"},
+        "prompt_frame": {"type": "array", "minItems": 50, "maxItems": 50, "items": {"$ref": "#/$defs/promptUnit"}},
+        "vector_frame": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/vectorUnit"}},
+        "cells": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            {"allOf": [{"$ref": "#/$defs/k1Cell"}, {"properties": {"cell_id": {"const": "P2_A_all"}}}]},
+            {"allOf": [{"$ref": "#/$defs/k1Cell"}, {"properties": {"cell_id": {"const": "P2_A_content"}}}]},
+            {"allOf": [{"$ref": "#/$defs/k1Cell"}, {"properties": {"cell_id": {"const": "P2_T_all"}}}]},
+            {"allOf": [{"$ref": "#/$defs/k1Cell"}, {"properties": {"cell_id": {"const": "P2_T_content"}}}]}
+          ],
+          "items": false
+        }
+      }
+    },
+    "harmfulCleanRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["row_id", "prompt_id", "label"],
+      "properties": {
+        "row_id": {"type": "string", "minLength": 1},
+        "prompt_id": {"type": "string", "minLength": 1},
+        "label": {"$ref": "#/$defs/harmfulLabel"}
+      }
+    },
+    "harmfulClean": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "synthetic_data", "block_type", "prompt_frame", "records"],
+      "properties": {
+        "schema_version": {"const": "v3.5-rc2-amendment-01-retained-bootstrap-input-v1"},
+        "synthetic_data": {"const": false},
+        "block_type": {"const": "harmful_clean"},
+        "prompt_frame": {"type": "array", "minItems": 50, "maxItems": 50, "items": {"$ref": "#/$defs/promptUnit"}},
+        "records": {
+          "description": "Ordered, duplicate-free retained subset of the frozen prompt frame; missing prompts contribute zero numerator and denominator under full-frame bootstrap draws.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {"$ref": "#/$defs/harmfulCleanRow"}
+        }
+      }
+    },
+    "benignResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["response_id", "label"],
+      "properties": {
+        "response_id": {"type": "string", "minLength": 1},
+        "label": {"$ref": "#/$defs/benignLabel"}
+      }
+    },
+    "benignSteeredResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["response_id", "vector_id", "label"],
+      "properties": {
+        "response_id": {"type": "string", "minLength": 1},
+        "vector_id": {"type": "string", "minLength": 1},
+        "label": {"$ref": "#/$defs/benignLabel"}
+      }
+    },
+    "benignPrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_id", "clean", "steered"],
+      "properties": {
+        "prompt_id": {"type": "string", "minLength": 1},
+        "clean": {"$ref": "#/$defs/benignResponse"},
+        "steered": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/benignSteeredResponse"}}
+      }
+    },
+    "benignBroken": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "synthetic_data", "block_type", "complete_prompt_frame", "vector_frame", "prompts"],
+      "properties": {
+        "schema_version": {"const": "v3.5-rc2-amendment-01-retained-bootstrap-input-v1"},
+        "synthetic_data": {"const": false},
+        "block_type": {"const": "benign_broken"},
+        "complete_prompt_frame": {"type": "array", "minItems": 1, "maxItems": 30, "items": {"$ref": "#/$defs/promptUnit"}},
+        "vector_frame": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/vectorUnit"}},
+        "prompts": {"type": "array", "minItems": 1, "maxItems": 30, "items": {"$ref": "#/$defs/benignPrompt"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "schema_version": "v3.5-rc2-binding-amendment-release-v1",
+  "amendment_id": "v3.5-rc2-binding-amendment-01",
+  "protocol_version": "v3.5-rc2",
+  "created_at_utc": "2026-07-22T10:06:09Z",
+  "status": "DESIGN-FREEZE-CANDIDATE / RUN-BLOCKED",
+  "formal_data_used": false,
+  "no_scope_expansion": true,
+  "fixed_scope": {
+    "P": 50,
+    "V": 20,
+    "human_items": 720,
+    "new_experiment_blocks": 0
+  },
+  "fixed_budget": {
+    "support": 900,
+    "p2_four_cells": 4000,
+    "k1_reuse": 0,
+    "harmful_clean": 50,
+    "benign_t_steered": 600,
+    "benign_clean": 30,
+    "logical_generation": 5580,
+    "first_pass_scheduled_judge": 5580,
+    "human_items": 720
+  },
+  "production_parameters": {
+    "two_phase_prompt": {"replicates": 9999, "common_success_required": 9500},
+    "two_phase_vector": {"replicates": 9999, "common_success_required": 9500},
+    "k1_profile": {"replicates": 10000, "common_success_fraction_percent": 95},
+    "harmful_clean": {"replicates": 10000, "common_success_fraction_percent": 95},
+    "benign_broken": {"replicates": 10000, "common_success_fraction_percent": 95}
+  },
+  "non_outputs": {
+    "formal_P1": false,
+    "formal_generation": false,
+    "formal_human_experiment": false,
+    "formal_judge": false,
+    "formal_results": false,
+    "formal_support": false
+  },
+  "binding_manifest": {
+    "path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/amendment_binding_manifest.json",
+    "sha256": "98d63c66302e8bc05ab5af32ccb7ee64993c598698f6d1e0acfb384cae95d9b8",
+    "length": 10608
+  },
+  "artifacts": [
+    {"path": "writing/stage3 design/revision/paper1_attention_sink_mu_experiment_design_v3_5_rc2_binding_amendment_01.md", "sha256": "b76bd7e35d2d26ecc04172243e0218f8f44d092549aa21af344e5bf802799c14", "length": 16084},
+    {"path": "writing/stage3 design/revision/paper1_attention_sink_mu_v3_5_rc2_binding_amendment_01_repair_completion.md", "sha256": "1bf484e4a367d9be0b3322c0b6685c5ebbd40f12991d5ae3360708d40b485b30", "length": 9342},
+    {"path": "writing/stage3 design/revision/paper1_attention_sink_mu_v3_5_rc2_binding_amendment_01_partial_witness_repair_completion.md", "sha256": "880020243b4c674e0f20330370d83d90657913b4628f054f72daa27960e73b38", "length": 9165, "sha256_rule": "sha256_utf8_excluding_parent_release_identity_block_v1"},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/amendment_binding_manifest.json", "sha256": "98d63c66302e8bc05ab5af32ccb7ee64993c598698f6d1e0acfb384cae95d9b8", "length": 10608},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/audit_disposition.md", "sha256": "fb1795a1b7c86f12b90842eb9535228e57f8db1061b291f3d58b90d3b8b60b1c", "length": 3087},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/base_rc2_hashes_initial.sha256", "sha256": "62cdc07760c709799a2a1cce17177df1fabe838a3f0d5054d853bd6d839a722d", "length": 3479},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/README.md", "sha256": "36927195232f87ab948e731a7ffe24df3dbf09964d06e19da36eb819ba109fe6", "length": 4028},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/verifier_contract.json", "sha256": "99de5d135caef6489c73a0c0f5012c706fdc3357079960aba61a744b7c729537", "length": 1839},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/README.md", "sha256": "124c0fe91feac286c26c7e2e2a347cb962c9683b909ff18bdc27c4498c3a0ee5", "length": 8126},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/retained_bootstrap_manifest.json", "sha256": "0e163a0fcdcb57a1d08f3b4653fa4025750ff31c5776e8dea6507dd059431d7f", "length": 4942},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/retained_bootstrap_schema.json", "sha256": "78f0e45f4cb3ca7d455c0d19022f776b1c42fa4c08ae5b69c99129492c2ca47a", "length": 6329},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/two_phase/README.md", "sha256": "156f48abc790d78cd1082799189215df7a768932fb5aa1297d0dfade48e53293", "length": 10063},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/two_phase/two_phase_binding_manifest.json", "sha256": "4bbca707cd23cfa8c7d9b1b01869e268925b2fb13309bd631dcce36e69d88248", "length": 5600},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/two_phase/two_phase_input.schema.json", "sha256": "b46aa46f2e498e44d0509fd5bf75c5291c12246cae0fc9fd46806821c2551a6c", "length": 6307},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/fixtures/failure_golden_expected.json", "sha256": "e795e84ff2d14a08363f9bddfd713a4055b9a9ea6cce0cdf1ba285ccc2eeb1e9", "length": 2205},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/fixtures/failure_golden_input.json", "sha256": "dc129426d2089098abf78c8861f8295dc20cf596a1931d03467ec57f452c960b", "length": 1008},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/fixtures/partial_harmful_production_shape_expected.json", "sha256": "d2e71c95f34e2ce8396e6a9ed613fe754693efe1206b3b79770ca99be244a548", "length": 1194},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/fixtures/partial_harmful_production_shape_input.json", "sha256": "abc9c8956c3d0fe830e89f73aa4478b2402181b1073cd4454b8db4dedd493caa", "length": 4647},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/fixtures/success_golden_expected.json", "sha256": "d9eae2cd0c5782bbbd4727a4e08953ef2f2b8797a36499f5e9748b8cd9725940", "length": 7912},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/retained_bootstrap/fixtures/success_golden_input.json", "sha256": "304a1a4c6df0825bcc26a68be147eb18a72edd3e23020794d116313f84f82d5e", "length": 14318},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/two_phase/fixtures/failure_expected.json", "sha256": "0304e69f2b67b17dee5db2959d9037b070876f6bf47b522d962db4431a617cf6", "length": 2211},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/two_phase/fixtures/failure_input.json", "sha256": "8e8b7ce08d2bd77fe432aecb358c226af1d648841fd043b3eef921bdf169d4b7", "length": 1377},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/two_phase/fixtures/success_expected.json", "sha256": "efcc9972c59f88d10f1373cd4a18213bbc8d701d1d90e0c4cd3ae91e847f9821", "length": 11276},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/two_phase/fixtures/success_input.json", "sha256": "4d02ede3a133934f91b2b0cdb72d86562d251a566c47ebed09c1ccc9d562ffae", "length": 20001},
+    {"path": "writing/stage3 design/v3_5_rc2_binding_amendment_01/two_phase/fixtures/schema_negative_input.json", "sha256": "bad000a3d6e05c4667fbbd7218cd0817044aac277ed15427ec09328f2f81a560", "length": 458},
+    {"path": "scripts/stage3_design/v3_5_rc2_binding_amendment_01/verify_amendment.py", "sha256": "746013d4d0d71523b0868d057af4a459ee505ddc311d447797b3be0c59365b9b", "length": 45139},
+    {"path": "scripts/stage3_design/v3_5_rc2_binding_amendment_01/retained_bootstrap/retained_bootstrap.py", "sha256": "90ea4091c1799926efc166b1e69d54c0b9b37fdc3c35af47146109f590d46dc6", "length": 46975},
+    {"path": "scripts/stage3_design/v3_5_rc2_binding_amendment_01/retained_bootstrap/draft202012_subset.py", "sha256": "e6c42e3b84fc220ff4e2eb2428e9a23d4a6f821d8346e10e5c38d5d046272d67", "length": 9221},
+    {"path": "scripts/stage3_design/v3_5_rc2_binding_amendment_01/retained_bootstrap/verify_golden.py", "sha256": "f31139a61947c4ad6166ad888c5883c9ec888d8fccd6c61009307644879b7b45", "length": 23429},
+    {"path": "scripts/stage3_design/v3_5_rc2_binding_amendment_01/two_phase/two_phase_reference.py", "sha256": "de740ce4a63218eddf189b55ced9f7bd4c554d615c770da8c3c02a117e2faec3", "length": 61277},
+    {"path": "scripts/stage3_design/v3_5_rc2_binding_amendment_01/two_phase/verify_two_phase_golden.py", "sha256": "4baa4c3c1d6a4f179ccb066c02a031a0b61d77409ceeebf8cf873a9806c1ee5f", "length": 15415}
+  ],
+  "self_hash_rule": "SHA256 of UTF-8 canonical JSON after removing top-level self_sha256; recursively sorted keys, ASCII escapes, comma/colon separators, finite values only",
+  "self_sha256": "7785adb64d2ca4508c69860b019b996a0c8ef8f8cbd2cdf6aa2927c584823652"
+}

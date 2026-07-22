@@ -1,0 +1,159 @@
+{
+  "artifact_kind": "v3.5-rc2-freeze-execution-contract",
+  "schema_version": "1.0.0",
+  "protocol_version": "v3.5-rc2",
+  "source_protocol": {
+    "path": "writing/stage3 design/paper1_attention_sink_mu_experiment_design_v3_5_rc1.md",
+    "sha256": "f557fb8a06329f92778e9e1eb7ddb2822b05e80bf83784ba1ec243b9343fb85a"
+  },
+  "normative_implementation": {
+    "path": "scripts/stage3_rc2/freeze_contract.py",
+    "sha256_recorded_in": "v3_5_rc2_hash_manifest.json"
+  },
+  "fixed_constants": {
+    "P": 50,
+    "V": 20,
+    "human_items": 720,
+    "support_per_anchor": 300,
+    "support_retain_min": 285,
+    "formal_generation_and_judge": 5580
+  },
+  "freeze_state_machine": {
+    "event_order": [
+      "IDENTITIES_AND_E0_VALID",
+      "MEASUREMENT_SPECIFICATION_FROZEN",
+      "P1_OUTCOME_VISIBLE",
+      "MEASUREMENT_RESULT_DOSE_FROZEN",
+      "JUDGE_DEVELOPMENT_MANUAL_COMPLETE",
+      "JUDGE_FROZEN",
+      "FORMAL_SUPPORT_GENERATION_STARTED",
+      "SUPPORT_EXECUTION_MANIFEST_FROZEN",
+      "BEHAVIOR_CONFIRMATION_FROZEN",
+      "FORMAL_CONFIRMATION_GENERATION_STARTED"
+    ],
+    "rule": "The realized event log must be an exact prefix of event_order. No event may be skipped, reordered, deleted, or overwritten.",
+    "initial_execution_status": "RUN_BLOCKED_EXTERNAL_INPUT",
+    "integrity_failure_status": "TERMINAL_BLOCKED_IDENTITY"
+  },
+  "measurement_specification_freeze": {
+    "path": "protocol/measurement_specification_freeze.json",
+    "time": "Before any formal P1 forward, norm, complete-case flag, aggregate, or exclusion result is visible.",
+    "required": [
+      "experiment/checkpoint/tokenizer/template/layer/hook/dtype identities",
+      "exact 100 harmful plus 100 benign prompt frame and hashes",
+      "render/token/span/complete-case rules",
+      "P1 estimands, bootstrap implementation identity, counts, quantiles, seed identity, and failure rules",
+      "base-anchor manifest reference",
+      "code/config/environment hashes",
+      "created_at_utc and self_sha256"
+    ],
+    "forbidden": [
+      "I_p_cc values",
+      "successful or excluded P1 identities",
+      "observed numerator, denominator, norm, share, estimate, interval, or gate result",
+      "median_content_norm value or token count",
+      "mu_all_tw or mu_content_tw value",
+      "c_A, c_T, c_H, alpha, or observed support status"
+    ],
+    "overwrite": "forbidden"
+  },
+  "measurement_result_dose_manifest": {
+    "path": "protocol/measurement_result_dose_manifest.json",
+    "time": "Exactly once after P1 completes and before judge freeze or any formal support generation.",
+    "parents": [
+      "measurement_specification_freeze self_sha256",
+      "experiment_identity_manifest self_sha256",
+      "base_anchor_manifest self_sha256"
+    ],
+    "required": [
+      "all 200 scheduled P1 identities with completed/excluded status and one mutually exclusive exclusion reason",
+      "D_harmful_cc and D_benign_cc ordered identity lists and hashes",
+      "all pooled-token numerators, denominators, token counts, realized shares, and exact binary64 values",
+      "mu_all_tw and mu_content_tw exact decimal, binary64 bytes, and source hashes",
+      "median_content_norm pooled numerator-frame identity list/hash, finite content-token count, exact decimal, and binary64 bytes",
+      "rho_A, rho_T, rho_H copied bitwise from the base-anchor manifest",
+      "c_k = rho_k * median_content_norm / mu_all_tw for k in A,T,H with exact operation order",
+      "pre-dtype and post-dtype alpha for every used anchor/estimator pair and numeric conversion identity",
+      "estimable/non-estimable status with exact failure code",
+      "producer code/config/environment hashes, created_at_utc, and self_sha256"
+    ],
+    "failure": "Any nonfinite value, zero required denominator, missing parent, hash mismatch, or formula mismatch sets P1_DOSE_NON_ESTIMABLE and blocks support; no substitute dose is produced.",
+    "overwrite": "forbidden"
+  },
+  "judge_contract": {
+    "development": {
+      "D_judge_dev": "empty_set",
+      "formal_response_identities": 0,
+      "generation_calls": 0,
+      "automated_judge_calls": 0,
+      "mode": "manual document-only rubric review",
+      "cost_accounting": "Record author/reviewer time and any non-call expense in judge_development_ledger.json; never add it to the formal 5580 generation/judge calls. Any development model call requires a future protocol version."
+    },
+    "freeze_path": "protocol/judge_freeze.json",
+    "freeze_time": "After the measurement-result/dose manifest and manual document-only review, and before the first formal support response is generated or visible.",
+    "model_family": "Qwen/Qwen3-8B",
+    "model_substitution": "forbidden",
+    "unresolved_artifact_identity": "Exact immutable revision, weight hash, tokenizer revision/hash, and template hash must be materialized for Qwen/Qwen3-8B. Absence is BLOCKED_EXTERNAL_INPUT, never permission to select another judge/backend.",
+    "runner_source": {
+      "path": "scripts/judge_phase_outputs.py",
+      "sha256": "73c3d4fb9bfbe818370c172e9b19d075ab18b420ca4e5336d728dcf2474d2651"
+    },
+    "fixed_generation": {
+      "do_sample": false,
+      "num_beams": 1,
+      "max_new_tokens": 1296,
+      "torch_dtype": "float32",
+      "enable_thinking": true
+    },
+    "formal_parse": "Parse final_completion only as one JSON object with exactly label and rationale. Label must be in the domain-specific four-label set and rationale must be a nonempty string. Regex/plain-text fallback is forbidden. One identical parse/infrastructure retry is allowed; a second failure is terminal.",
+    "rubric_identity": "The harmful and harmless PAPER1 templates and priority orders are bound through runner_source.sha256; judge_freeze additionally records each rendered template SHA256.",
+    "overwrite": "forbidden"
+  },
+  "support_contract": {
+    "scheduled_matrix": "A,T,H x 30 harmful prompts x vector indices 0..9 = 300 identities per anchor and 900 total",
+    "retained_identity_all_of": [
+      "scheduled_identity_match",
+      "generation_completed",
+      "judge_eligible",
+      "judge_label_parsed",
+      "identity_complete",
+      "dose_denominator_valid",
+      "dose_geometry_finite",
+      "post_dtype_alpha_finite"
+    ],
+    "retained_identity_also_requires": "identity_collision=false",
+    "status_precedence": [
+      "Any scheduled/unique count other than 300, identity collision, unexpected identity, or missing scheduled identity -> NON_ESTIMABLE_IDENTITY.",
+      "Otherwise retained>=285 and zero denominator/dose-geometry/post-dtype-alpha failure -> SUPPORTED.",
+      "Otherwise -> SUPPORT_LIMITED."
+    ],
+    "downstream_mapping": {
+      "A.SUPPORTED": "P2-U(A)=ESTIMATION_ONLY_SUPPORTED; execute both fixed 50x20 A cells.",
+      "A.SUPPORT_LIMITED": "P2-U(A)=ESTIMATION_ONLY_SUPPORT_LIMITED; execute both fixed 50x20 A cells and prohibit supported-language.",
+      "A.NON_ESTIMABLE_IDENTITY": "P2-U(A)=NON_ESTIMABLE_IDENTITY; do not attempt A cells; keep all 2000 logical IDs in the ledger as unattempted_due_integrity_block.",
+      "T.SUPPORTED": "P2-B(T) and benign_T use their fixed cells with supported status.",
+      "T.SUPPORT_LIMITED": "P2-B(T) and benign_T execute their fixed cells with SUPPORT_LIMITED status and prohibit supported-language.",
+      "T.NON_ESTIMABLE_IDENTITY": "P2-B(T) and benign_T are NON_ESTIMABLE_IDENTITY; keep their fixed logical IDs as unattempted_due_integrity_block.",
+      "H.any": "H has no downstream confirmation cell; report only its own support status."
+    },
+    "analysis_failure_precedence": "A downstream estimator/CI failure overrides supported or support-limited reporting with NON_ESTIMABLE_ANALYSIS; it never changes the fixed logical identity registry.",
+    "support_execution_manifest": "After all support attempts terminate, freeze the 900-row ledger, per-anchor retained counts/reasons/status, actual call/retry counts, judge labels, dependency hashes, created_at_utc, and self_sha256 before behavior confirmation freeze."
+  },
+  "behavior_confirmation_freeze": {
+    "path": "protocol/behavior_confirmation_freeze.json",
+    "time": "After support_execution_manifest is frozen and before any formal confirmation output is generated or visible.",
+    "required_parents": [
+      "measurement_specification_freeze",
+      "measurement_result_dose_manifest",
+      "judge_freeze",
+      "support_execution_manifest"
+    ],
+    "rule": "Bind the already-fixed 4000 P2, 50 harmful-clean, 600 benign-steered, and 30 benign-clean logical identities and the deterministic support mapping. It may not change dose, P, V, endpoint, anchor, judge, human N, or inferential method.",
+    "overwrite": "forbidden"
+  },
+  "golden_fixture": {
+    "path": "writing/stage3 design/v3_5_rc2_contracts/golden/freeze_execution_cases.json",
+    "sha256_recorded_in": "v3_5_rc2_hash_manifest.json"
+  },
+  "self_sha256": "0b795687b0f4146f3784b1f7367ae578fa489a86f2a20aab4811fe6d2ba1e4b7"
+}

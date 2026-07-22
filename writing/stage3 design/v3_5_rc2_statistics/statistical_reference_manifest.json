@@ -1,0 +1,56 @@
+{
+  "artifact_id": "paper1-stage3-v3.5-rc2-statistical-reference",
+  "created_utc": "2026-07-22T00:00:00Z",
+  "formal_data_used": false,
+  "master_seed": 42,
+  "production_parameters": {
+    "p1": {
+      "algorithm": "stratified_prompt_percentile_nearest_rank_v1",
+      "common_success_required": 9500,
+      "replicates": 10000,
+      "required_se_floor": 1e-08
+    },
+    "p2_raw": {
+      "algorithm": "two_way_webb_fixed_scale_max_abs_v1",
+      "common_success_required": 9500,
+      "member_order": [
+        "P2-U(A)",
+        "P2-B(T)"
+      ],
+      "replicates": 9999,
+      "required_se_floor": 1e-08,
+      "webb_weight_order": [
+        "-sqrt(3/2)",
+        "-1",
+        "-sqrt(1/2)",
+        "sqrt(1/2)",
+        "1",
+        "sqrt(3/2)"
+      ]
+    },
+    "quantile": "nearest_rank_no_interpolation"
+  },
+  "rng": {
+    "algorithm": "sha256_counter_uint64_be_rejection_v1",
+    "digest_seed_slice": "first_16_bytes",
+    "member_id_enters_sync_unit_id": false,
+    "replicate_index_base": 1,
+    "seed_serialization": "v3.5-rc2|master=42|block={block_id}|sync_unit={canonical_json}|rep={six_digit_index}"
+  },
+  "runtime": {
+    "implementation": "CPython",
+    "python": "3.12.10",
+    "third_party_packages": []
+  },
+  "sha256": {
+    "README.md": "a26b1a92c443ae89c55349b8dc5c6ead498d2f733afd7f7f62c6cf6c6fee8021",
+    "fixtures/failure_golden_expected.json": "a7a7d43aaa6bac2bb8287521f8a7ec32dc3ea03365ea931eb17729a063e30296",
+    "fixtures/failure_golden_input.json": "8f8953566d869693045758c7f151606bf8a35e98dbb6bbd5962992361e00b7b3",
+    "fixtures/statistical_golden_expected.json": "7037b524f261c40dd33759af2a5dfcccdf2e75bf6529da885d895a6d49961906",
+    "fixtures/statistical_golden_input.json": "b9e99039126b622f42db5c76c72740d81ba91dec602b268f100fab7b056e7d04",
+    "reference_statistics.py": "d2596e505cd67094c0567e24fdf72cec7e0a2d0a1b244cd472b982a2b41dc48a",
+    "verify_golden.py": "50f3dbb076cdab44a64e13cc57a4bcf8d4ccf2d1fb85144aceee7613170f82e3"
+  },
+  "status": "DESIGN_REFERENCE_ONLY_NO_FORMAL_EXPERIMENT",
+  "version": "v3.5-rc2"
+}

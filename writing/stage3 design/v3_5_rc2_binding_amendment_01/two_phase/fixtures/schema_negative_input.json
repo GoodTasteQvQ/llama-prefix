@@ -1,0 +1,10 @@
+{
+  "fixture_schema": "v3.5-rc2-binding-amendment-01-two-phase-schema-negative-input-v1",
+  "synthetic_data": true,
+  "description": "Synthetic-only member cardinality, order, and type mutations; no formal experiment data.",
+  "cases": [
+    {"case_id": "third_member_forbidden", "mutation": "third_member"},
+    {"case_id": "wrong_member_order", "mutation": "wrong_member_order"},
+    {"case_id": "wrong_member_type", "mutation": "wrong_member_type"}
+  ]
+}

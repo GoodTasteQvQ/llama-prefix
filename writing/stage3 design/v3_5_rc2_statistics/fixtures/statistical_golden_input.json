@@ -1,0 +1,60 @@
+{
+  "fixture_schema": "v3.5-rc2-statistical-golden-input-v1",
+  "p1": {
+    "min_success": 19,
+    "replicates": 20,
+    "strata": {
+      "benign": [
+        {"c_count": 2, "c_sum": 3.0, "prompt_id": "b01", "v_count": 4, "v_sum": 8.0},
+        {"c_count": 3, "c_sum": 6.0, "prompt_id": "b02", "v_count": 5, "v_sum": 12.5},
+        {"c_count": 2, "c_sum": 5.0, "prompt_id": "b03", "v_count": 6, "v_sum": 18.0}
+      ],
+      "harmful": [
+        {"c_count": 2, "c_sum": 4.0, "prompt_id": "h01", "v_count": 5, "v_sum": 15.0},
+        {"c_count": 3, "c_sum": 7.5, "prompt_id": "h02", "v_count": 6, "v_sum": 21.0},
+        {"c_count": 4, "c_sum": 12.0, "prompt_id": "h03", "v_count": 7, "v_sum": 28.0}
+      ]
+    }
+  },
+  "p2": {
+    "members": [
+      {
+        "member_id": "P2-U(A)",
+        "records": [
+          {"difference": 1, "prompt_id": "p01", "vector_id": "v01"},
+          {"difference": 0, "prompt_id": "p01", "vector_id": "v02"},
+          {"difference": 1, "prompt_id": "p01", "vector_id": "v03"},
+          {"difference": 0, "prompt_id": "p02", "vector_id": "v01"},
+          {"difference": -1, "prompt_id": "p02", "vector_id": "v02"},
+          {"difference": 0, "prompt_id": "p02", "vector_id": "v03"},
+          {"difference": 1, "prompt_id": "p03", "vector_id": "v01"},
+          {"difference": 0, "prompt_id": "p03", "vector_id": "v02"},
+          {"difference": 0, "prompt_id": "p03", "vector_id": "v03"}
+        ]
+      },
+      {
+        "member_id": "P2-B(T)",
+        "records": [
+          {"difference": 0, "prompt_id": "p01", "vector_id": "v01"},
+          {"difference": 1, "prompt_id": "p01", "vector_id": "v02"},
+          {"difference": 0, "prompt_id": "p01", "vector_id": "v03"},
+          {"difference": -1, "prompt_id": "p02", "vector_id": "v01"},
+          {"difference": 0, "prompt_id": "p02", "vector_id": "v02"},
+          {"difference": -1, "prompt_id": "p02", "vector_id": "v03"},
+          {"difference": 0, "prompt_id": "p03", "vector_id": "v01"},
+          {"difference": 1, "prompt_id": "p03", "vector_id": "v02"},
+          {"difference": 0, "prompt_id": "p03", "vector_id": "v03"}
+        ]
+      }
+    ],
+    "min_success": 19,
+    "replicates": 20
+  },
+  "rng_identity": {
+    "cases": [
+      {"block_id": "p2-raw-simultaneous", "replicate": 1, "sync_fields": {"axis": "prompt", "entity_id": "p01", "family": "p2-raw"}},
+      {"block_id": "p2-raw-simultaneous", "replicate": 1, "sync_fields": {"axis": "vector", "entity_id": "v01", "family": "p2-raw"}},
+      {"block_id": "p1-inference", "replicate": 20, "sync_fields": {"family": "p1", "resample": "stratified-prompt", "stratum": "harmful"}}
+    ]
+  }
+}

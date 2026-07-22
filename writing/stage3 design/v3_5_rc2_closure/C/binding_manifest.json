@@ -1,0 +1,39 @@
+{
+  "schema_version": "v3.5-rc2-c-closure-binding-v1",
+  "protocol_version": "v3.5-rc2",
+  "created_date": "2026-07-22",
+  "scope": "human correction, fixed720 deterministic quota, and model-based resource removal",
+  "formal_experiment_data": false,
+  "artifacts": [
+    {
+      "role": "fixed720_reference_implementation",
+      "path": "scripts/stage3_design/v3_5_rc2/human_quota.py",
+      "sha256": "1bd9db4ee0e4b4ec715c698b26d70a0ae80bbe5ca3f1671efee8d78d509a8aed"
+    },
+    {
+      "role": "matched_two_phase_reference_implementation",
+      "path": "scripts/stage3_design/v3_5_rc2/two_phase_correction.py",
+      "sha256": "54af509b6ef682d73eec47a861af62355a6fefc193256168f8f9ba46131bfbf9"
+    },
+    {
+      "role": "fixed720_golden_fixture",
+      "path": "writing/stage3 design/v3_5_rc2_closure/C/human_quota_golden.json",
+      "sha256": "bc8baeb3d91c1c6e7af6ee075559c6697c7761bb7e04ab7f1c3c62da1b1ae566"
+    },
+    {
+      "role": "matched_two_phase_golden_fixture",
+      "path": "writing/stage3 design/v3_5_rc2_closure/C/two_phase_correction_golden.json",
+      "sha256": "57b61f386f66b41017071c5b10707da73580442beebf58d8e84b76041ccb880e"
+    },
+    {
+      "role": "normative_merge_specification",
+      "path": "writing/stage3 design/v3_5_rc2_closure/C/human_correction_quota_resource_spec.md",
+      "sha256": "2e7a87314f27dd82eea0b807f1bd5179a5d3fdf012de900e2de6daf2958232c0"
+    }
+  ],
+  "verification": [
+    "python scripts/stage3_design/v3_5_rc2/human_quota.py --verify-golden \"writing/stage3 design/v3_5_rc2_closure/C/human_quota_golden.json\"",
+    "python scripts/stage3_design/v3_5_rc2/two_phase_correction.py --verify-golden \"writing/stage3 design/v3_5_rc2_closure/C/two_phase_correction_golden.json\""
+  ],
+  "fixture_only_notice": "All fixture records and labels are synthetic. No P1, support, generation, judge, or human experiment was run."
+}

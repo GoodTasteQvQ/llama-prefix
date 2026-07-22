@@ -1,0 +1,40 @@
+{
+  "artifact_kind": "v3.5-rc2-B-hash-manifest",
+  "schema_version": "1.0.0",
+  "canonicalization": "UTF-8 JSON; recursively sorted keys; separators comma/colon; self_sha256 excluded for self hash",
+  "files": [
+    {
+      "path": "scripts/stage3_rc2/freeze_contract.py",
+      "role": "normative executable",
+      "sha256": "946f155ecc3fd88ce3b150b203310fce60b2759808139fd61a63422cc3ae8e74"
+    },
+    {
+      "path": "writing/stage3 design/v3_5_rc2_contracts/freeze_execution_contract.json",
+      "role": "normative machine-readable contract",
+      "sha256": "95e1417ae880afaaff95546f3c59e157187b57bbc2f1b812a18136cf8f0126f1"
+    },
+    {
+      "path": "writing/stage3 design/v3_5_rc2_contracts/golden/freeze_execution_cases.json",
+      "role": "golden boundary fixture",
+      "sha256": "5ccbac3faf3c0c0c700c8b6140ae22618cb342f95781e15526ab18d3a4e6c293"
+    },
+    {
+      "path": "writing/stage3 design/v3_5_rc2_contracts/README_B_freeze_execution.md",
+      "role": "normative merge specification",
+      "sha256": "0e7ffdf0e1955e5f1cc99174e5d0d14a0c0233601a4c111abc318455f022e9a1"
+    },
+    {
+      "path": "writing/stage3 design/paper1_attention_sink_mu_experiment_design_v3_5_rc1.md",
+      "role": "read-only source baseline",
+      "sha256": "f557fb8a06329f92778e9e1eb7ddb2822b05e80bf83784ba1ec243b9343fb85a"
+    },
+    {
+      "path": "scripts/judge_phase_outputs.py",
+      "role": "read-only rubric source baseline",
+      "sha256": "73c3d4fb9bfbe818370c172e9b19d075ab18b420ca4e5336d728dcf2474d2651"
+    }
+  ],
+  "contract_canonical_self_sha256": "0b795687b0f4146f3784b1f7367ae578fa489a86f2a20aab4811fe6d2ba1e4b7",
+  "formal_experiment_executed": false,
+  "self_sha256": "082fb9a44c1449546268badf6c702557a7080ed6b912439b8123ac5f9e82ec21"
+}

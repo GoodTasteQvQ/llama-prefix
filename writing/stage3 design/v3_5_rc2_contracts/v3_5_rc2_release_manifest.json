@@ -1,0 +1,155 @@
+{
+  "artifacts": [
+    {
+      "length": 16870,
+      "path": "scripts/judge_phase_outputs.py",
+      "sha256": "73c3d4fb9bfbe818370c172e9b19d075ab18b420ca4e5336d728dcf2474d2651"
+    },
+    {
+      "length": 13996,
+      "path": "scripts/stage3_design/v3_5_rc2/human_quota.py",
+      "sha256": "1bd9db4ee0e4b4ec715c698b26d70a0ae80bbe5ca3f1671efee8d78d509a8aed"
+    },
+    {
+      "length": 6880,
+      "path": "scripts/stage3_design/v3_5_rc2/two_phase_correction.py",
+      "sha256": "54af509b6ef682d73eec47a861af62355a6fefc193256168f8f9ba46131bfbf9"
+    },
+    {
+      "length": 11385,
+      "path": "scripts/stage3_rc2/freeze_contract.py",
+      "sha256": "946f155ecc3fd88ce3b150b203310fce60b2759808139fd61a63422cc3ae8e74"
+    },
+    {
+      "length": 14840,
+      "path": "scripts/stage3_rc2/verify_release.py",
+      "sha256": "7b37df23ad98fdbc835899f718900f4496954f035711524753cdc1721b5ab1db"
+    },
+    {
+      "length": 4288,
+      "path": "writing/stage3 design/paper1_attention_sink_mu_design_freeze_audit_v3_5_rc2_disposition.md",
+      "sha256": "fa1035bcf7955e52b210f268f1048e08ecd6f67e149b32cd732814a89361c507"
+    },
+    {
+      "length": 55853,
+      "path": "writing/stage3 design/paper1_attention_sink_mu_experiment_design_v3_5_rc2.md",
+      "sha256": "0aadb33cf14697f4e7751086b3663a176498d816435930bdafa2a2488a297e9d"
+    },
+    {
+      "length": 6854,
+      "path": "writing/stage3 design/revision/paper1_attention_sink_mu_experiment_design_v3_5_rc1_to_v3_5_rc2_semantic_diff.md",
+      "sha256": "83d7d096660349e82af05cfbe3fba894f29a73c2592da149542265d47918048d"
+    },
+    {
+      "length": 1878,
+      "path": "writing/stage3 design/v3_5_rc2_closure/C/binding_manifest.json",
+      "sha256": "f29943a08a87177a0fce99d536d3cebbb0c99d0ca10c55cd53c8bec27de020fd"
+    },
+    {
+      "length": 9646,
+      "path": "writing/stage3 design/v3_5_rc2_closure/C/human_correction_quota_resource_spec.md",
+      "sha256": "2e7a87314f27dd82eea0b807f1bd5179a5d3fdf012de900e2de6daf2958232c0"
+    },
+    {
+      "length": 10300,
+      "path": "writing/stage3 design/v3_5_rc2_closure/C/human_quota_golden.json",
+      "sha256": "bc8baeb3d91c1c6e7af6ee075559c6697c7761bb7e04ab7f1c3c62da1b1ae566"
+    },
+    {
+      "length": 3276,
+      "path": "writing/stage3 design/v3_5_rc2_closure/C/two_phase_correction_golden.json",
+      "sha256": "57b61f386f66b41017071c5b10707da73580442beebf58d8e84b76041ccb880e"
+    },
+    {
+      "length": 10450,
+      "path": "writing/stage3 design/v3_5_rc2_contracts/README_B_freeze_execution.md",
+      "sha256": "0e7ffdf0e1955e5f1cc99174e5d0d14a0c0233601a4c111abc318455f022e9a1"
+    },
+    {
+      "length": 8983,
+      "path": "writing/stage3 design/v3_5_rc2_contracts/freeze_execution_contract.json",
+      "sha256": "95e1417ae880afaaff95546f3c59e157187b57bbc2f1b812a18136cf8f0126f1"
+    },
+    {
+      "length": 7779,
+      "path": "writing/stage3 design/v3_5_rc2_contracts/golden/freeze_execution_cases.json",
+      "sha256": "5ccbac3faf3c0c0c700c8b6140ae22618cb342f95781e15526ab18d3a4e6c293"
+    },
+    {
+      "length": 5501,
+      "path": "writing/stage3 design/v3_5_rc2_contracts/preexisting_files.sha256.json",
+      "sha256": "15f25224f9fbedb6313950946e60964de5d254016720f54f10ab9942873658e1"
+    },
+    {
+      "length": 1759,
+      "path": "writing/stage3 design/v3_5_rc2_contracts/v3_5_rc2_hash_manifest.json",
+      "sha256": "6f80ba31a5fe79ec26693c69e0be410ce3fac3b2d4ff52f19105bb98f22a1a27"
+    },
+    {
+      "length": 10846,
+      "path": "writing/stage3 design/v3_5_rc2_statistics/README.md",
+      "sha256": "a26b1a92c443ae89c55349b8dc5c6ead498d2f733afd7f7f62c6cf6c6fee8021"
+    },
+    {
+      "length": 709,
+      "path": "writing/stage3 design/v3_5_rc2_statistics/fixtures/failure_golden_expected.json",
+      "sha256": "a7a7d43aaa6bac2bb8287521f8a7ec32dc3ea03365ea931eb17729a063e30296"
+    },
+    {
+      "length": 496,
+      "path": "writing/stage3 design/v3_5_rc2_statistics/fixtures/failure_golden_input.json",
+      "sha256": "8f8953566d869693045758c7f151606bf8a35e98dbb6bbd5962992361e00b7b3"
+    },
+    {
+      "length": 2100,
+      "path": "writing/stage3 design/v3_5_rc2_statistics/fixtures/statistical_golden_expected.json",
+      "sha256": "7037b524f261c40dd33759af2a5dfcccdf2e75bf6529da885d895a6d49961906"
+    },
+    {
+      "length": 2658,
+      "path": "writing/stage3 design/v3_5_rc2_statistics/fixtures/statistical_golden_input.json",
+      "sha256": "b9e99039126b622f42db5c76c72740d81ba91dec602b268f100fab7b056e7d04"
+    },
+    {
+      "length": 18479,
+      "path": "writing/stage3 design/v3_5_rc2_statistics/reference_statistics.py",
+      "sha256": "d2596e505cd67094c0567e24fdf72cec7e0a2d0a1b244cd472b982a2b41dc48a"
+    },
+    {
+      "length": 2070,
+      "path": "writing/stage3 design/v3_5_rc2_statistics/statistical_reference_manifest.json",
+      "sha256": "b0e3456a303ac4831daa35cc5aa162073a2cde1a91d5bb7d184a5df0b7e23ece"
+    },
+    {
+      "length": 1790,
+      "path": "writing/stage3 design/v3_5_rc2_statistics/verify_golden.py",
+      "sha256": "50f3dbb076cdab44a64e13cc57a4bcf8d4ccf2d1fb85144aceee7613170f82e3"
+    }
+  ],
+  "created_date": "2026-07-22",
+  "fixed_scope": {
+    "P": 50,
+    "V": 20,
+    "behavior_models": 1,
+    "human_items": 720,
+    "logical_generation": 5580,
+    "new_experiment_blocks": 0,
+    "scheduled_judge_identities": 5580
+  },
+  "non_outputs": {
+    "formal_P1": false,
+    "formal_generation": false,
+    "formal_human_experiment": false,
+    "formal_judge": false,
+    "formal_results": false,
+    "formal_support": false
+  },
+  "preexisting_file_count": 28,
+  "protocol_version": "v3.5-rc2",
+  "schema_version": "v3.5-rc2-release-manifest-v1",
+  "self_sha256": "93376c4129f2be45c610f0e416c043c7b140fcf3dcdec9349e3b6044b7a65964",
+  "source": {
+    "path": "writing/stage3 design/paper1_attention_sink_mu_experiment_design_v3_5_rc1.md",
+    "sha256": "f557fb8a06329f92778e9e1eb7ddb2822b05e80bf83784ba1ec243b9343fb85a"
+  }
+}
