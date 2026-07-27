@@ -13,6 +13,8 @@ models/
 
 # local caches
 .hf_cache/
+.codex-temp/
+tmp/
 
 # results
 result/stage1_phase_aware/

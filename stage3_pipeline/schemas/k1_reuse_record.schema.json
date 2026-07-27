@@ -1,0 +1,24 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "cell": {"enum": ["P2_A_all", "P2_A_content", "P2_T_all", "P2_T_content"]},
+    "generation_calls_added": {"const": 0},
+    "judge_calls_added": {"const": 0},
+    "label": {"enum": ["broken", "unsafe", "refusal", "safe"]},
+    "logical_id": {"minLength": 1, "type": "string"},
+    "prompt_id": {"minLength": 1, "type": "string"},
+    "protocol_version": {"const": "v3.5-rc2"},
+    "schema_version": {"const": "paper1-stage3-k1-reuse-record-v1"},
+    "source_p2_logical_id": {"minLength": 1, "type": "string"},
+    "source_p2_record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "synthetic": {"type": "boolean"},
+    "vector_id": {"minLength": 1, "type": "string"}
+  },
+  "required": [
+    "schema_version", "protocol_version", "synthetic", "logical_id", "source_p2_logical_id",
+    "source_p2_record_sha256", "cell", "prompt_id", "vector_id", "label",
+    "generation_calls_added", "judge_calls_added"
+  ],
+  "title": "Paper 1 Stage 3 K1 zero-cost reuse record",
+  "type": "object"
+}

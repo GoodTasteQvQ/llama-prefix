@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "binary64": {
+      "additionalProperties": false,
+      "properties": {
+        "binary64_hex": {"minLength": 1, "type": "string"},
+        "value": {"type": "number"}
+      },
+      "required": ["value", "binary64_hex"],
+      "type": "object"
+    },
+    "nullable_binary64": {
+      "anyOf": [{"$ref": "#/$defs/binary64"}, {"type": "null"}]
+    },
+    "dose_evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "alpha_post_dtype": {"$ref": "#/$defs/nullable_binary64"},
+        "alpha_pre_dtype": {"$ref": "#/$defs/nullable_binary64"},
+        "cosine_drift": {"$ref": "#/$defs/nullable_binary64"},
+        "failure_code": {"type": ["string", "null"]},
+        "generation_status": {"minLength": 1, "type": "string"},
+        "measurement_result_dose_binding_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+        "mu_estimator": {"const": "mu_all_tw"},
+        "mu_source_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+        "mu_value": {"$ref": "#/$defs/nullable_binary64"},
+        "nominal_c": {"$ref": "#/$defs/nullable_binary64"},
+        "norm_ratio": {"$ref": "#/$defs/nullable_binary64"},
+        "phase": {"const": "decode-only"},
+        "post_hook_l2": {"$ref": "#/$defs/nullable_binary64"},
+        "pre_hook_l2": {"$ref": "#/$defs/nullable_binary64"},
+        "relative_dose": {"$ref": "#/$defs/nullable_binary64"},
+        "status": {"enum": ["VALIDATED", "INVALID"]},
+        "use_cache": {"const": true},
+        "vector_alignment": {"$ref": "#/$defs/nullable_binary64"}
+      },
+      "required": [
+        "status", "failure_code", "nominal_c", "mu_estimator", "mu_value",
+        "mu_source_sha256", "alpha_pre_dtype", "alpha_post_dtype", "pre_hook_l2",
+        "post_hook_l2", "relative_dose", "norm_ratio", "vector_alignment",
+        "cosine_drift", "measurement_result_dose_binding_sha256", "generation_status",
+        "phase", "use_cache"
+      ],
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "VALIDATED"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "failure_code": {"type": "null"},
+              "nominal_c": {"$ref": "#/$defs/binary64"},
+              "mu_value": {"$ref": "#/$defs/binary64"},
+              "alpha_pre_dtype": {"$ref": "#/$defs/binary64"},
+              "alpha_post_dtype": {"$ref": "#/$defs/binary64"},
+              "pre_hook_l2": {"$ref": "#/$defs/binary64"},
+              "post_hook_l2": {"$ref": "#/$defs/binary64"},
+              "relative_dose": {"$ref": "#/$defs/binary64"},
+              "norm_ratio": {"$ref": "#/$defs/binary64"},
+              "vector_alignment": {"$ref": "#/$defs/binary64"},
+              "cosine_drift": {"$ref": "#/$defs/binary64"}
+            }
+          },
+          "else": {
+            "properties": {
+              "failure_code": {"minLength": 1, "type": "string"},
+              "nominal_c": {"type": "null"},
+              "mu_value": {"type": "null"},
+              "alpha_pre_dtype": {"type": "null"},
+              "alpha_post_dtype": {"type": "null"},
+              "pre_hook_l2": {"type": "null"},
+              "post_hook_l2": {"type": "null"},
+              "relative_dose": {"type": "null"},
+              "norm_ratio": {"type": "null"},
+              "vector_alignment": {"type": "null"},
+              "cosine_drift": {"type": "null"}
+            }
+          }
+        }
+      ],
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "anchor": {"enum": ["T", "clean"]},
+    "cell": {"enum": ["benign_T", "benign_clean"]},
+    "dose_denominator_valid": {"type": "boolean"},
+    "dose_evidence": {"anyOf": [{"$ref": "#/$defs/dose_evidence"}, {"type": "null"}]},
+    "dose_geometry_finite": {"type": "boolean"},
+    "estimator": {"enum": ["mu_all_tw", "clean"]},
+    "generation_completed": {"type": "boolean"},
+    "generation_record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "judge_record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
+    "identity_collision": {"type": "boolean"},
+    "identity_complete": {"type": "boolean"},
+    "identity_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "judge_eligible": {"type": "boolean"},
+    "judge_label_parsed": {"type": "boolean"},
+    "label": {"enum": ["broken", "unsafe", "refusal", "helpful", null]},
+    "logical_id": {"minLength": 1, "type": "string"},
+    "post_dtype_alpha_finite": {"type": "boolean"},
+    "prompt_id": {"minLength": 1, "type": "string"},
+    "protocol_version": {"const": "v3.5-rc2"},
+    "scheduled_identity_match": {"type": "boolean"},
+    "schema_version": {"const": "paper1-stage3-benign-response-record-v1"},
+    "synthetic": {"type": "boolean"},
+    "terminal_status": {"enum": ["COMPLETED_PARSED", "TERMINAL_GENERATION_FAILURE", "TERMINAL_JUDGE_FAILURE", "NON_ESTIMABLE_IDENTITY", "NON_ESTIMABLE_DOSE"]},
+    "vector_id": {"type": ["string", "null"]}
+  },
+  "required": [
+    "schema_version", "protocol_version", "synthetic", "logical_id", "identity_sha256",
+    "generation_record_sha256", "judge_record_sha256", "cell", "prompt_id", "vector_id", "anchor", "estimator",
+    "scheduled_identity_match", "generation_completed", "judge_eligible", "judge_label_parsed",
+    "identity_complete", "identity_collision", "dose_denominator_valid", "dose_geometry_finite",
+    "post_dtype_alpha_finite", "dose_evidence", "label", "terminal_status"
+  ],
+  "title": "Paper 1 Stage 3 benign response record",
+  "type": "object"
+}

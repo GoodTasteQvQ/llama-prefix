@@ -1,0 +1,19 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "artifact_kind": {"minLength": 1, "type": "string"},
+    "bound_artifacts": {"type": "object"},
+    "content": {"type": "object"},
+    "created_at_utc": {"minLength": 1, "type": "string"},
+    "formal_experiment": {"type": "boolean"},
+    "lifecycle_event": {"enum": ["IDENTITIES_AND_E0_VALID", "MEASUREMENT_SPECIFICATION_FROZEN", "P1_OUTCOME_VISIBLE", "MEASUREMENT_RESULT_DOSE_FROZEN", "JUDGE_DEVELOPMENT_MANUAL_COMPLETE", "JUDGE_FROZEN", "FORMAL_SUPPORT_GENERATION_STARTED", "SUPPORT_EXECUTION_MANIFEST_FROZEN", "BEHAVIOR_CONFIRMATION_FROZEN", "FORMAL_CONFIRMATION_GENERATION_STARTED"]},
+    "previous_lifecycle_artifact_self_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
+    "protocol_version": {"const": "v3.5-rc2"},
+    "schema_version": {"const": "paper1-stage3-lifecycle-artifact-v1"},
+    "self_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "synthetic": {"type": "boolean"}
+  },
+  "required": ["schema_version", "protocol_version", "artifact_kind", "lifecycle_event", "synthetic", "formal_experiment", "previous_lifecycle_artifact_self_sha256", "bound_artifacts", "content", "created_at_utc", "self_sha256"],
+  "title": "Paper 1 Stage 3 lifecycle event artifact",
+  "type": "object"
+}

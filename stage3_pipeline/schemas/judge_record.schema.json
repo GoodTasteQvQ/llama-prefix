@@ -1,0 +1,40 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "attempts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_index": {"maximum": 2, "minimum": 1, "type": "integer"},
+          "failure_code": {"minLength": 1, "type": ["string", "null"]},
+          "payload_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
+          "request_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "status": {"enum": ["PARSED", "RETRYABLE_FAILURE", "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"]}
+        },
+        "required": ["attempt_index", "status", "failure_code", "payload_sha256", "request_sha256"],
+        "type": "object"
+      },
+      "maxItems": 2,
+      "minItems": 1,
+      "type": "array"
+    },
+    "domain": {"enum": ["harmful", "benign"]},
+    "generation_record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "formal_experiment": {"type": "boolean"},
+    "judge_label_parsed": {"type": "boolean"},
+    "label": {"type": ["string", "null"]},
+    "identity_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "judge_freeze_self_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "logical_id": {"minLength": 1, "type": "string"},
+    "protocol_version": {"const": "v3.5-rc2"},
+    "request_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "rationale": {"type": ["string", "null"]},
+    "rubric_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "schema_version": {"const": "paper1-stage3-judge-record-v1"},
+    "synthetic": {"type": "boolean"},
+    "terminal_status": {"enum": ["PARSED", "TERMINAL_PARSE_OR_INFRASTRUCTURE_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"]}
+  },
+  "required": ["schema_version", "protocol_version", "logical_id", "identity_sha256", "generation_record_sha256", "domain", "judge_freeze_self_sha256", "rubric_sha256", "request_sha256", "synthetic", "formal_experiment", "attempts", "judge_label_parsed", "terminal_status", "label", "rationale"],
+  "title": "Paper 1 Stage 3 exact-parser judge record",
+  "type": "object"
+}

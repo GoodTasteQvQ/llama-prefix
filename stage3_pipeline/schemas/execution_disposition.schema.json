@@ -1,0 +1,15 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "disposition": {"enum": ["EXECUTED", "UNATTEMPTED_DUE_INTEGRITY_BLOCK", "SYNTHETIC_NOT_EXECUTED"]},
+    "generation_record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
+    "identity_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "judge_record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
+    "logical_id": {"minLength": 1, "type": "string"},
+    "parent_self_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
+    "parent_status": {"minLength": 1, "type": ["string", "null"]}
+  },
+  "required": ["logical_id", "identity_sha256", "disposition", "generation_record_sha256", "judge_record_sha256", "parent_status", "parent_self_sha256"],
+  "title": "Paper 1 Stage 3 per-identity execution disposition",
+  "type": "object"
+}
