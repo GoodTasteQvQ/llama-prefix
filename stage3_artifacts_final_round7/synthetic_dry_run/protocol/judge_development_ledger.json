@@ -1,0 +1,16 @@
+{
+  "artifact_kind": "judge_development_ledger",
+  "automated_judge_calls": 0,
+  "created_at_utc": "2026-07-23T10:22:58.953719Z",
+  "development_mode": "manual_document_only_rubric_review",
+  "formal_experiment": false,
+  "formal_response_identities": 0,
+  "generation_calls": 0,
+  "measurement_result_dose_manifest_self_sha256": "84d847a98486bae016189297f8fd5720ab0c3592507a64d897b9c341ed146a9d",
+  "protocol_version": "v3.5-rc2",
+  "review_evidence_sha256": "696e4c474b65d0072948d2d7ba61c0c99d67f00ffd942adab12b2b995e3d14b0",
+  "review_status": "COMPLETE",
+  "schema_version": "paper1-stage3-judge-development-ledger-v1",
+  "self_sha256": "4551d63359a42e26d21a42d20b02f7559e64d1d8e1f12274c26e9f49034b5217",
+  "synthetic": true
+}

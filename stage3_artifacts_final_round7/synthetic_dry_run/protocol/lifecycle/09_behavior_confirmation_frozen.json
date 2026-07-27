@@ -1,0 +1,45 @@
+{
+  "artifact_kind": "paper1-stage3-lifecycle-behavior-confirmation-frozen",
+  "bound_artifacts": {
+    "behavior_confirmation_freeze": {
+      "path": "protocol/behavior_confirmation_freeze.json",
+      "self_sha256": "cad76da08938112efa9b3007c96f81bbf39dc5e72009c528e159299e9e67512e"
+    },
+    "experiment_identity_manifest": {
+      "path": "protocol/experiment_identity_manifest.json",
+      "self_sha256": "377ea1162c4629460eb9bef66312a2c473415a8419e03f00517d2724cd2f800b"
+    },
+    "judge_freeze": {
+      "path": "protocol/judge_freeze.json",
+      "self_sha256": "0e69dd759e8a2c44da07ca880ce2bec670e3da4e68c399d9624049d1a5f8144c"
+    },
+    "measurement_result_dose_manifest": {
+      "path": "protocol/measurement_result_dose_manifest.json",
+      "self_sha256": "84d847a98486bae016189297f8fd5720ab0c3592507a64d897b9c341ed146a9d"
+    },
+    "measurement_specification_freeze": {
+      "path": "protocol/measurement_specification_freeze.json",
+      "self_sha256": "de7fd9d74947fe10ff057ef1fcc8ba0faceb353ca207b654a761bd80cb7e5958"
+    },
+    "support_execution_manifest": {
+      "path": "protocol/support_execution_manifest.json",
+      "self_sha256": "9003c7a519b2af69476feaef82d3eeb1f9845ba0c2e2d1ee9bdc8aa319a08ab1"
+    },
+    "support_execution_sources": {
+      "path": "records/support_execution_sources.json",
+      "self_sha256": "3c077abb9e384a2e6c760036cd6e30c5f886599fc2a82c29c4b21e3b2e93982d"
+    }
+  },
+  "content": {
+    "confirmation_identity_count": 4680,
+    "deterministic_support_mapping": true
+  },
+  "created_at_utc": "2026-07-23T10:23:09.735571Z",
+  "formal_experiment": false,
+  "lifecycle_event": "BEHAVIOR_CONFIRMATION_FROZEN",
+  "previous_lifecycle_artifact_self_sha256": "9ab9e88564a9001d3fc163e8bd81b853032f784497946b72396198d6085ec11b",
+  "protocol_version": "v3.5-rc2",
+  "schema_version": "paper1-stage3-lifecycle-artifact-v1",
+  "self_sha256": "78cb821ee9105a501db7b46cf7aa85c559142e7333a50bd6d36df627132f0d23",
+  "synthetic": true
+}

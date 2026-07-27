@@ -1,0 +1,111 @@
+{
+  "failure_path_preserved": true,
+  "formal_experiment": false,
+  "records": [
+    {
+      "attempt_count": 2,
+      "attempts": [
+        {
+          "attempt_index": 1,
+          "diagnostics": {
+            "measurement_result_dose_manifest_self_sha256": "84d847a98486bae016189297f8fd5720ab0c3592507a64d897b9c341ed146a9d",
+            "message": "synthetic first-attempt infrastructure failure"
+          },
+          "failure_code": "TechnicalGenerationError",
+          "output_text": null,
+          "status": "TECHNICAL_FAILURE_RETRYABLE"
+        },
+        {
+          "attempt_index": 2,
+          "diagnostics": {
+            "dose_evidence_sha256": "b450dd1c9e144cd2cc559b48ea4eaffb9cb7b00da0e7f9ab20020e30fe74c29e",
+            "measurement_result_dose_manifest_self_sha256": "84d847a98486bae016189297f8fd5720ab0c3592507a64d897b9c341ed146a9d",
+            "synthetic": true
+          },
+          "failure_code": null,
+          "output_text": "synthetic output",
+          "status": "COMPLETED"
+        }
+      ],
+      "formal_experiment": false,
+      "generation_completed": true,
+      "identity_sha256": "64a10907ae0fc7a4649b9d4fd4e37d44f3900fefc5bbb2ee80a330a7d3de4a47",
+      "logical_id": "sha256:5aff6c721c2c3fe3ee7ec977c3d3b63cd7dc1d3af4b4b08c348e6570679000a4",
+      "output_text": "synthetic output",
+      "protocol_version": "v3.5-rc2",
+      "record_sha256": "65d59ce59c8fa7431266c1590dafaa6d6e516e109ebb496c0ebaf60a9cd3accd",
+      "request_sha256": "075e989a1f59fac1570913e07b56279583580285648f346878ae97eabc96a7dd",
+      "retry_count": 1,
+      "schema_version": "paper1-stage3-generation-record-v1",
+      "synthetic": true,
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "attempt_count": 2,
+      "attempts": [
+        {
+          "attempt_index": 1,
+          "diagnostics": {
+            "measurement_result_dose_manifest_self_sha256": "84d847a98486bae016189297f8fd5720ab0c3592507a64d897b9c341ed146a9d",
+            "message": "synthetic terminal infrastructure failure"
+          },
+          "failure_code": "TechnicalGenerationError",
+          "output_text": null,
+          "status": "TECHNICAL_FAILURE_RETRYABLE"
+        },
+        {
+          "attempt_index": 2,
+          "diagnostics": {
+            "measurement_result_dose_manifest_self_sha256": "84d847a98486bae016189297f8fd5720ab0c3592507a64d897b9c341ed146a9d",
+            "message": "synthetic terminal infrastructure failure"
+          },
+          "failure_code": "TechnicalGenerationError",
+          "output_text": null,
+          "status": "TERMINAL_TECHNICAL_FAILURE"
+        }
+      ],
+      "formal_experiment": false,
+      "generation_completed": false,
+      "identity_sha256": "fe8f41db39f52b0fe11c89e0e6070740280aef513ecc74ad10606c44f76d3af8",
+      "logical_id": "sha256:433daa2ee68c1ac9dc98e9cc978125c2632f27a6cde944251ba623ed099b6e66",
+      "output_text": null,
+      "protocol_version": "v3.5-rc2",
+      "record_sha256": "0cb1c7c7043c726717362d8ae50f2a52633bee092417ce860b691992d7f5df2a",
+      "request_sha256": "e2ec1cfca993d79cf482eb55dea980f18dba186726d9ed1d44967b2930334de0",
+      "retry_count": 1,
+      "schema_version": "paper1-stage3-generation-record-v1",
+      "synthetic": true,
+      "terminal_status": "TERMINAL_TECHNICAL_FAILURE"
+    },
+    {
+      "attempt_count": 1,
+      "attempts": [
+        {
+          "attempt_index": 1,
+          "diagnostics": {
+            "dose_evidence_sha256": "b450dd1c9e144cd2cc559b48ea4eaffb9cb7b00da0e7f9ab20020e30fe74c29e",
+            "measurement_result_dose_manifest_self_sha256": "84d847a98486bae016189297f8fd5720ab0c3592507a64d897b9c341ed146a9d",
+            "synthetic": true
+          },
+          "failure_code": null,
+          "output_text": "synthetic output",
+          "status": "COMPLETED"
+        }
+      ],
+      "formal_experiment": false,
+      "generation_completed": true,
+      "identity_sha256": "c5038f32031a276122fcecfb4f2e06f0332e53998532cb6bae2aad36dfaef6ba",
+      "logical_id": "sha256:bc1e69e638d0f429cbfab8f5fdf60f0ca8259c30136b7670407ec054655c9929",
+      "output_text": "synthetic output",
+      "protocol_version": "v3.5-rc2",
+      "record_sha256": "5af24dd3940ea280f05f3252e0b80bb1bd44bf752aef01005702e4968570d66f",
+      "request_sha256": "ed260f4ef10cc8095b0026230612592423a3c2392b5190c49bd55652488656f1",
+      "retry_count": 0,
+      "schema_version": "paper1-stage3-generation-record-v1",
+      "synthetic": true,
+      "terminal_status": "COMPLETED"
+    }
+  ],
+  "self_sha256": "96c507f50294c056f6a10af91d7e713d5a1f0ec9ce18497533ab5545c4d4df29",
+  "synthetic": true
+}

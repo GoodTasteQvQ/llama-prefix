@@ -1,0 +1,25 @@
+{
+  "artifact_kind": "paper1-stage3-lifecycle-p1-outcome-visible",
+  "bound_artifacts": {
+    "measurement_specification_freeze": {
+      "path": "protocol/measurement_specification_freeze.json",
+      "self_sha256": "de7fd9d74947fe10ff057ef1fcc8ba0faceb353ca207b654a761bd80cb7e5958"
+    },
+    "p1_terminal_records": {
+      "path": "records/p1_measurement_records.json",
+      "self_sha256": "209b3651bd0b6fadfac9c091d95cc0b0ba6d2160aee46de602a8834116666737"
+    }
+  },
+  "content": {
+    "p1_outcome_visible": true,
+    "scheduled_p1_identities": 200
+  },
+  "created_at_utc": "2026-07-23T10:23:00.655682Z",
+  "formal_experiment": false,
+  "lifecycle_event": "P1_OUTCOME_VISIBLE",
+  "previous_lifecycle_artifact_self_sha256": "90f558d6bc8d0426f295f299865d2e806c14621ae0599088c1c526c3afe9f1c0",
+  "protocol_version": "v3.5-rc2",
+  "schema_version": "paper1-stage3-lifecycle-artifact-v1",
+  "self_sha256": "24861e1ec76a829c216283aa796183356b65f59dc70d9f9a38c59738d82d372c",
+  "synthetic": true
+}

@@ -1,0 +1,27 @@
+{
+  "A": {
+    "affected": "P2-U(A),P2_A_all,P2_A_content",
+    "downstream_status": "ESTIMATION_ONLY_SUPPORTED",
+    "execution_action": "EXECUTE_FIXED_DOWNSTREAM_IDENTITIES",
+    "support_status": "SUPPORTED"
+  },
+  "H": {
+    "affected": "support_report_only",
+    "downstream_status": "NOT_APPLICABLE_H",
+    "execution_action": "NO_H_DOWNSTREAM_BLOCK",
+    "support_status": "SUPPORTED"
+  },
+  "T": {
+    "affected": "P2-B(T),P2_T_all,P2_T_content,benign_T",
+    "downstream_status": "ESTIMATION_ONLY_SUPPORT_LIMITED",
+    "execution_action": "EXECUTE_FIXED_DOWNSTREAM_IDENTITIES",
+    "support_status": "SUPPORT_LIMITED"
+  },
+  "analysis_precedence": {
+    "A": "NON_ESTIMABLE_ANALYSIS",
+    "T": "ESTIMATION_ONLY_SUPPORT_LIMITED"
+  },
+  "formal_experiment": false,
+  "self_sha256": "69f3f1ccbab590e1dda05e4970611d7e3c14300bb8a8f888ce3d32abe15d5f89",
+  "synthetic": true
+}

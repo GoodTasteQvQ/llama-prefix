@@ -1,0 +1,36 @@
+{
+  "artifact_kind": "paper1-stage3-lifecycle-measurement-result-dose-frozen",
+  "bound_artifacts": {
+    "base_anchor_manifest": {
+      "path": "protocol/base_anchor_manifest.json",
+      "self_sha256": "6b1292896af0b04cbe3622e398fb6b3475387a531c024b4ca457ad1c86135f9b"
+    },
+    "experiment_identity_manifest": {
+      "path": "protocol/experiment_identity_manifest.json",
+      "self_sha256": "b09693acfe218c794907aafbd15984f49c6834ccaec13ca8b1aa8267bbb6cc1a"
+    },
+    "measurement_result_dose_manifest": {
+      "path": "protocol/measurement_result_dose_manifest.json",
+      "self_sha256": "cd0958b634fe1ae7207e40de4771b71fef1fe20c47f9126914aed6fae80a58ae"
+    },
+    "measurement_specification_freeze": {
+      "path": "protocol/measurement_specification_freeze.json",
+      "self_sha256": "8e9ba40085594bd7a2c7b87935a9fd23e6929bd329feb4a1b15f077c44f325cb"
+    },
+    "p1_terminal_records": {
+      "path": "records/p1_measurement_records.json",
+      "self_sha256": "f8018a87365d0e8a94b66136bb996d02a467d9c848a6cd0a04c2f85adffecdb3"
+    }
+  },
+  "content": {
+    "dose_status": "ESTIMABLE"
+  },
+  "created_at_utc": "2026-07-23T10:52:13.952941Z",
+  "formal_experiment": false,
+  "lifecycle_event": "MEASUREMENT_RESULT_DOSE_FROZEN",
+  "previous_lifecycle_artifact_self_sha256": "cfc4e84d84319240538744a9afb22c898bcc0959dbdd7058494595258c7c559b",
+  "protocol_version": "v3.5-rc2",
+  "schema_version": "paper1-stage3-lifecycle-artifact-v1",
+  "self_sha256": "0e2cd6c2e29f598f5264cee844cb1b8f3f49890901a8d9ff96da8e482e2a9e2e",
+  "synthetic": true
+}

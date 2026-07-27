@@ -1,0 +1,171 @@
+{
+  "absolute_paths_are_identity": false,
+  "asset_root_identity": "PAPER1_STAGE3_ASSET_ROOT",
+  "blocking_reasons": [
+    "CURRENT_RELEASE and frozen v3.5-rc2 do not name data/*.json files.",
+    "No frozen exact row-selection manifest binds harmful and benign prompt frames.",
+    "data/single_prompt_bomb.json is an array but the required candidate expectation is one object."
+  ],
+  "candidate_assets": [
+    {
+      "byte_length": 34556,
+      "canonical_frame_sha256": "56dee5dd0b68bad08d4e2eb521729a6b79aa133d4a8cf924b3ec3a6f494edde4",
+      "config": "behaviors",
+      "disposition": "LOCAL_LEGACY_INPUT",
+      "duplicate_identity_count": 0,
+      "exact_ordered_field_names": [
+        "Index",
+        "Goal",
+        "Target",
+        "Behavior",
+        "Category",
+        "Source"
+      ],
+      "field_order_uniform": true,
+      "field_types": {
+        "Behavior": "string",
+        "Category": "string",
+        "Goal": "string",
+        "Index": "integer",
+        "Source": "string",
+        "Target": "string"
+      },
+      "inclusion_exclusion_rule": "Not formal until a frozen prompt-frame binding names exact rows.",
+      "json_top_level_type": "array",
+      "license": null,
+      "producing_script_sha256": null,
+      "prompt_frame_membership": "UNBOUND_CANDIDATE_NOT_IN_FORMAL_PROMPT_FRAME",
+      "provenance_status": "PROVENANCE_INCOMPLETE",
+      "raw_sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77",
+      "relative_path": "data/jbb_behaviors_harmful.json",
+      "row_count": 100,
+      "source_dataset": "JailbreakBench/JBB-Behaviors",
+      "source_revision": null,
+      "split": "harmful",
+      "stable_id_fields": [
+        "Index"
+      ],
+      "stable_row_identities_sha256": "8c2d40da0e096174801aa8f0727b3a394fde5affb7b02e07870cd66b201d5a82",
+      "utf8_valid": true,
+      "validation_error": null,
+      "validation_status": "PASS"
+    },
+    {
+      "byte_length": 69795,
+      "canonical_frame_sha256": "01410bd4fe32489ae92ddbcfbc897f4e745028aef86833fc1dd0318f0c443caa",
+      "config": null,
+      "disposition": "LOCAL_LEGACY_INPUT",
+      "duplicate_identity_count": 0,
+      "exact_ordered_field_names": [
+        "harmful",
+        "harmless"
+      ],
+      "field_order_uniform": true,
+      "field_types": {
+        "harmful": "string",
+        "harmless": "string"
+      },
+      "inclusion_exclusion_rule": "Not formal until a frozen prompt-frame binding names exact rows.",
+      "json_top_level_type": "array",
+      "license": null,
+      "producing_script_sha256": null,
+      "prompt_frame_membership": "UNBOUND_CANDIDATE_NOT_IN_FORMAL_PROMPT_FRAME",
+      "provenance_status": "PROVENANCE_INCOMPLETE",
+      "raw_sha256": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548",
+      "relative_path": "data/safe_pairs.json",
+      "row_count": 500,
+      "source_dataset": null,
+      "source_revision": null,
+      "split": null,
+      "stable_id_fields": [
+        "harmful",
+        "harmless"
+      ],
+      "stable_row_identities_sha256": "d916525821f49d524484623a01e3cf24bc1d326fcaa20c56d0522689927253bd",
+      "utf8_valid": true,
+      "validation_error": null,
+      "validation_status": "PASS"
+    },
+    {
+      "byte_length": 534,
+      "canonical_frame_sha256": "086dd8798e84f9ab5a288f086bd69a1860317094b25900671c8a9a52bd016854",
+      "config": null,
+      "disposition": "EXAMPLE_ONLY",
+      "duplicate_identity_count": 0,
+      "exact_ordered_field_names": [
+        "harmful",
+        "harmless"
+      ],
+      "field_order_uniform": true,
+      "field_types": {
+        "harmful": "string",
+        "harmless": "string"
+      },
+      "inclusion_exclusion_rule": "Not formal until a frozen prompt-frame binding names exact rows.",
+      "json_top_level_type": "array",
+      "license": null,
+      "producing_script_sha256": null,
+      "prompt_frame_membership": "EXCLUDED_EXAMPLE_ONLY",
+      "provenance_status": "PROVENANCE_INCOMPLETE",
+      "raw_sha256": "f595fd4bea108e4173efcfdbd995dc71ec3e84e356e99af589a08885da34dad3",
+      "relative_path": "data/safe_pairs.example.json",
+      "row_count": 3,
+      "source_dataset": null,
+      "source_revision": null,
+      "split": null,
+      "stable_id_fields": [
+        "harmful",
+        "harmless"
+      ],
+      "stable_row_identities_sha256": "b24d126764254838f529b92e5806a0a5240e5bf059d53d9ef68ea9025975a026",
+      "utf8_valid": true,
+      "validation_error": null,
+      "validation_status": "PASS"
+    },
+    {
+      "byte_length": 234,
+      "canonical_frame_sha256": null,
+      "config": null,
+      "disposition": "DEVELOPMENT_ONLY",
+      "duplicate_identity_count": null,
+      "exact_ordered_field_names": [
+        "Index",
+        "Goal",
+        "Target",
+        "Behavior",
+        "Category",
+        "Source"
+      ],
+      "expected_json_top_level_type": "object",
+      "expected_ordered_field_names": [],
+      "expected_row_count": null,
+      "field_order_uniform": null,
+      "field_types": {},
+      "inclusion_exclusion_rule": "Excluded: candidate structure does not match the required expectation.",
+      "json_top_level_type": "array",
+      "license": null,
+      "producing_script_sha256": null,
+      "prompt_frame_membership": "EXCLUDED_SINGLE_PROMPT_DEVELOPMENT_ONLY",
+      "provenance_status": "PROVENANCE_INCOMPLETE",
+      "raw_sha256": "fafce3334180fd493e3f64f957c946470e75965bbdbe0e9ed572b7d95942c7e4",
+      "relative_path": "data/single_prompt_bomb.json",
+      "row_count": 1,
+      "source_dataset": null,
+      "source_revision": null,
+      "split": null,
+      "stable_id_fields": [],
+      "stable_row_identities_sha256": null,
+      "utf8_valid": true,
+      "validation_error": "data/single_prompt_bomb.json top-level type array, expected object",
+      "validation_status": "SCHEMA_MISMATCH"
+    }
+  ],
+  "created_at_utc": "2026-07-23T10:51:02.191939Z",
+  "formal_inputs": [],
+  "manifest_sha256": "586e66cd1592b0fed4a8ba6b3035a31ab68277b05d663f404f07dcbcb4418301",
+  "offline_asset_status": "DATA_IDENTITY_BLOCKED",
+  "online_fallback": false,
+  "protocol_version": "v3.5-rc2",
+  "raw_sources_modified": false,
+  "schema_version": "paper1-stage3-offline-asset-manifest-v1"
+}

@@ -1,0 +1,28 @@
+{
+  "artifact_kind": "paper1-stage3-lifecycle-measurement-specification-frozen",
+  "bound_artifacts": {
+    "base_anchor_manifest": {
+      "path": "protocol/base_anchor_manifest.json",
+      "self_sha256": "6b1292896af0b04cbe3622e398fb6b3475387a531c024b4ca457ad1c86135f9b"
+    },
+    "experiment_identity_manifest": {
+      "path": "protocol/experiment_identity_manifest.json",
+      "self_sha256": "b09693acfe218c794907aafbd15984f49c6834ccaec13ca8b1aa8267bbb6cc1a"
+    },
+    "measurement_specification_freeze": {
+      "path": "protocol/measurement_specification_freeze.json",
+      "self_sha256": "8e9ba40085594bd7a2c7b87935a9fd23e6929bd329feb4a1b15f077c44f325cb"
+    }
+  },
+  "content": {
+    "p1_forward_started": false
+  },
+  "created_at_utc": "2026-07-23T10:52:12.101941Z",
+  "formal_experiment": false,
+  "lifecycle_event": "MEASUREMENT_SPECIFICATION_FROZEN",
+  "previous_lifecycle_artifact_self_sha256": "dbb9bde34f0f7722ffcfda488fbd75d9e4cd7119b91ce18e4b013f8d6da9f0a4",
+  "protocol_version": "v3.5-rc2",
+  "schema_version": "paper1-stage3-lifecycle-artifact-v1",
+  "self_sha256": "fcf38ea4043cf725354682e75a6ed453634593579012110331b634093f7aacae",
+  "synthetic": true
+}

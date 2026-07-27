@@ -1,0 +1,30 @@
+{
+  "artifact_kind": "paper1-stage3-lifecycle-judge-frozen",
+  "bound_artifacts": {
+    "judge_development_ledger": {
+      "path": "protocol/judge_development_ledger.json",
+      "self_sha256": "4dc63c1345301a4aed2d46d62afeac52b6109a084e0a35db9eec2638408fcd00"
+    },
+    "judge_freeze": {
+      "path": "protocol/judge_freeze.json",
+      "self_sha256": "59fe7140b2e1059be01ce185bc5e49ab12ecbc83e08f4800e8a0b71d0c65458f"
+    },
+    "measurement_result_dose_manifest": {
+      "path": "protocol/measurement_result_dose_manifest.json",
+      "self_sha256": "cd0958b634fe1ae7207e40de4771b71fef1fe20c47f9126914aed6fae80a58ae"
+    }
+  },
+  "content": {
+    "exact_json_parser": true,
+    "judge_model_family": "Qwen/Qwen3-8B",
+    "single_retry": true
+  },
+  "created_at_utc": "2026-07-23T10:52:16.814941Z",
+  "formal_experiment": false,
+  "lifecycle_event": "JUDGE_FROZEN",
+  "previous_lifecycle_artifact_self_sha256": "62ed35c6c0841b1f8883f6379c1cdd12d399efc65057a5e4e5d46d8312ee1d12",
+  "protocol_version": "v3.5-rc2",
+  "schema_version": "paper1-stage3-lifecycle-artifact-v1",
+  "self_sha256": "1e4c9458c82f5a5095c57244c890f72f4a791dca26e66e86e64422df278959f5",
+  "synthetic": true
+}

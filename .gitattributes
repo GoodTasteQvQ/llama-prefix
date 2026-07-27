@@ -1,4 +1,3 @@
-*.py text eol=lf
-*.json text eol=lf
-*.md text eol=lf
-*.sh text eol=lf
+stage3_artifacts_final_round7/** -text -diff
+stage3_artifacts_final_round8/** -text -diff
+"writing/stage3 design/verification_receipts/**" -text -diff

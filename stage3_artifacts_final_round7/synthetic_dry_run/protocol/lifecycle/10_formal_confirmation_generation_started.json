@@ -1,0 +1,29 @@
+{
+  "artifact_kind": "paper1-stage3-lifecycle-formal-confirmation-generation-started",
+  "bound_artifacts": {
+    "behavior_confirmation_freeze": {
+      "path": "protocol/behavior_confirmation_freeze.json",
+      "self_sha256": "cad76da08938112efa9b3007c96f81bbf39dc5e72009c528e159299e9e67512e"
+    },
+    "support_execution_manifest": {
+      "path": "protocol/support_execution_manifest.json",
+      "self_sha256": "9003c7a519b2af69476feaef82d3eeb1f9845ba0c2e2d1ee9bdc8aa319a08ab1"
+    },
+    "support_execution_sources": {
+      "path": "records/support_execution_sources.json",
+      "self_sha256": "3c077abb9e384a2e6c760036cd6e30c5f886599fc2a82c29c4b21e3b2e93982d"
+    }
+  },
+  "content": {
+    "authorization_status": "AUTHORIZED",
+    "execution_phase": "confirmation"
+  },
+  "created_at_utc": "2026-07-23T10:23:12.210103Z",
+  "formal_experiment": false,
+  "lifecycle_event": "FORMAL_CONFIRMATION_GENERATION_STARTED",
+  "previous_lifecycle_artifact_self_sha256": "78cb821ee9105a501db7b46cf7aa85c559142e7333a50bd6d36df627132f0d23",
+  "protocol_version": "v3.5-rc2",
+  "schema_version": "paper1-stage3-lifecycle-artifact-v1",
+  "self_sha256": "153a900401f1e496be441f0d597c0538f6c65726568e43e24117aa3c5f83e1ab",
+  "synthetic": true
+}

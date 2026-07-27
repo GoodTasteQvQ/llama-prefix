@@ -1,0 +1,33 @@
+{
+  "artifacts": [
+    {
+      "bytes": 375,
+      "path": "candidate_checksums.sha256",
+      "sha256": "f7c38cc1adbdc9c3f6a44bc38b2fe907e4501be01d7d023f9c8a77bac7b4347f"
+    },
+    {
+      "bytes": 11362,
+      "path": "external_dependency_inventory.json",
+      "sha256": "ef88b7ce41065494f2c44a2327e91624d31c3eb152c9c605932e1ec755d7b97a"
+    },
+    {
+      "bytes": 6214,
+      "path": "offline_asset_manifest.json",
+      "sha256": "cc04318ce231aaa9dd2da2372a8ea42dd6bbfa6bc43b797628e97f376c8e6fdc"
+    },
+    {
+      "bytes": 913,
+      "path": "production_call_graph.json",
+      "sha256": "c20d9e4d75397bc1061c08a684ec4c25a7ff1f82a633a216f0c05f151f40243e"
+    }
+  ],
+  "bundle_bytes": null,
+  "bundle_file": null,
+  "bundle_sha256": null,
+  "formal_experiment_run": false,
+  "formal_inputs": [],
+  "offline_asset_status": "DATA_IDENTITY_BLOCKED",
+  "reason_bundle_not_generated": "DATA_IDENTITY_BLOCKED: no frozen FORMAL_INPUT row binding",
+  "schema_version": "paper1-stage3-offline-build-receipt-v1",
+  "source_json_modified": false
+}

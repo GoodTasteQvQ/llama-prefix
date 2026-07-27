@@ -1,0 +1,33 @@
+{
+  "artifact_kind": "paper1-stage3-lifecycle-support-execution-manifest-frozen",
+  "bound_artifacts": {
+    "judge_freeze": {
+      "path": "protocol/judge_freeze.json",
+      "self_sha256": "59fe7140b2e1059be01ce185bc5e49ab12ecbc83e08f4800e8a0b71d0c65458f"
+    },
+    "measurement_result_dose_manifest": {
+      "path": "protocol/measurement_result_dose_manifest.json",
+      "self_sha256": "cd0958b634fe1ae7207e40de4771b71fef1fe20c47f9126914aed6fae80a58ae"
+    },
+    "support_execution_manifest": {
+      "path": "protocol/support_execution_manifest.json",
+      "self_sha256": "4217a5d8c05e19d06322c5ed11f7b3f23344d9f625fd10f2f7345a4afc526494"
+    },
+    "support_execution_sources": {
+      "path": "records/support_execution_sources.json",
+      "self_sha256": "12c0d59ad88b2381af54f87b9852e733161ef390fed8652a48a06795bca0e80f"
+    }
+  },
+  "content": {
+    "scheduled_support_identities": 900,
+    "terminal_dispositions_complete": true
+  },
+  "created_at_utc": "2026-07-23T10:52:27.970440Z",
+  "formal_experiment": false,
+  "lifecycle_event": "SUPPORT_EXECUTION_MANIFEST_FROZEN",
+  "previous_lifecycle_artifact_self_sha256": "ce5710ea9df27c339f4e32ca408a461e0fffea3be4ba21cf6d5adf741e92ae4c",
+  "protocol_version": "v3.5-rc2",
+  "schema_version": "paper1-stage3-lifecycle-artifact-v1",
+  "self_sha256": "da1d871ece06c320b2adc5868266c419cea65237f20668ed4431e4402f250192",
+  "synthetic": true
+}
