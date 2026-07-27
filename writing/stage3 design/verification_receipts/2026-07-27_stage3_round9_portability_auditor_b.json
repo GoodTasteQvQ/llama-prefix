@@ -1,0 +1,61 @@
+{
+  "auditor": "B",
+  "baseline_commit": "0efb6e8f514e0716ad92f9c4807f6c5e00b0c329",
+  "branch": "stage3/impl-candidate",
+  "blocking_evidence": {
+    "classification": "PREEXISTING_DATA_CHECKOUT_IDENTITY_MISMATCH_OUTSIDE_AUTHORIZED_REPAIR_SCOPE",
+    "jbb_lf_clone": {
+      "bytes": 33755,
+      "sha256": "17dfc122bd0f609ffb9a32a2923f880d9f73881d14e7db0f065fe2ed41d33069"
+    },
+    "jbb_windows": {
+      "bytes": 34556,
+      "sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77"
+    },
+    "safe_pairs_lf_clone": {
+      "bytes": 67794,
+      "sha256": "d6f2456cda1c5a4335617b01e1e3100608d373f5449f795f21184f0943832448"
+    },
+    "safe_pairs_windows": {
+      "bytes": 69795,
+      "sha256": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548"
+    }
+  },
+  "commit_push_authorized": false,
+  "formal_experiment_run": false,
+  "historical_preservation": {
+    "existing_receipts_unchanged": true,
+    "frozen_normative_path_diff": "NONE",
+    "round7_round8_diff": "NONE"
+  },
+  "implementation_inventory": {
+    "file_count": 26,
+    "includes_gitattributes": true,
+    "inventory_sha256": "85064761a8fb377b64c4ec817a3b1203961b76030554fbbbe1dd05ae2c31fa5d",
+    "raw_file_bytes": 4889,
+    "raw_file_sha256": "04b5bf541a56f8f46f6e33b9fecfafd56595093e20ae70439fdf92c165d4a42d",
+    "windows_and_lf_clone_byte_identical": true
+  },
+  "lf_clone_verification": {
+    "exit_code": 1,
+    "failure": "repository source JSON changed: data/jbb_behaviors_harmful.json",
+    "inventory_binding_passed": true
+  },
+  "negative_eol_matrix": {
+    "bare_cr_rejected": true,
+    "crlf_rejected": true,
+    "mixed_eol_rejected": true,
+    "output_absent_after_rejection": true
+  },
+  "release_gate_status": "LOCAL_PORTABILITY_REPAIR_BLOCKED",
+  "repair_scope_status": "PASS",
+  "schema_version": "paper1-stage3-round9-auditor-receipt-v1",
+  "status": "BLOCKED",
+  "windows_verification": {
+    "exit_code": 0,
+    "formal_experiment_run": false,
+    "marker": "STAGE3_IMPLEMENTATION_FIDELITY_PASS_WITH_EXTERNAL_BLOCKERS",
+    "production_network_calls": 0,
+    "scope_expansion": false
+  }
+}

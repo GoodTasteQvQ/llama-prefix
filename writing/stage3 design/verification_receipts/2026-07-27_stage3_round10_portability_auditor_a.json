@@ -1,0 +1,127 @@
+{
+  "auditor": "A",
+  "baseline_commit": "0efb6e8f514e0716ad92f9c4807f6c5e00b0c329",
+  "findings": [],
+  "frozen_files_unchanged": true,
+  "schema_version": "paper1-stage3-round10-portability-auditor-receipt-v1",
+  "scope_expansion": false,
+  "server_only_items": [
+    "checkpoint_identity",
+    "tokenizer_identity",
+    "chat_template_identity",
+    "prompt_frame_identity_and_row_membership",
+    "base_anchor_identity",
+    "steering_vector_identity",
+    "model_and_judge_runtime_binding"
+  ],
+  "status": "PASS",
+  "tests_run": [
+    {
+      "evidence": {
+        "ahead": 0,
+        "behind": 0,
+        "branch": "stage3/impl-candidate",
+        "commit_created": false,
+        "head": "0efb6e8f514e0716ad92f9c4807f6c5e00b0c329",
+        "origin_tracking_sha": "0efb6e8f514e0716ad92f9c4807f6c5e00b0c329",
+        "push_detected": false,
+        "tag_created": false,
+        "tags_at_head": []
+      },
+      "name": "baseline_and_remote_state",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "byte_preserving_attributes": {
+          "diff": "unset",
+          "eol": "unspecified",
+          "text": "unset"
+        },
+        "byte_preserving_paths": [
+          "data/jbb_behaviors_harmful.json",
+          "data/jbb_behaviors_harmful.json.meta.json",
+          "data/safe_pairs.example.json",
+          "data/safe_pairs.json",
+          "data/single_prompt_bomb.json"
+        ],
+        "lf_only_inputs": "i/lf,w/lf,attr/text eol=lf",
+        "windows_and_clone_attributes_equal": true
+      },
+      "name": "git_attribute_policy",
+      "status": "PASS"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 34556,
+          "crlf_count": 801,
+          "index_blob_oid": "7f834a46a54f84c91d659e72ef4940232b8f3604",
+          "path": "data/jbb_behaviors_harmful.json",
+          "round8_worktree_index_clone_equal": true,
+          "sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77"
+        },
+        {
+          "bytes": 219,
+          "crlf_count": 7,
+          "index_blob_oid": "dc72bbfbc7b9050bec0c53984b0b6693e154a4e0",
+          "path": "data/jbb_behaviors_harmful.json.meta.json",
+          "round8_worktree_index_clone_equal": true,
+          "sha256": "0f03ef1d440cd364cea3f8a15ed4d9ed08ae25dcde791666b49e282bf6d540ff"
+        },
+        {
+          "bytes": 69795,
+          "crlf_count": 2001,
+          "index_blob_oid": "2edfdeec8fcbdb52fe0b2382f5920ab3a689bf40",
+          "path": "data/safe_pairs.json",
+          "round8_worktree_index_clone_equal": true,
+          "sha256": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548"
+        }
+      ],
+      "name": "frozen_crlf_byte_identity",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "clone_core_autocrlf": false,
+        "file_count": 31,
+        "inventory_file_byte_identical": true,
+        "inventory_sha256": "c4d371025f8d1f17ec76c546525d3310530850ea421cc9f09e021a252bc10475",
+        "lf_clone_mismatch_count": 0,
+        "lf_policy_cr_count": 0,
+        "raw_file_sha256": "3fbecba3fbdda0db666ad015e9eb57514e5a7e5c9f22186c1483094ccf1a0b41",
+        "schema_version": "paper1-stage3-portability-inventory-v2",
+        "windows_mismatch_count": 0
+      },
+      "name": "round10_inventory_cross_checkout",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "cached_attribute_validation_line": 203,
+        "expected_actual_inventory_equality_line": 358,
+        "final_source_identity_line": 883,
+        "frozen_transport_identity_line": 309,
+        "git_blob_checkout_identity_line": 296,
+        "inventory_content_hash_line": 356,
+        "lf_or_utf8_rejection_line": 159,
+        "negative_marker": "ROUND10_GIT_BLOB_CHECKOUT_NEGATIVE_PASS",
+        "parent_raw_identity_line": 226
+      },
+      "name": "verifier_fail_closed_review",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "git_diff_cached_check_exit_code": 0,
+        "normative_frozen_path_diff_count": 0,
+        "round7_round8_diff_count": 0,
+        "staged_file_count": 12,
+        "unrelated_staged_file_count": 0,
+        "unrelated_worktree_changes_remain_unstaged": true
+      },
+      "name": "staged_scope_and_frozen_paths",
+      "status": "PASS"
+    }
+  ]
+}

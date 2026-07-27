@@ -1,0 +1,37 @@
+{
+  "auditor": "A",
+  "baseline_commit": "0efb6e8f514e0716ad92f9c4807f6c5e00b0c329",
+  "branch": "stage3/impl-candidate",
+  "commit_push_authorized": false,
+  "decision": "LOCAL_PORTABILITY_REPAIR_BLOCKED",
+  "findings": [
+    {
+      "affected_files": [
+        "data/jbb_behaviors_harmful.json",
+        "data/safe_pairs.json"
+      ],
+      "id": "A-ROUND9-LF-CLONE-GATE",
+      "problem": "The mandatory full Round 8 artifacts plus Round 9 inventory verifier fails in the core.autocrlf=false clone because pre-existing source JSON raw identities differ after LF checkout.",
+      "required_action": "Do not commit or push. Do not modify data files, expected hashes, or verifier checks under the inventory-only repair scope.",
+      "severity": "BLOCKER"
+    }
+  ],
+  "formal_experiment_run": false,
+  "historical_artifacts_unchanged": true,
+  "implementation_inventory": {
+    "all_inputs_lf_on_clone": true,
+    "all_inputs_lf_on_windows": true,
+    "file_count": 26,
+    "inventory_sha256": "85064761a8fb377b64c4ec817a3b1203961b76030554fbbbe1dd05ae2c31fa5d",
+    "raw_file_sha256": "04b5bf541a56f8f46f6e33b9fecfafd56595093e20ae70439fdf92c165d4a42d",
+    "windows_and_clone_byte_identical": true
+  },
+  "lf_clone_verification": {
+    "exit_code": 1,
+    "first_error": "repository source JSON changed: data/jbb_behaviors_harmful.json",
+    "inventory_binding_passed": true
+  },
+  "repair_scope_status": "PASS",
+  "schema_version": "paper1-stage3-round9-auditor-receipt-v1",
+  "status": "FAIL"
+}

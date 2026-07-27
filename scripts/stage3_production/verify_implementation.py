@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
 import re
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -48,12 +50,42 @@ from stage3_pipeline.references import ReferenceAdapter  # noqa: E402
 from stage3_pipeline.local_temp import require_project_local_temp  # noqa: E402
 
 
-EXPECTED_DATA_SHA256 = {
+EXPECTED_SOURCE_JSON_SHA256 = {
     "data/jbb_behaviors_harmful.json": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77",
     "data/safe_pairs.json": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548",
     "data/safe_pairs.example.json": "f595fd4bea108e4173efcfdbd995dc71ec3e84e356e99af589a08885da34dad3",
     "data/single_prompt_bomb.json": "fafce3334180fd493e3f64f957c946470e75965bbdbe0e9ed572b7d95942c7e4",
 }
+EXPECTED_TRANSPORT_DATA = {
+    "data/jbb_behaviors_harmful.json": {
+        "bytes": 34_556,
+        "raw_sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77",
+    },
+    "data/jbb_behaviors_harmful.json.meta.json": {
+        "bytes": 219,
+        "raw_sha256": "0f03ef1d440cd364cea3f8a15ed4d9ed08ae25dcde791666b49e282bf6d540ff",
+    },
+    "data/safe_pairs.json": {
+        "bytes": 69_795,
+        "raw_sha256": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548",
+    },
+    "data/safe_pairs.example.json": {
+        "bytes": 534,
+        "raw_sha256": "f595fd4bea108e4173efcfdbd995dc71ec3e84e356e99af589a08885da34dad3",
+    },
+    "data/single_prompt_bomb.json": {
+        "bytes": 234,
+        "raw_sha256": "fafce3334180fd493e3f64f957c946470e75965bbdbe0e9ed572b7d95942c7e4",
+    },
+}
+ROUND9_PARENT_RELEASE = {
+    "baseline_commit": "0efb6e8f514e0716ad92f9c4807f6c5e00b0c329",
+    "inventory_sha256": "85064761a8fb377b64c4ec817a3b1203961b76030554fbbbe1dd05ae2c31fa5d",
+    "path": "stage3_artifacts_final_round9/implementation_inventory.json",
+    "raw_sha256": "04b5bf541a56f8f46f6e33b9fecfafd56595093e20ae70439fdf92c165d4a42d",
+}
+LF_ATTRIBUTES = {"diff": "unspecified", "eol": "lf", "text": "set"}
+BYTE_PRESERVING_ATTRIBUTES = {"diff": "unset", "eol": "unspecified", "text": "unset"}
 FORBIDDEN_PRODUCTION_TOKENS = (
     "load_dataset(",
     ".from_pretrained(",
@@ -124,10 +156,118 @@ def load_json(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def require_lf_text(path: Path) -> bytes:
+    raw = path.read_bytes()
+    try:
+        raw.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise AssertionError(
+            f"implementation inventory text input is not UTF-8: {path.relative_to(ROOT).as_posix()}"
+        ) from error
+    crlf_count = raw.count(b"\r\n")
+    bare_cr_count = raw.count(b"\r") - crlf_count
+    bare_lf_count = raw.count(b"\n") - crlf_count
+    if crlf_count or bare_cr_count:
+        if crlf_count and bare_lf_count:
+            kind = "mixed EOL"
+        elif crlf_count:
+            kind = "CRLF"
+        else:
+            kind = "bare CR"
+        raise AssertionError(
+            "implementation inventory text input must use LF only: "
+            f"{path.relative_to(ROOT).as_posix()} ({kind}; "
+            f"crlf={crlf_count}, bare_cr={bare_cr_count}, bare_lf={bare_lf_count})"
+        )
+    return raw
+
+
+def git_bytes(*args: str) -> bytes:
+    process = subprocess.run(
+        ["git", "-C", str(ROOT), *args],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if process.returncode != 0:
+        detail = process.stderr.decode("utf-8", errors="replace").strip()
+        raise AssertionError(f"git {' '.join(args)} failed: {detail}")
+    return process.stdout
+
+
+def git_index_blob(relative: str) -> bytes:
+    object_name = git_bytes("rev-parse", "--verify", f":{relative}").decode("ascii").strip()
+    return git_bytes("cat-file", "blob", object_name)
+
+
+def git_cached_attributes(relative: str) -> dict[str, str]:
+    raw = git_bytes("check-attr", "--cached", "-z", "text", "eol", "diff", "--", relative)
+    parts = raw.decode("utf-8").split("\0")
+    if parts[-1:] == [""]:
+        parts.pop()
+    if len(parts) != 9:
+        raise AssertionError(f"unexpected git check-attr output for {relative}")
+    attributes = {}
+    for index in range(0, len(parts), 3):
+        path, attribute, value = parts[index:index + 3]
+        if path != relative or attribute in attributes:
+            raise AssertionError(f"ambiguous git attributes for {relative}")
+        attributes[attribute] = value
+    if set(attributes) != {"text", "eol", "diff"}:
+        raise AssertionError(f"incomplete git attributes for {relative}")
+    return {key: attributes[key] for key in sorted(attributes)}
+
+
+def round9_parent_release() -> dict[str, object]:
+    path = ROOT / str(ROUND9_PARENT_RELEASE["path"])
+    if not path.is_file() or path.is_symlink():
+        raise AssertionError("Round 9 parent inventory is unavailable")
+    if file_sha256(path) != ROUND9_PARENT_RELEASE["raw_sha256"]:
+        raise AssertionError("Round 9 parent inventory raw identity changed")
+    document = load_json(path)
+    if not isinstance(document, dict):
+        raise AssertionError("Round 9 parent inventory must be an object")
+    if document.get("inventory_sha256") != ROUND9_PARENT_RELEASE["inventory_sha256"]:
+        raise AssertionError("Round 9 parent inventory content identity changed")
+    return dict(ROUND9_PARENT_RELEASE)
+
+
+def data_semantic_identities() -> dict[str, dict[str, object]]:
+    manifest_path = ROOT / "stage3_artifacts_final_round8/offline/offline_asset_manifest.json"
+    manifest = load_json(manifest_path)
+    if not isinstance(manifest, dict):
+        raise AssertionError("Round 8 offline asset manifest must be an object")
+    candidates = manifest.get("candidate_assets")
+    if not isinstance(candidates, list):
+        raise AssertionError("Round 8 offline candidate assets must be a list")
+    identities = {}
+    for item in candidates:
+        if not isinstance(item, dict) or not isinstance(item.get("relative_path"), str):
+            raise AssertionError("Round 8 offline candidate asset is malformed")
+        relative = item["relative_path"]
+        identities[relative] = {
+            "canonical_frame_sha256": item.get("canonical_frame_sha256"),
+            "disposition": item.get("disposition"),
+            "exact_ordered_field_names": item.get("exact_ordered_field_names"),
+            "json_top_level_type": item.get("json_top_level_type"),
+            "prompt_frame_membership": item.get("prompt_frame_membership"),
+            "row_count": item.get("row_count"),
+            "stable_row_identities_sha256": item.get("stable_row_identities_sha256"),
+        }
+    if set(identities) != set(EXPECTED_SOURCE_JSON_SHA256):
+        raise AssertionError("Round 8 data semantic identity set changed")
+    return identities
+
+
 def implementation_inventory() -> dict[str, object]:
     candidates = list((ROOT / "stage3_pipeline").rglob("*"))
     candidates += list((ROOT / "scripts/stage3_production").rglob("*"))
-    candidates += [ROOT / "scripts/download_jbb_behaviors.py", ROOT / ".gitignore"]
+    candidates += [
+        ROOT / ".gitattributes",
+        ROOT / ".gitignore",
+        ROOT / "scripts/download_jbb_behaviors.py",
+    ]
+    candidates += [ROOT / relative for relative in EXPECTED_TRANSPORT_DATA]
     paths = sorted(
         {
             path.resolve()
@@ -136,20 +276,50 @@ def implementation_inventory() -> dict[str, object]:
         },
         key=lambda path: path.relative_to(ROOT).as_posix(),
     )
-    files = [
-        {
-            "path": path.relative_to(ROOT).as_posix(),
-            "raw_sha256": file_sha256(path),
-            "bytes": path.stat().st_size,
+    semantic_identities = data_semantic_identities()
+    files = []
+    for path in paths:
+        relative = path.relative_to(ROOT).as_posix()
+        checkout_raw = path.read_bytes() if relative in EXPECTED_TRANSPORT_DATA else require_lf_text(path)
+        checkout_sha256 = hashlib.sha256(checkout_raw).hexdigest()
+        blob_raw = git_index_blob(relative)
+        blob_sha256 = hashlib.sha256(blob_raw).hexdigest()
+        attributes = git_cached_attributes(relative)
+        expected_attributes = (
+            BYTE_PRESERVING_ATTRIBUTES if relative in EXPECTED_TRANSPORT_DATA else LF_ATTRIBUTES
+        )
+        if attributes != expected_attributes:
+            raise AssertionError(
+                f"Git attributes differ for {relative}: expected={expected_attributes}, actual={attributes}"
+            )
+        if blob_raw != checkout_raw:
+            raise AssertionError(f"Git blob and checkout raw bytes differ: {relative}")
+        entry = {
+            "attributes": attributes,
+            "bytes": len(checkout_raw),
+            "checkout_raw_sha256": checkout_sha256,
+            "eol_policy": "byte-preserving" if relative in EXPECTED_TRANSPORT_DATA else "lf-only",
+            "git_blob_bytes": len(blob_raw),
+            "git_blob_sha256": blob_sha256,
+            "path": relative,
         }
-        for path in paths
-    ]
-    return {
-        "schema_version": "paper1-stage3-implementation-inventory-v1",
-        "sort_order": "unicode-codepoint-relative-path-ascending",
+        if relative in EXPECTED_TRANSPORT_DATA:
+            frozen = EXPECTED_TRANSPORT_DATA[relative]
+            if entry["bytes"] != frozen["bytes"] or checkout_sha256 != frozen["raw_sha256"]:
+                raise AssertionError(f"frozen transport data identity changed: {relative}")
+            entry["frozen_round8_raw_sha256"] = frozen["raw_sha256"]
+            entry["semantic_identity"] = semantic_identities.get(relative)
+        files.append(entry)
+    producer_path = "scripts/stage3_production/verify_implementation.py"
+    producer = next(entry for entry in files if entry["path"] == producer_path)
+    payload = {
         "files": files,
-        "inventory_sha256": canonical_sha256(files),
+        "parent_release": round9_parent_release(),
+        "producing_script_sha256": producer["checkout_raw_sha256"],
+        "schema_version": "paper1-stage3-portability-inventory-v2",
+        "sort_order": "unicode-codepoint-relative-path-ascending",
     }
+    return {**payload, "inventory_sha256": canonical_sha256(payload)}
 
 
 def write_implementation_inventory(path: Path) -> dict[str, object]:
@@ -181,14 +351,20 @@ def verify_implementation_inventory(path: Path) -> dict[str, object]:
         or row_paths != sorted(row_paths)
     ):
         raise AssertionError("expected implementation inventory is not ordinal path-sorted")
-    if expected.get("inventory_sha256") != canonical_sha256(rows):
+    payload = {key: value for key, value in expected.items() if key != "inventory_sha256"}
+    if expected.get("inventory_sha256") != canonical_sha256(payload):
         raise AssertionError("expected implementation inventory content hash mismatch")
     if expected != actual:
         raise AssertionError("implementation source bytes differ from the expected inventory")
     return {
         "file_count": len(rows),
+        "git_blob_checkout_identity": True,
         "inventory_sha256": expected["inventory_sha256"],
+        "parent_release": expected["parent_release"],
         "path": path.resolve().as_posix(),
+        "transport_data": [
+            row for row in rows if row["path"] in EXPECTED_TRANSPORT_DATA
+        ],
     }
 
 
@@ -534,9 +710,9 @@ def verify_offline(directory: Path) -> dict[str, object]:
     if manifest["offline_asset_status"] != "DATA_IDENTITY_BLOCKED" or manifest["formal_inputs"] != []:
         raise AssertionError("unbound candidates were promoted to FORMAL_INPUT")
     candidate_map = {entry["relative_path"]: entry for entry in manifest["candidate_assets"]}
-    if set(candidate_map) != set(EXPECTED_DATA_SHA256) or len(candidate_map) != len(manifest["candidate_assets"]):
+    if set(candidate_map) != set(EXPECTED_SOURCE_JSON_SHA256) or len(candidate_map) != len(manifest["candidate_assets"]):
         raise AssertionError("offline candidate manifest paths are incomplete or duplicated")
-    for relative, expected_hash in EXPECTED_DATA_SHA256.items():
+    for relative, expected_hash in EXPECTED_SOURCE_JSON_SHA256.items():
         if candidate_map[relative].get("raw_sha256") != expected_hash:
             raise AssertionError(f"offline candidate identity changed: {relative}")
     single = candidate_map["data/single_prompt_bomb.json"]
@@ -701,8 +877,9 @@ def main() -> int:
     synthetic_summaries = verify_synthetic_summaries(synthetic_directory)
     offline = verify_offline(artifacts / "offline")
 
-    for relative, expected in EXPECTED_DATA_SHA256.items():
-        if file_sha256(ROOT / relative) != expected:
+    for relative, expected in EXPECTED_TRANSPORT_DATA.items():
+        path = ROOT / relative
+        if path.stat().st_size != expected["bytes"] or file_sha256(path) != expected["raw_sha256"]:
             raise AssertionError(f"repository source JSON changed: {relative}")
 
     production_text = "\n".join(

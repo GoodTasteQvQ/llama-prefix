@@ -1,3 +1,17 @@
+.gitattributes text eol=lf
+.gitignore text eol=lf
+scripts/download_jbb_behaviors.py text eol=lf
+scripts/stage3_production/** text eol=lf
+stage3_pipeline/** text eol=lf
+
+data/jbb_behaviors_harmful.json -text -diff
+data/jbb_behaviors_harmful.json.meta.json -text -diff
+data/safe_pairs.json -text -diff
+data/safe_pairs.example.json -text -diff
+data/single_prompt_bomb.json -text -diff
+
 stage3_artifacts_final_round7/** -text -diff
 stage3_artifacts_final_round8/** -text -diff
+stage3_artifacts_final_round9/** -text -diff
+stage3_artifacts_final_round10/** -text -diff
 "writing/stage3 design/verification_receipts/**" -text -diff

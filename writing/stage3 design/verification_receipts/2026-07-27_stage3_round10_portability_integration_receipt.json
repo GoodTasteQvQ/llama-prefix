@@ -1,0 +1,189 @@
+{
+  "auditor_receipts": [
+    {
+      "auditor": "A",
+      "findings": 0,
+      "path": "writing/stage3 design/verification_receipts/2026-07-27_stage3_round10_portability_auditor_a.json",
+      "sha256": "5f5613effa605b3c889428613370e6fc0cb10b766d55dd00a8b914a77a454738",
+      "status": "PASS"
+    },
+    {
+      "auditor": "B",
+      "findings": 0,
+      "path": "writing/stage3 design/verification_receipts/2026-07-27_stage3_round10_portability_auditor_b.json",
+      "sha256": "98cdafbbc66a68a7303cbea3347eaf1aefc0089cddaaac63998eb397eacf48e0",
+      "status": "PASS"
+    },
+    {
+      "auditor": "C",
+      "findings": 0,
+      "path": "writing/stage3 design/verification_receipts/2026-07-27_stage3_round10_portability_auditor_c.json",
+      "sha256": "4a3275efc6aafc4d320f2382b156a145fea839239b9b018ef14082bc166ba51b",
+      "status": "PASS"
+    }
+  ],
+  "baseline": {
+    "branch": "stage3/impl-candidate",
+    "head": "0efb6e8f514e0716ad92f9c4807f6c5e00b0c329",
+    "remote_tracking_sha": "0efb6e8f514e0716ad92f9c4807f6c5e00b0c329"
+  },
+  "commit_and_remote": {
+    "commit_created": false,
+    "merge_performed": false,
+    "push_performed": false,
+    "tag_created": false
+  },
+  "formal_experiment_run": false,
+  "historical_preservation": {
+    "existing_receipts_unchanged": true,
+    "round7_unchanged": true,
+    "round8_unchanged": true,
+    "round9_blocked_receipt_preserved": true,
+    "round9_blocked_receipt_sha256": "e0fc84e69dc981287c6fc935f69eb248644c9de8d6efd2f44f7a806a5090fe9c"
+  },
+  "implementation_inventory": {
+    "file_count": 31,
+    "git_blob_checkout_identity": true,
+    "inventory_sha256": "c4d371025f8d1f17ec76c546525d3310530850ea421cc9f09e021a252bc10475",
+    "parent_inventory_sha256": "85064761a8fb377b64c4ec817a3b1203961b76030554fbbbe1dd05ae2c31fa5d",
+    "parent_path": "stage3_artifacts_final_round9/implementation_inventory.json",
+    "path": "stage3_artifacts_final_round10/implementation_inventory.json",
+    "producing_script_sha256": "87de2be3b5a13d1a6d8cf87ed2e23b65a73ba7fb1f0f24d950ad74862333e882",
+    "raw_file_sha256": "3fbecba3fbdda0db666ad015e9eb57514e5a7e5c9f22186c1483094ccf1a0b41",
+    "schema_version": "paper1-stage3-portability-inventory-v2"
+  },
+  "portability_verification": {
+    "candidate_status": "ROUND10_PORTABILITY_CANDIDATE",
+    "path": "stage3_artifacts_final_round10/portability_verification.json",
+    "raw_sha256": "9240d2060816e8a226db036774da9d10452324266ee91a4e0e6a711140a0653b"
+  },
+  "ready_for_selective_commit": true,
+  "schema_version": "paper1-stage3-round10-portability-integration-receipt-v1",
+  "scope": {
+    "budget": {
+      "first_pass_scheduled_judge": 5580,
+      "human_items": 720,
+      "k1_reuse": 0,
+      "logical_generation": 5580
+    },
+    "data_json_reserialized": false,
+    "data_semantics_changed": false,
+    "experiment_design_changed": false,
+    "formal_input_membership_changed": false,
+    "formal_inputs": [],
+    "protocol_changed": false,
+    "scope_expansion": false
+  },
+  "staging": {
+    "explicit_path_add_only": true,
+    "unrelated_staged_files": [],
+    "unrelated_worktree_changes_preserved": true
+  },
+  "status": "LOCAL_PORTABILITY_REPAIR_PASS",
+  "transport_data": [
+    {
+      "attributes": "-text -diff",
+      "blob_bytes": 34556,
+      "blob_sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77",
+      "clone_bytes": 34556,
+      "clone_sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77",
+      "frozen_bytes": 34556,
+      "frozen_sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77",
+      "path": "data/jbb_behaviors_harmful.json",
+      "worktree_bytes": 34556,
+      "worktree_sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77"
+    },
+    {
+      "attributes": "-text -diff",
+      "blob_bytes": 219,
+      "blob_sha256": "0f03ef1d440cd364cea3f8a15ed4d9ed08ae25dcde791666b49e282bf6d540ff",
+      "clone_bytes": 219,
+      "clone_sha256": "0f03ef1d440cd364cea3f8a15ed4d9ed08ae25dcde791666b49e282bf6d540ff",
+      "frozen_bytes": 219,
+      "frozen_sha256": "0f03ef1d440cd364cea3f8a15ed4d9ed08ae25dcde791666b49e282bf6d540ff",
+      "path": "data/jbb_behaviors_harmful.json.meta.json",
+      "worktree_bytes": 219,
+      "worktree_sha256": "0f03ef1d440cd364cea3f8a15ed4d9ed08ae25dcde791666b49e282bf6d540ff"
+    },
+    {
+      "attributes": "-text -diff",
+      "blob_bytes": 69795,
+      "blob_sha256": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548",
+      "clone_bytes": 69795,
+      "clone_sha256": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548",
+      "frozen_bytes": 69795,
+      "frozen_sha256": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548",
+      "path": "data/safe_pairs.json",
+      "worktree_bytes": 69795,
+      "worktree_sha256": "822202eeed0231c17427138ced8e34ee7736c30af6937899579697d6b72e4548"
+    }
+  ],
+  "verification": [
+    {
+      "exit_code": 0,
+      "marker": "DESIGN-FREEZE-PASS",
+      "name": "release_verifier"
+    },
+    {
+      "exit_code": 0,
+      "marker": "AMENDMENT_STATIC_VERIFICATION_PASS",
+      "name": "amendment_verifier"
+    },
+    {
+      "exit_code": 0,
+      "marker": "STATISTICAL_GOLDEN_PASS",
+      "name": "statistical_golden"
+    },
+    {
+      "exit_code": 0,
+      "marker": "STAGE3_E0_SYNTHETIC_PASS",
+      "name": "e0",
+      "tests_passed": 14,
+      "tests_total": 14
+    },
+    {
+      "checks_passed": 33,
+      "exit_code": 0,
+      "marker": "STAGE3_STRICT_OFFLINE_SMOKE_PASS",
+      "name": "strict_offline_smoke",
+      "network_attempt_count": 0,
+      "repository_json_unchanged": true
+    },
+    {
+      "environment": "Windows working tree",
+      "exit_code": 0,
+      "marker": "STAGE3_IMPLEMENTATION_FIDELITY_PASS_WITH_EXTERNAL_BLOCKERS",
+      "name": "implementation_fidelity"
+    },
+    {
+      "core_autocrlf": false,
+      "environment": "fresh LF candidate clone",
+      "exit_code": 0,
+      "marker": "STAGE3_IMPLEMENTATION_FIDELITY_PASS_WITH_EXTERNAL_BLOCKERS",
+      "name": "implementation_fidelity"
+    },
+    {
+      "environment_count": 2,
+      "exit_code": 0,
+      "marker": "ROUND10_JSON_SEMANTIC_IDENTITY_PASS",
+      "name": "json_semantic_identity"
+    },
+    {
+      "environment_count": 2,
+      "exit_code": 0,
+      "marker": "ROUND10_ALL_31_EOL_POLICIES_PASS",
+      "name": "git_eol_policy"
+    },
+    {
+      "exit_code": 0,
+      "marker": "ROUND10_GIT_BLOB_CHECKOUT_NEGATIVE_PASS",
+      "name": "git_blob_checkout_fail_closed",
+      "output_left_after_rejection": false
+    },
+    {
+      "exit_code": 0,
+      "marker": "PASS",
+      "name": "git_diff_cached_check"
+    }
+  ]
+}
