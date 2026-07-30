@@ -18,6 +18,7 @@ from .core import PipelineError, canonical_sha256, file_sha256, utc_now
 ASSET_ROOT_ENV = "PAPER1_STAGE3_ASSET_ROOT"
 ALLOWED_DISPOSITIONS = {
     "FORMAL_INPUT",
+    "CANDIDATE_BINDING_INPUT",
     "DEVELOPMENT_ONLY",
     "EXAMPLE_ONLY",
     "HISTORICAL_STAGE1_INPUT",
@@ -389,6 +390,30 @@ def build_external_dependency_inventory(root: Path | None = None) -> dict[str, A
                 "disposition": spec.disposition,
             }
         )
+    from .binding import P1_PACKAGE_RELATIVE, validate_p1_harmful_candidate
+
+    p1_candidate = validate_p1_harmful_candidate(resolved)
+    entries.append({
+        "dependency_id": "prompt-frame:p1-harmful-do-not-answer-v1",
+        "dependency_type": "candidate_binding_input",
+        "purpose": "fixed P1 harmful 100-row candidate; not formal without complete 310-row binding",
+        "frozen_stage3_scope": True,
+        "source_repository": p1_candidate["source_identity"]["repository_id"],
+        "revision_commit": p1_candidate["source_identity"]["revision"],
+        "config_split_subset": {
+            "config": None,
+            "split": None,
+            "subset": "P1 harmful candidate 100",
+        },
+        "license": p1_candidate["source_identity"]["license"],
+        "file_size": (resolved / P1_PACKAGE_RELATIVE / "selected_p1_harmful_100.json").stat().st_size,
+        "present_locally": True,
+        "server_preinstalled": False,
+        "include_in_offline_bundle": False,
+        "production_reference_locations": ["prompt_frame_binding_manifest.json"],
+        "production_reachable": False,
+        "disposition": "CANDIDATE_BINDING_INPUT",
+    })
     entries.extend(
         [
             {
@@ -614,28 +639,151 @@ def build_external_dependency_inventory(root: Path | None = None) -> dict[str, A
     }
 
 
-def build_offline_asset_manifest(root: Path | None = None) -> dict[str, Any]:
+def build_offline_asset_manifest(
+    root: Path | None = None,
+    *,
+    binding_documents: Mapping[str, Mapping[str, Any]] | None = None,
+    binding_root: Path | None = None,
+    authorize_synthetic_bundle: bool = False,
+) -> dict[str, Any]:
     resolved = resolve_asset_root(root)
     assets = inspect_candidates(resolved)
+    from .binding import P1_PACKAGE_RELATIVE, validate_binding_set, validate_p1_harmful_candidate
+
+    candidate = validate_p1_harmful_candidate(resolved)
+    candidate_entry = {
+        key: value for key, value in candidate.items()
+        if key != "ordered_record_identities"
+    }
+    assets.append(candidate_entry)
+    if binding_documents is None:
+        binding_validation = {
+            "schema_version": "paper1-stage3-binding-validation-result-v2",
+            "validation_status": "INCOMPLETE",
+            "complete": False,
+            "synthetic_fixture": False,
+            "formal_input_claim": False,
+            "validated_components": ["p1_harmful_candidate"],
+            "missing_components": [
+                "checkpoint", "judge", "vectors", "base_anchor", "prompt_frames"
+            ],
+            "data_inputs": [],
+            "formal_experiment_run": False,
+        }
+        formal_inputs: list[dict[str, Any]] = []
+        binding_inputs: list[dict[str, Any]] = [{
+            "binding_role": "p1_harmful_candidate",
+            "disposition": "CANDIDATE_BINDING_INPUT",
+            "relative_path": P1_PACKAGE_RELATIVE,
+            "frame_sha256": candidate["frame_sha256"],
+            "formal_input": False,
+        }]
+        status = "DATA_IDENTITY_BLOCKED"
+        blocking_reasons = [
+            "Only the approved P1 harmful 100-row candidate is bound.",
+            "P1 benign, behavior-screen, behavior-confirm, and benign-confirm identities remain A0.",
+            "Checkpoint, judge, vector, base-anchor, and complete 310-prompt bindings are absent.",
+        ]
+    else:
+        validation_root = (binding_root or resolved).resolve()
+        binding_validation = validate_binding_set(
+            binding_documents,
+            validation_root,
+            candidate=None if any(
+                document.get("synthetic_fixture") is True
+                for document in binding_documents.values()
+            ) else candidate,
+        )
+        if binding_validation["synthetic_fixture"]:
+            formal_inputs = (
+                list(binding_validation["data_inputs"])
+                if authorize_synthetic_bundle else []
+            )
+            status = (
+                "SYNTHETIC-OFFLINE-LOADER-READY"
+                if authorize_synthetic_bundle else "SYNTHETIC-BINDING-VALIDATED"
+            )
+            blocking_reasons = [
+                "Synthetic full-shaped bindings are non-formal verification fixtures."
+            ]
+            binding_inputs = [
+                {
+                    "binding_role": role,
+                    "disposition": "SYNTHETIC_BINDING_FIXTURE",
+                    "self_sha256": digest,
+                    "formal_input": False,
+                }
+                for role, digest in binding_validation["component_self_sha256"].items()
+            ]
+        else:
+            if authorize_synthetic_bundle:
+                raise AssetError("synthetic bundle authorization cannot be used for real bindings")
+            if validation_root != resolved:
+                raise AssetError("real binding root must equal the loadable asset root")
+            formal_inputs = list(binding_validation["data_inputs"])
+            if (
+                len(formal_inputs) != 5
+                or any(
+                    not isinstance(entry, Mapping)
+                    or entry.get("disposition") != "FORMAL_INPUT"
+                    or entry.get("formal_input") is not True
+                    for entry in formal_inputs
+                )
+                or len({entry.get("relative_path") for entry in formal_inputs}) != 5
+            ):
+                raise AssetError("real binding validation did not produce five FORMAL_INPUT entries")
+            status = "OFFLINE-ASSET-READY"
+            blocking_reasons = []
+            binding_inputs = [
+                {
+                    "binding_role": role,
+                    "disposition": "FORMAL_BINDING_DOCUMENT",
+                    "self_sha256": digest,
+                    "formal_input": False,
+                }
+                for role, digest in binding_validation["component_self_sha256"].items()
+            ]
+    if status == "OFFLINE-ASSET-READY" and not formal_inputs:
+        raise AssetError("OFFLINE-ASSET-READY requires nonempty FORMAL_INPUT entries")
     manifest = {
         "schema_version": "paper1-stage3-offline-asset-manifest-v1",
         "protocol_version": "v3.5-rc2",
         "created_at_utc": utc_now(),
         "asset_root_identity": "PAPER1_STAGE3_ASSET_ROOT",
         "absolute_paths_are_identity": False,
-        "formal_inputs": [],
+        "formal_inputs": formal_inputs,
+        "binding_inputs": binding_inputs,
         "candidate_assets": assets,
-        "offline_asset_status": "DATA_IDENTITY_BLOCKED",
-        "blocking_reasons": [
-            "CURRENT_RELEASE and frozen v3.5-rc2 do not name data/*.json files.",
-            "No frozen exact row-selection manifest binds harmful and benign prompt frames.",
-            "data/single_prompt_bomb.json is an array but the required candidate expectation is one object.",
-        ],
+        "binding_validation": binding_validation,
+        "offline_asset_status": status,
+        "run_ready": False,
+        "formal_experiment_run": False,
+        "blocking_reasons": blocking_reasons,
         "raw_sources_modified": False,
         "online_fallback": False,
     }
     manifest["manifest_sha256"] = canonical_sha256(manifest)
+    if status == "OFFLINE-ASSET-READY":
+        loader = OfflineJsonLoader(
+            manifest,
+            resolved,
+            expected_manifest_sha256=manifest["manifest_sha256"],
+            binding_documents=binding_documents,
+            binding_root=validation_root,
+        )
+        for entry in formal_inputs:
+            loader.load_formal(entry["relative_path"])
     return manifest
+
+
+BOUND_DATA_INPUT_KEYS = {
+    "relative_path", "raw_sha256", "byte_length", "source_schema_field",
+    "source_schema_version", "json_top_level_type", "records_field", "row_count",
+    "source_row_identity_sha256", "ordered_record_identities_sha256",
+    "canonical_frame_sha256", "prompt_frame_membership", "source_repository_id",
+    "source_revision", "upstream_source_path", "license", "license_material",
+    "disposition", "formal_input",
+}
 
 
 class OfflineJsonLoader:
@@ -647,9 +795,14 @@ class OfflineJsonLoader:
         asset_root: Path | None = None,
         *,
         expected_manifest_sha256: str,
+        binding_documents: Mapping[str, Mapping[str, Any]] | None = None,
+        binding_root: Path | None = None,
+        allow_synthetic_fixture: bool = False,
     ) -> None:
         self.manifest = dict(manifest)
         self.root = resolve_asset_root(asset_root)
+        self.synthetic_fixture = False
+        self.binding_revalidated = False
         expected = self.manifest.get("manifest_sha256")
         actual = canonical_sha256(
             {key: value for key, value in self.manifest.items() if key != "manifest_sha256"}
@@ -663,9 +816,108 @@ class OfflineJsonLoader:
             or expected_manifest_sha256 != expected
         ):
             raise AssetError("offline asset manifest does not match the freeze-bound expected hash")
+        if self.manifest.get("offline_asset_status") == "OFFLINE-ASSET-READY":
+            validation = self.manifest.get("binding_validation")
+            entries = self.manifest.get("formal_inputs")
+            if (
+                not isinstance(validation, Mapping)
+                or validation.get("schema_version")
+                != "paper1-stage3-binding-validation-result-v2"
+                or validation.get("validation_status") != "PASS"
+                or validation.get("complete") is not True
+                or validation.get("formal_experiment_run") is not False
+                or not isinstance(entries, list)
+                or not entries
+                or any(
+                    not isinstance(entry, Mapping)
+                    or set(entry) != BOUND_DATA_INPUT_KEYS
+                    or entry.get("disposition") != "FORMAL_INPUT"
+                    or entry.get("formal_input") is not True
+                    for entry in entries
+                )
+            ):
+                raise AssetError("READY manifest lacks complete loadable FORMAL_INPUT entries")
+            if validation.get("synthetic_fixture") is True:
+                raise AssetError("full-shaped synthetic READY state cannot load formal inputs")
+            else:
+                if validation.get("formal_input_claim") is not True or binding_documents is None:
+                    raise AssetError("real READY loading requires the complete binding documents")
+                from .binding import validate_binding_set, validate_p1_harmful_candidate
+
+                candidate = validate_p1_harmful_candidate(self.root)
+                actual_validation = validate_binding_set(
+                    binding_documents,
+                    (binding_root or self.root).resolve(),
+                    candidate=candidate,
+                )
+                if actual_validation != validation:
+                    raise AssetError("READY binding validation receipt differs from revalidation")
+                if entries != actual_validation.get("data_inputs"):
+                    raise AssetError("READY FORMAL_INPUT entries differ from binding revalidation")
+                self.binding_revalidated = True
+        elif self.manifest.get("offline_asset_status") == "SYNTHETIC-OFFLINE-LOADER-READY":
+            validation = self.manifest.get("binding_validation")
+            entries = self.manifest.get("formal_inputs")
+            if (
+                isinstance(validation, Mapping)
+                and validation.get("schema_version")
+                == "paper1-stage3-binding-validation-result-v2"
+            ):
+                if (
+                    not allow_synthetic_fixture
+                    or binding_documents is None
+                    or validation.get("validation_status") != "PASS"
+                    or validation.get("complete") is not True
+                    or validation.get("synthetic_fixture") is not True
+                    or validation.get("formal_input_claim") is not False
+                    or validation.get("formal_experiment_run") is not False
+                    or not isinstance(entries, list)
+                    or not entries
+                    or any(
+                        not isinstance(entry, Mapping)
+                        or set(entry) != BOUND_DATA_INPUT_KEYS
+                        or entry.get("disposition") != "SYNTHETIC_FIXTURE_INPUT"
+                        or entry.get("formal_input") is not False
+                        for entry in entries
+                    )
+                ):
+                    raise AssetError("full-shaped synthetic loader authorization differs")
+                from .binding import validate_binding_set
+
+                actual_validation = validate_binding_set(
+                    binding_documents,
+                    (binding_root or self.root).resolve(),
+                    candidate=None,
+                )
+                if actual_validation != validation or entries != actual_validation.get("data_inputs"):
+                    raise AssetError("synthetic binding validation differs from revalidation")
+                self.synthetic_fixture = True
+                self.binding_revalidated = True
+                return
+            if (
+                not allow_synthetic_fixture
+                or not isinstance(validation, Mapping)
+                or validation.get("schema_version")
+                != "paper1-stage3-offline-loader-fixture-authorization-v1"
+                or validation.get("validation_status") != "PASS"
+                or validation.get("synthetic_fixture") is not True
+                or validation.get("formal_input_claim") is not False
+                or validation.get("formal_experiment_run") is not False
+                or not isinstance(entries, list)
+                or any(
+                    not isinstance(entry, Mapping)
+                    or entry.get("disposition") != "SYNTHETIC_FIXTURE_INPUT"
+                    or entry.get("formal_input") is not False
+                    for entry in entries
+                )
+            ):
+                raise AssetError("synthetic loader fixture authorization differs")
+            self.synthetic_fixture = True
 
     def load_formal(self, relative_path: str) -> Any:
-        if self.manifest.get("offline_asset_status") != "OFFLINE-ASSET-READY":
+        if self.manifest.get("offline_asset_status") not in {
+            "OFFLINE-ASSET-READY", "SYNTHETIC-OFFLINE-LOADER-READY"
+        }:
             raise AssetError("formal input loading requires OFFLINE-ASSET-READY")
         if self.manifest.get("online_fallback") is not False:
             raise AssetError("formal input manifest must explicitly disable online fallback")
@@ -676,7 +928,10 @@ class OfflineJsonLoader:
         if len(entries) != 1:
             raise AssetError(f"asset is not a unique FORMAL_INPUT: {relative_path}")
         entry = entries[0]
-        if entry.get("disposition") != "FORMAL_INPUT":
+        expected_disposition = (
+            "SYNTHETIC_FIXTURE_INPUT" if self.synthetic_fixture else "FORMAL_INPUT"
+        )
+        if entry.get("disposition") != expected_disposition:
             raise AssetError(f"formal input has invalid disposition: {relative_path}")
         membership = entry.get("prompt_frame_membership")
         if (
@@ -699,6 +954,33 @@ class OfflineJsonLoader:
         if _top_level_type(payload) != entry["json_top_level_type"]:
             raise AssetError(f"formal input top-level type mismatch: {relative_path}")
         actual_rows = len(payload) if isinstance(payload, list) else 1
+        if self.binding_revalidated:
+            if set(entry) != BOUND_DATA_INPUT_KEYS:
+                raise AssetError(f"bound input entry schema differs: {relative_path}")
+            if not isinstance(payload, Mapping):
+                raise AssetError(f"bound input must be a JSON object: {relative_path}")
+            if payload.get(entry["source_schema_field"]) != entry["source_schema_version"]:
+                raise AssetError(f"bound input source schema differs: {relative_path}")
+            records = payload.get(entry["records_field"])
+            if not isinstance(records, list) or len(records) != entry["row_count"]:
+                raise AssetError(f"bound input record count differs: {relative_path}")
+            material = entry["license_material"]
+            if not isinstance(material, Mapping) or set(material) != {
+                "source_relative_path", "bundle_relative_path", "raw_sha256"
+            }:
+                raise AssetError(f"bound input license material differs: {relative_path}")
+            license_path = _resolve_below_root(
+                self.root,
+                PurePosixPath(material["source_relative_path"]),
+                "license source path",
+            )
+            if (
+                not license_path.is_file()
+                or _is_link_or_junction(license_path)
+                or file_sha256(license_path) != material["raw_sha256"]
+            ):
+                raise AssetError(f"bound input license identity differs: {relative_path}")
+            return payload
         if actual_rows != entry["row_count"]:
             raise AssetError(f"formal input row count mismatch: {relative_path}")
         if isinstance(payload, list):
@@ -750,11 +1032,18 @@ def build_bundle(
     *,
     asset_root: Path | None = None,
     expected_manifest_sha256: str,
+    allow_synthetic_fixture: bool = False,
+    binding_documents: Mapping[str, Mapping[str, Any]] | None = None,
+    binding_root: Path | None = None,
 ) -> dict[str, Any]:
     """Build a Linux-portable bundle only from explicit FORMAL_INPUT entries."""
     formal = list(manifest.get("formal_inputs", []))
-    if manifest.get("offline_asset_status") != "OFFLINE-ASSET-READY" or not formal:
-        raise AssetError("offline bundle requires a ready manifest with FORMAL_INPUT entries")
+    allowed_status = (
+        "SYNTHETIC-OFFLINE-LOADER-READY"
+        if allow_synthetic_fixture else "OFFLINE-ASSET-READY"
+    )
+    if manifest.get("offline_asset_status") != allowed_status:
+        raise AssetError("offline bundle requires the expected validated ready status")
     archive = output_directory.with_suffix(".tar.gz")
     if output_directory.exists() or _is_link_or_junction(output_directory):
         raise AssetError(f"refusing to overwrite bundle directory: {output_directory}")
@@ -765,7 +1054,14 @@ def build_bundle(
         manifest,
         root,
         expected_manifest_sha256=expected_manifest_sha256,
+        allow_synthetic_fixture=allow_synthetic_fixture,
+        binding_documents=binding_documents,
+        binding_root=binding_root,
     )
+    if not formal:
+        raise AssetError(
+            "validated binding inputs are separate from packable data FORMAL_INPUT entries"
+        )
     license_plan: list[tuple[Path, PurePosixPath, str]] = []
     seen_formal_paths: set[str] = set()
     seen_license_targets: set[str] = set()

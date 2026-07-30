@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "paper1-stage3-base-anchor-binding-manifest-v1",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "paper1-stage3-base-anchor-binding-manifest-v1"},
+    "protocol_version": {"const": "v3.5-rc2"},
+    "artifact_kind": {"const": "base_anchor_binding_manifest"},
+    "synthetic_fixture": {"type": "boolean"},
+    "formal_experiment_run": {"const": false},
+    "checkpoint_attestation_self_sha256": {"$ref": "#/$defs/hash"},
+    "source_paths": {"minProperties": 1, "type": "object"},
+    "source_schema_versions": {"minProperties": 1, "type": "object"},
+    "source_sha256": {"minProperties": 1, "type": "object"},
+    "counts": {"minProperties": 1, "type": "object"},
+    "predates_behavior_screening": {"const": true},
+    "units": {"const": "rho=alpha/median_content_norm"},
+    "strict_order_check": {"const": "0 < rho_A < rho_T < rho_H"},
+    "anchor_order": {"const": ["A", "T", "H"]},
+    "rho_by_anchor": {"type": "object"},
+    "producer_code_sha256": {"$ref": "#/$defs/hash"},
+    "producer_config_sha256": {"$ref": "#/$defs/hash"},
+    "created_at_utc": {"minLength": 1, "type": "string"},
+    "self_sha256": {"$ref": "#/$defs/hash"}
+  },
+  "required": ["schema_version", "protocol_version", "artifact_kind", "synthetic_fixture", "formal_experiment_run", "checkpoint_attestation_self_sha256", "source_paths", "source_schema_versions", "source_sha256", "counts", "predates_behavior_screening", "units", "strict_order_check", "anchor_order", "rho_by_anchor", "producer_code_sha256", "producer_config_sha256", "created_at_utc", "self_sha256"],
+  "type": "object",
+  "$defs": {"hash": {"pattern": "^[0-9a-f]{64}$", "type": "string"}}
+}

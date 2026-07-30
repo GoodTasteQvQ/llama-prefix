@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "paper1-stage3-checkpoint-identity-attestation-v1",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "paper1-stage3-checkpoint-identity-attestation-v1"},
+    "protocol_version": {"const": "v3.5-rc2"},
+    "artifact_kind": {"const": "checkpoint_identity_attestation"},
+    "synthetic_fixture": {"type": "boolean"},
+    "formal_experiment_run": {"const": false},
+    "source_channel": {"enum": ["huggingface", "git", "local_snapshot", "object_store"]},
+    "repository_id": {"const": "Qwen/Qwen2.5-7B-Instruct"},
+    "revision": {"minLength": 1, "type": "string"},
+    "revision_evidence": {"type": "object"},
+    "files": {"items": {"$ref": "#/$defs/file"}, "minItems": 1, "type": "array"},
+    "file_count": {"minimum": 5, "type": "integer"},
+    "file_inventory_complete": {"const": true},
+    "snapshot_manifest": {"additionalProperties": false, "properties": {"relative_path": {"minLength": 1, "type": "string"}, "snapshot_root": {"minLength": 1, "type": "string"}, "schema_version": {"minLength": 1, "type": "string"}, "sha256": {"$ref": "#/$defs/hash"}, "file_count": {"minimum": 5, "type": "integer"}}, "required": ["relative_path", "snapshot_root", "schema_version", "sha256", "file_count"], "type": "object"},
+    "tokenizer": {"$ref": "#/$defs/tokenizer"},
+    "chat_template": {"$ref": "#/$defs/template"},
+    "config": {"$ref": "#/$defs/config"},
+    "runtime_identity_sha256": {"$ref": "#/$defs/hash"},
+    "created_at_utc": {"minLength": 1, "type": "string"},
+    "self_sha256": {"$ref": "#/$defs/hash"}
+  },
+  "required": ["schema_version", "protocol_version", "artifact_kind", "synthetic_fixture", "formal_experiment_run", "source_channel", "repository_id", "revision", "revision_evidence", "files", "file_count", "file_inventory_complete", "snapshot_manifest", "tokenizer", "chat_template", "config", "runtime_identity_sha256", "created_at_utc", "self_sha256"],
+  "type": "object",
+  "$defs": {
+    "hash": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "file": {"additionalProperties": false, "properties": {"relative_path": {"minLength": 1, "type": "string"}, "artifact_role": {"enum": ["config", "weights", "tokenizer_config", "special_tokens_map", "tokenizer_asset"]}, "bytes": {"minimum": 0, "type": "integer"}, "sha256": {"$ref": "#/$defs/hash"}}, "required": ["relative_path", "artifact_role", "bytes", "sha256"], "type": "object"},
+    "tokenizer": {"additionalProperties": false, "properties": {"revision": {"minLength": 1, "type": "string"}, "revision_evidence": {"type": "object"}, "files_sha256": {"$ref": "#/$defs/hash"}, "tokenizer_config_sha256": {"$ref": "#/$defs/hash"}, "special_tokens_map_sha256": {"$ref": "#/$defs/hash"}}, "required": ["revision", "revision_evidence", "files_sha256", "tokenizer_config_sha256", "special_tokens_map_sha256"], "type": "object"},
+    "template": {"additionalProperties": false, "properties": {"text": {"minLength": 1, "type": "string"}, "sha256": {"$ref": "#/$defs/hash"}}, "required": ["text", "sha256"], "type": "object"},
+    "config": {"additionalProperties": false, "properties": {"relative_path": {"minLength": 1, "type": "string"}, "sha256": {"$ref": "#/$defs/hash"}, "model_type": {"minLength": 1, "type": "string"}, "architectures": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array"}, "hidden_size": {"const": 3584}}, "required": ["relative_path", "sha256", "model_type", "architectures", "hidden_size"], "type": "object"}
+  }
+}

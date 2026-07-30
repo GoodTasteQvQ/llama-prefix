@@ -1,0 +1,35 @@
+{
+  "audited_files_sha256": {
+    ".gitattributes": "dfebf6af3213d0ff7355c62e72f5ebbda6818a0d3b069a364c72da795b3a7031",
+    "scripts/stage3_production/verify_implementation.py": "24050125ebd2c224cd835e76aeb090cdbebfb2e67cd20d755eb46fbc43e96073",
+    "stage3_artifacts_final_round12_binding_ready_closure/binding_ready_verification.json": "4763f4479a776f97d6ed1b9f3ca4051b5ddb611ebbad2077fb86756be0fbf91d",
+    "stage3_artifacts_final_round12_binding_ready_closure/closure_scope.json": "8ef321468cb00d5f5387753fb496f6e69e82427d43b26ba8e525641f91e7ceeb",
+    "stage3_artifacts_final_round12_binding_ready_closure/implementation_inventory.json": "26ed7e5529a3e2d3b88fe9167d533b686bcca846d8b5a1f1c39b140cf12a719f"
+  },
+  "auditor_id": "A",
+  "findings": [],
+  "formal_experiment_run": false,
+  "independent_read_only_audit": true,
+  "inventory": {
+    "clean_clone_inventory_sha256": "06b7bbe867f915c428aff06cecbeecb4daadf3203c02da6e4fe22aa3acafd36a",
+    "content_blob_and_eol_negatives_rejected": true,
+    "diagnostics_nonbinding": true,
+    "file_count": 58,
+    "inventory_sha256": "06b7bbe867f915c428aff06cecbeecb4daadf3203c02da6e4fe22aa3acafd36a",
+    "precommit_inventory_sha256": "06b7bbe867f915c428aff06cecbeecb4daadf3203c02da6e4fe22aa3acafd36a",
+    "round12_scope_included": true,
+    "staged_inventory_sha256": "06b7bbe867f915c428aff06cecbeecb4daadf3203c02da6e4fe22aa3acafd36a"
+  },
+  "review_phase": "FINAL_PRE_MATERIALIZATION",
+  "schema_version": "paper1-stage3-round12-binding-ready-auditor-receipt-v1",
+  "scope": "portable-inventory-precommit-staged-commit-clone-and-round11-round12-transport",
+  "self_sha256": "ff43cac6c4ca6f5f9a7a52060adea150fa13bb6f16b15ed8c383cbf1f6817f50",
+  "transport": {
+    "artifact_transport_policy": "BYTE_PRESERVING",
+    "gitattributes_sha256": "dfebf6af3213d0ff7355c62e72f5ebbda6818a0d3b069a364c72da795b3a7031",
+    "round12_scope_filter_aware_git_oid": "bf16471a5f8d62c7367db60ecd2cab42df874214",
+    "round12_scope_raw_git_oid": "bf16471a5f8d62c7367db60ecd2cab42df874214",
+    "round12_scope_raw_sha256": "8ef321468cb00d5f5387753fb496f6e69e82427d43b26ba8e525641f91e7ceeb"
+  },
+  "verdict": "PASS"
+}

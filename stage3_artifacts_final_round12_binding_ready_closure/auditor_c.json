@@ -1,0 +1,39 @@
+{
+  "audited_files_sha256": {
+    ".gitattributes": "dfebf6af3213d0ff7355c62e72f5ebbda6818a0d3b069a364c72da795b3a7031",
+    "scripts/stage3_production/verify_implementation.py": "24050125ebd2c224cd835e76aeb090cdbebfb2e67cd20d755eb46fbc43e96073",
+    "stage3_artifacts_final_round12_binding_ready_closure/binding_ready_verification.json": "4763f4479a776f97d6ed1b9f3ca4051b5ddb611ebbad2077fb86756be0fbf91d",
+    "stage3_artifacts_final_round12_binding_ready_closure/closure_scope.json": "8ef321468cb00d5f5387753fb496f6e69e82427d43b26ba8e525641f91e7ceeb",
+    "stage3_artifacts_final_round12_binding_ready_closure/implementation_inventory.json": "26ed7e5529a3e2d3b88fe9167d533b686bcca846d8b5a1f1c39b140cf12a719f",
+    "stage3_pipeline/binding.py": "88c758431dd72dc4a9b0e729e5d693014ef33326be64806c6cfa07d97cc9c2ed",
+    "stage3_pipeline/execution.py": "ebb0bcf4aec88067ae8353bab61311a76e276d638b5da3062ffdcca887d8760f",
+    "stage3_pipeline/offline_assets.py": "7efb16a97c87f76dda5e4653609154873907cd884905ca9943a746a42081322d"
+  },
+  "auditor_id": "C",
+  "budget": {
+    "human_items": 720,
+    "k1_additional_generations": 0,
+    "k1_additional_judges": 0,
+    "logical_generations": 5580,
+    "scheduled_judges": 5580
+  },
+  "findings": [],
+  "formal_experiment_run": false,
+  "independent_read_only_audit": true,
+  "lifecycle_and_prompt_boundaries": {
+    "formal_event_files_found": 0,
+    "formal_inputs": [],
+    "formal_lifecycle_event_count": 0,
+    "network_attempt_count": 0,
+    "p1_candidate_only": true,
+    "p1_frame_sha256": "afcb3bcfe3042bf37189fc9718b53389ce0145e43b75efc3364e250e86552410",
+    "p1_package_byte_identity": "12/12",
+    "prompt_remote_reseal_negatives": 3,
+    "run_ready": false
+  },
+  "review_phase": "FINAL_PRE_MATERIALIZATION",
+  "schema_version": "paper1-stage3-round12-binding-ready-auditor-receipt-v1",
+  "scope": "prompt-payload-row-provenance-lifecycle-budget-and-formal-boundary",
+  "self_sha256": "0981dbc1fcff1d996971a3bd6d980c078ac562aa5eb60d622345d3cd7a0ad33b",
+  "verdict": "PASS"
+}
