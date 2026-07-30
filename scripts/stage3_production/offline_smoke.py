@@ -49,8 +49,7 @@ def manifest_hash(document: dict[str, object]) -> None:
 
 def ready_manifest(entry: dict[str, object]) -> dict[str, object]:
     formal = copy.deepcopy(entry)
-    formal["disposition"] = "SYNTHETIC_FIXTURE_INPUT"
-    formal["formal_input"] = False
+    formal["disposition"] = "FORMAL_INPUT"
     formal["prompt_frame_membership"] = "SYNTHETIC_E0_EXACT_FULL_FRAME"
     document: dict[str, object] = {
         "schema_version": "paper1-stage3-offline-asset-manifest-v1",
@@ -59,18 +58,8 @@ def ready_manifest(entry: dict[str, object]) -> dict[str, object]:
         "asset_root_identity": "PAPER1_STAGE3_ASSET_ROOT",
         "absolute_paths_are_identity": False,
         "formal_inputs": [formal],
-        "binding_inputs": [],
         "candidate_assets": [],
-        "binding_validation": {
-            "schema_version": "paper1-stage3-offline-loader-fixture-authorization-v1",
-            "validation_status": "PASS",
-            "synthetic_fixture": True,
-            "formal_input_claim": False,
-            "formal_experiment_run": False,
-        },
-        "offline_asset_status": "SYNTHETIC-OFFLINE-LOADER-READY",
-        "run_ready": False,
-        "formal_experiment_run": False,
+        "offline_asset_status": "OFFLINE-ASSET-READY",
         "blocking_reasons": [],
         "raw_sources_modified": False,
         "online_fallback": False,
@@ -96,7 +85,6 @@ def bound_loader(document: dict[str, object], asset_root: Path) -> OfflineJsonLo
         document,
         asset_root,
         expected_manifest_sha256=expected,
-        allow_synthetic_fixture=True,
     )
 
 
@@ -332,7 +320,6 @@ def run_smoke() -> dict[str, object]:
                     no_license_output,
                     asset_root=asset_root,
                     expected_manifest_sha256=manifest["manifest_sha256"],
-                    allow_synthetic_fixture=True,
                 ),
                 "missing_license_material_rejected",
                 checks,
@@ -362,7 +349,6 @@ def run_smoke() -> dict[str, object]:
                     first_bundle_dir,
                     asset_root=asset_root,
                     expected_manifest_sha256=bundle_manifest["manifest_sha256"],
-                    allow_synthetic_fixture=True,
                 )
                 os.umask(0o022)
                 second_bundle = build_bundle(
@@ -370,7 +356,6 @@ def run_smoke() -> dict[str, object]:
                     second_bundle_dir,
                     asset_root=asset_root,
                     expected_manifest_sha256=bundle_manifest["manifest_sha256"],
-                    allow_synthetic_fixture=True,
                 )
             finally:
                 os.umask(original_umask)
@@ -413,7 +398,6 @@ def run_smoke() -> dict[str, object]:
                     collision_dir,
                     asset_root=asset_root,
                     expected_manifest_sha256=bundle_manifest["manifest_sha256"],
-                    allow_synthetic_fixture=True,
                 ),
                 "preexisting_bundle_archive_rejected",
                 checks,
@@ -429,7 +413,6 @@ def run_smoke() -> dict[str, object]:
                         failed_bundle_dir,
                         asset_root=asset_root,
                         expected_manifest_sha256=bundle_manifest["manifest_sha256"],
-                        allow_synthetic_fixture=True,
                     )
                 except OSError:
                     pass
@@ -461,7 +444,6 @@ def run_smoke() -> dict[str, object]:
                         unsupported_bundle_dir,
                         asset_root=asset_root,
                         expected_manifest_sha256=bundle_manifest["manifest_sha256"],
-                        allow_synthetic_fixture=True,
                     ),
                     "unsupported_tar_member_rejected",
                     checks,
@@ -505,7 +487,6 @@ def run_smoke() -> dict[str, object]:
                     temp / "bundle-symlink-license",
                     asset_root=asset_root,
                     expected_manifest_sha256=symlink_license_manifest["manifest_sha256"],
-                    allow_synthetic_fixture=True,
                 ),
                 "license_symlink_rejected",
                 checks,

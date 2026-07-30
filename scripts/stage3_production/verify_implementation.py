@@ -5,14 +5,11 @@ from __future__ import annotations
 
 import argparse
 import ast
-import copy
 import hashlib
 import json
 import re
-import shutil
 import subprocess
 import sys
-import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -20,10 +17,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-
-ROUND12_DIRECTORY = "stage3_artifacts_final_round12_binding_ready_closure"
-ROUND12_SCOPE_RELATIVE = f"{ROUND12_DIRECTORY}/closure_scope.json"
-ROUND12_TRANSPORT_RECEIPT = "portable_transport_verification.json"
 
 from stage3_pipeline.core import (  # noqa: E402
     AppendOnlyReceipt,
@@ -55,7 +48,6 @@ from stage3_pipeline.records import (  # noqa: E402
 )
 from stage3_pipeline.references import ReferenceAdapter  # noqa: E402
 from stage3_pipeline.local_temp import require_project_local_temp  # noqa: E402
-from scripts.stage3_production.verify_binding_ready import run_verification as verify_binding_ready  # noqa: E402
 
 
 EXPECTED_SOURCE_JSON_SHA256 = {
@@ -91,16 +83,6 @@ ROUND9_PARENT_RELEASE = {
     "inventory_sha256": "85064761a8fb377b64c4ec817a3b1203961b76030554fbbbe1dd05ae2c31fa5d",
     "path": "stage3_artifacts_final_round9/implementation_inventory.json",
     "raw_sha256": "04b5bf541a56f8f46f6e33b9fecfafd56595093e20ae70439fdf92c165d4a42d",
-}
-ROUND10_PORTABILITY_RELEASE = {
-    "inventory_sha256": "c4d371025f8d1f17ec76c546525d3310530850ea421cc9f09e021a252bc10475",
-    "path": "stage3_artifacts_final_round10/implementation_inventory.json",
-    "raw_sha256": "3fbecba3fbdda0db666ad015e9eb57514e5a7e5c9f22186c1483094ccf1a0b41",
-}
-ROUND11_BINDING_READY_RELEASE = {
-    "inventory_sha256": "06a30eeca8957c5c7a088bc1931ebf6803e8756f703d9404cbaacafdc2527feb",
-    "path": "stage3_artifacts_final_round11_binding_ready/implementation_inventory.json",
-    "raw_sha256": "0eaa6e720621db256f59a2bf6c2f09a69812b073c197f4ec8c774ee321cb9bc4",
 }
 LF_ATTRIBUTES = {"diff": "unspecified", "eol": "lf", "text": "set"}
 BYTE_PRESERVING_ATTRIBUTES = {"diff": "unset", "eol": "unspecified", "text": "unset"}
@@ -200,9 +182,9 @@ def require_lf_text(path: Path) -> bytes:
     return raw
 
 
-def git_bytes(*args: str, root: Path = ROOT) -> bytes:
+def git_bytes(*args: str) -> bytes:
     process = subprocess.run(
-        ["git", "-C", str(root), *args],
+        ["git", "-C", str(ROOT), *args],
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -213,22 +195,13 @@ def git_bytes(*args: str, root: Path = ROOT) -> bytes:
     return process.stdout
 
 
-def git_index_blob(relative: str, *, root: Path = ROOT) -> bytes:
-    object_name = git_bytes(
-        "rev-parse", "--verify", f":{relative}", root=root
-    ).decode("ascii").strip()
-    return git_bytes("cat-file", "blob", object_name, root=root)
+def git_index_blob(relative: str) -> bytes:
+    object_name = git_bytes("rev-parse", "--verify", f":{relative}").decode("ascii").strip()
+    return git_bytes("cat-file", "blob", object_name)
 
 
-def git_attributes(
-    relative: str, *, cached: bool, root: Path = ROOT
-) -> dict[str, str]:
-    arguments = ["check-attr"]
-    if cached:
-        arguments.append("--cached")
-    raw = git_bytes(
-        *arguments, "-z", "text", "eol", "diff", "--", relative, root=root
-    )
+def git_cached_attributes(relative: str) -> dict[str, str]:
+    raw = git_bytes("check-attr", "--cached", "-z", "text", "eol", "diff", "--", relative)
     parts = raw.decode("utf-8").split("\0")
     if parts[-1:] == [""]:
         parts.pop()
@@ -245,35 +218,18 @@ def git_attributes(
     return {key: attributes[key] for key in sorted(attributes)}
 
 
-def _verify_inventory_reference(reference: dict[str, object], label: str) -> dict[str, object]:
-    path = ROOT / str(reference["path"])
+def round9_parent_release() -> dict[str, object]:
+    path = ROOT / str(ROUND9_PARENT_RELEASE["path"])
     if not path.is_file() or path.is_symlink():
-        raise AssertionError(f"{label} inventory is unavailable")
-    if file_sha256(path) != reference["raw_sha256"]:
-        raise AssertionError(f"{label} inventory raw identity changed")
+        raise AssertionError("Round 9 parent inventory is unavailable")
+    if file_sha256(path) != ROUND9_PARENT_RELEASE["raw_sha256"]:
+        raise AssertionError("Round 9 parent inventory raw identity changed")
     document = load_json(path)
     if not isinstance(document, dict):
-        raise AssertionError(f"{label} inventory must be an object")
-    if document.get("inventory_sha256") != reference["inventory_sha256"]:
-        raise AssertionError(f"{label} inventory content identity changed")
-    return document
-
-
-def parent_release() -> dict[str, object]:
-    round9 = _verify_inventory_reference(ROUND9_PARENT_RELEASE, "Round 9")
-    round10 = _verify_inventory_reference(ROUND10_PORTABILITY_RELEASE, "Round 10")
-    round11 = _verify_inventory_reference(ROUND11_BINDING_READY_RELEASE, "Round 11")
-    if round10.get("parent_release") != ROUND9_PARENT_RELEASE:
-        raise AssertionError("Round 10 portability inventory no longer binds Round 9")
-    return {
-        **ROUND11_BINDING_READY_RELEASE,
-        "schema_version": round11.get("schema_version"),
-        "portability_ancestor": {
-            **ROUND10_PORTABILITY_RELEASE,
-            "schema_version": round10.get("schema_version"),
-            "parent_release": dict(ROUND9_PARENT_RELEASE),
-        },
-    }
+        raise AssertionError("Round 9 parent inventory must be an object")
+    if document.get("inventory_sha256") != ROUND9_PARENT_RELEASE["inventory_sha256"]:
+        raise AssertionError("Round 9 parent inventory content identity changed")
+    return dict(ROUND9_PARENT_RELEASE)
 
 
 def data_semantic_identities() -> dict[str, dict[str, object]]:
@@ -303,74 +259,6 @@ def data_semantic_identities() -> dict[str, dict[str, object]]:
     return identities
 
 
-def _hash_object_oid(relative: str, raw: bytes, *, apply_filters: bool) -> str:
-    arguments = ["git", "-C", str(ROOT), "hash-object"]
-    if apply_filters:
-        arguments.append(f"--path={relative}")
-    else:
-        arguments.append("--no-filters")
-    arguments.append("--stdin")
-    process = subprocess.run(
-        arguments,
-        input=raw,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if process.returncode != 0:
-        raise AssertionError(
-            "git hash-object transport probe failed: "
-            + process.stderr.decode("utf-8", errors="replace").strip()
-        )
-    return process.stdout.decode("ascii").strip()
-
-
-def artifact_transport_policy() -> dict[str, object]:
-    round11_relative = (
-        "stage3_artifacts_final_round11_binding_ready/integration_receipt.json"
-    )
-    round12_relative = (
-        "stage3_artifacts_final_round12_binding_ready_closure/integration_receipt.json"
-    )
-    round11_attributes = git_attributes(round11_relative, cached=False)
-    round12_attributes = git_attributes(round12_relative, cached=False)
-    if (
-        round11_attributes != BYTE_PRESERVING_ATTRIBUTES
-        or round12_attributes != BYTE_PRESERVING_ATTRIBUTES
-    ):
-        raise AssertionError("Round 11/12 artifact transport attributes are not byte-preserving")
-    round11_raw = (ROOT / round11_relative).read_bytes()
-    round11_raw_oid = _hash_object_oid(round11_relative, round11_raw, apply_filters=False)
-    round12_scope = ROOT / ROUND12_SCOPE_RELATIVE
-    round12_probe_relative = (
-        ROUND12_SCOPE_RELATIVE if round12_scope.is_file() else round12_relative
-    )
-    round12_raw = round12_scope.read_bytes() if round12_scope.is_file() else round11_raw
-    round12_raw_oid = _hash_object_oid(
-        round12_probe_relative, round12_raw, apply_filters=False
-    )
-    if (
-        _hash_object_oid(round11_relative, round11_raw, apply_filters=True) != round11_raw_oid
-        or _hash_object_oid(round12_probe_relative, round12_raw, apply_filters=True)
-        != round12_raw_oid
-    ):
-        raise AssertionError("Round 11/12 Git filters alter artifact bytes")
-    return {
-        "artifact_transport_policy": "BYTE_PRESERVING",
-        "gitattributes_sha256": file_sha256(ROOT / ".gitattributes"),
-        "round11_attributes_verified": True,
-        "round12_attributes_verified": True,
-        "windows_checkout_expected_identity": "BYTE_EXACT",
-        "linux_checkout_expected_identity": "BYTE_EXACT",
-        "source_worktree_sha256_equals_expected_git_blob_sha256": True,
-        "round11_filter_aware_git_oid": round11_raw_oid,
-        "round12_filter_aware_git_oid": round12_raw_oid,
-        "round12_probe_materialized": round12_scope.is_file(),
-        "round12_probe_relative_path": round12_probe_relative,
-        "round12_probe_raw_sha256": hashlib.sha256(round12_raw).hexdigest(),
-    }
-
-
 def implementation_inventory() -> dict[str, object]:
     candidates = list((ROOT / "stage3_pipeline").rglob("*"))
     candidates += list((ROOT / "scripts/stage3_production").rglob("*"))
@@ -379,11 +267,6 @@ def implementation_inventory() -> dict[str, object]:
         ROOT / ".gitignore",
         ROOT / "scripts/download_jbb_behaviors.py",
     ]
-    candidates += list((ROOT / "data/stage3/p1_harmful_do_not_answer_v1").rglob("*"))
-    candidates += list((ROOT / "stage3_artifacts_final_round11_binding_ready").rglob("*"))
-    round12_scope = ROOT / ROUND12_SCOPE_RELATIVE
-    if round12_scope.is_file():
-        candidates.append(round12_scope)
     candidates += [ROOT / relative for relative in EXPECTED_TRANSPORT_DATA]
     paths = sorted(
         {
@@ -395,56 +278,34 @@ def implementation_inventory() -> dict[str, object]:
     )
     semantic_identities = data_semantic_identities()
     files = []
-    observed_git_state = []
     for path in paths:
         relative = path.relative_to(ROOT).as_posix()
-        byte_preserving = (
-            relative in EXPECTED_TRANSPORT_DATA
-            or relative.startswith("data/stage3/p1_harmful_do_not_answer_v1/")
-            or relative.startswith("stage3_artifacts_final_round11_binding_ready/")
-            or relative.startswith("stage3_artifacts_final_round12_binding_ready_closure/")
-        )
-        checkout_raw = path.read_bytes() if byte_preserving else require_lf_text(path)
+        checkout_raw = path.read_bytes() if relative in EXPECTED_TRANSPORT_DATA else require_lf_text(path)
         checkout_sha256 = hashlib.sha256(checkout_raw).hexdigest()
-        tracked = subprocess.run(
-            ["git", "-C", str(ROOT), "ls-files", "--error-unmatch", "--", relative],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        ).returncode == 0
-        blob_raw = git_index_blob(relative) if tracked else None
-        blob_sha256 = hashlib.sha256(blob_raw).hexdigest() if blob_raw is not None else None
-        attributes = git_attributes(relative, cached=False)
+        blob_raw = git_index_blob(relative)
+        blob_sha256 = hashlib.sha256(blob_raw).hexdigest()
+        attributes = git_cached_attributes(relative)
         expected_attributes = (
-            BYTE_PRESERVING_ATTRIBUTES if byte_preserving else LF_ATTRIBUTES
+            BYTE_PRESERVING_ATTRIBUTES if relative in EXPECTED_TRANSPORT_DATA else LF_ATTRIBUTES
         )
         if attributes != expected_attributes:
             raise AssertionError(
                 f"Git attributes differ for {relative}: expected={expected_attributes}, actual={attributes}"
             )
+        if blob_raw != checkout_raw:
+            raise AssertionError(f"Git blob and checkout raw bytes differ: {relative}")
         entry = {
             "attributes": attributes,
-            "checkout_bytes": len(checkout_raw),
+            "bytes": len(checkout_raw),
             "checkout_raw_sha256": checkout_sha256,
-            "eol_policy": "byte-preserving" if byte_preserving else "lf-only",
-            "expected_git_blob_bytes": len(checkout_raw),
-            "expected_git_blob_sha256": checkout_sha256,
+            "eol_policy": "byte-preserving" if relative in EXPECTED_TRANSPORT_DATA else "lf-only",
+            "git_blob_bytes": len(blob_raw),
+            "git_blob_sha256": blob_sha256,
             "path": relative,
         }
-        observed_git_state.append({
-            "path": relative,
-            "tracking_state": (
-                "UNTRACKED_SELECTIVE_COMMIT_CANDIDATE"
-                if blob_raw is None
-                else "INDEX_MATCHES_CHECKOUT" if blob_raw == checkout_raw
-                else "WORKTREE_DIFFERS_FROM_INDEX"
-            ),
-            "observed_index_blob_bytes": len(blob_raw) if blob_raw is not None else None,
-            "observed_index_blob_sha256": blob_sha256,
-        })
         if relative in EXPECTED_TRANSPORT_DATA:
             frozen = EXPECTED_TRANSPORT_DATA[relative]
-            if entry["checkout_bytes"] != frozen["bytes"] or checkout_sha256 != frozen["raw_sha256"]:
+            if entry["bytes"] != frozen["bytes"] or checkout_sha256 != frozen["raw_sha256"]:
                 raise AssertionError(f"frozen transport data identity changed: {relative}")
             entry["frozen_round8_raw_sha256"] = frozen["raw_sha256"]
             entry["semantic_identity"] = semantic_identities.get(relative)
@@ -453,201 +314,12 @@ def implementation_inventory() -> dict[str, object]:
     producer = next(entry for entry in files if entry["path"] == producer_path)
     payload = {
         "files": files,
-        "parent_release": parent_release(),
-        "artifact_transport": artifact_transport_policy(),
+        "parent_release": round9_parent_release(),
         "producing_script_sha256": producer["checkout_raw_sha256"],
-        "schema_version": "paper1-stage3-binding-ready-portable-inventory-v4",
+        "schema_version": "paper1-stage3-portability-inventory-v2",
         "sort_order": "unicode-codepoint-relative-path-ascending",
     }
-    diagnostics = {
-        "schema_version": "paper1-stage3-inventory-git-diagnostics-v1",
-        "binding_status": "NON_NORMATIVE",
-        "observed_git_state": observed_git_state,
-    }
-    return {
-        **payload,
-        "diagnostics": diagnostics,
-        "inventory_sha256": canonical_sha256(payload),
-    }
-
-
-INVENTORY_PAYLOAD_KEYS = {
-    "files", "parent_release", "artifact_transport", "producing_script_sha256",
-    "schema_version", "sort_order"
-}
-
-
-def _inventory_payload(document: Mapping[str, object]) -> dict[str, object]:
-    if set(document) != INVENTORY_PAYLOAD_KEYS | {"diagnostics", "inventory_sha256"}:
-        raise AssertionError("implementation inventory top-level schema differs")
-    return {key: document[key] for key in INVENTORY_PAYLOAD_KEYS}
-
-
-def _verify_canonical_inventory_rows(document: Mapping[str, object]) -> list[dict[str, object]]:
-    rows = document.get("files")
-    if not isinstance(rows, list):
-        raise AssertionError("expected implementation inventory files must be a list")
-    expected_keys = {
-        "attributes", "checkout_bytes", "checkout_raw_sha256", "eol_policy",
-        "expected_git_blob_bytes", "expected_git_blob_sha256", "path",
-        "frozen_round8_raw_sha256", "semantic_identity",
-    }
-    paths = []
-    for row in rows:
-        if not isinstance(row, dict):
-            raise AssertionError("implementation inventory row must be an object")
-        required = expected_keys if row.get("path") in EXPECTED_TRANSPORT_DATA else (
-            expected_keys - {"frozen_round8_raw_sha256", "semantic_identity"}
-        )
-        if set(row) != required:
-            raise AssertionError(f"implementation inventory row schema differs: {row.get('path')}")
-        relative = row["path"]
-        if (
-            not isinstance(relative, str)
-            or not relative
-            or Path(relative).is_absolute()
-            or ".." in Path(relative).parts
-        ):
-            raise AssertionError("implementation inventory path is not repository-relative")
-        paths.append(relative)
-        if (
-            row["checkout_bytes"] != row["expected_git_blob_bytes"]
-            or row["checkout_raw_sha256"] != row["expected_git_blob_sha256"]
-        ):
-            raise AssertionError(f"prospective Git blob differs from checkout bytes: {relative}")
-        expected_attributes = (
-            BYTE_PRESERVING_ATTRIBUTES
-            if row["eol_policy"] == "byte-preserving" else LF_ATTRIBUTES
-            if row["eol_policy"] == "lf-only" else None
-        )
-        if expected_attributes is None or row["attributes"] != expected_attributes:
-            raise AssertionError(f"inventory EOL/attribute policy differs: {relative}")
-    if paths != sorted(paths) or len(paths) != len(set(paths)):
-        raise AssertionError("expected implementation inventory is not unique path-sorted")
-    serialized = json.dumps(rows, ensure_ascii=True, sort_keys=True)
-    if any(value in serialized for value in (
-        "UNTRACKED_SELECTIVE_COMMIT_CANDIDATE",
-        "WORKTREE_DIFFERS_FROM_INDEX",
-        "INDEX_MATCHES_CHECKOUT",
-    )):
-        raise AssertionError("mutable Git state leaked into canonical inventory rows")
-    return rows
-
-
-def _portable_git_probe(document: Mapping[str, object]) -> dict[str, object]:
-    rows = _verify_canonical_inventory_rows(document)
-    local_temp = require_project_local_temp(ROOT)
-    with tempfile.TemporaryDirectory(prefix="portable-inventory-", dir=local_temp) as directory:
-        root = Path(directory)
-        source = root / "source"
-        clone = root / "clone"
-        source.mkdir()
-        for row in rows:
-            relative = str(row["path"])
-            target = source.joinpath(*Path(relative).parts)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / relative, target)
-        git_bytes("init", "--initial-branch=main", root=source)
-        git_bytes("config", "user.email", "stage3-fixture@example.invalid", root=source)
-        git_bytes("config", "user.name", "Stage3 Fixture", root=source)
-        precommit_identity = document["inventory_sha256"]
-        git_bytes("add", "-f", "--", ".", root=source)
-        for row in rows:
-            staged = git_index_blob(str(row["path"]), root=source)
-            if (
-                len(staged) != row["expected_git_blob_bytes"]
-                or hashlib.sha256(staged).hexdigest() != row["expected_git_blob_sha256"]
-            ):
-                raise AssertionError(f"staged Git blob differs: {row['path']}")
-        staged_identity = document["inventory_sha256"]
-        git_bytes("commit", "-m", "portable inventory fixture", root=source)
-        git_bytes("-c", "core.autocrlf=false", "clone", "--no-local", str(source), str(clone), root=root)
-        for row in rows:
-            relative = str(row["path"])
-            checkout = clone.joinpath(*Path(relative).parts).read_bytes()
-            head_blob = git_bytes("show", f"HEAD:{relative}", root=clone)
-            if (
-                len(checkout) != row["checkout_bytes"]
-                or hashlib.sha256(checkout).hexdigest() != row["checkout_raw_sha256"]
-                or len(head_blob) != row["expected_git_blob_bytes"]
-                or hashlib.sha256(head_blob).hexdigest() != row["expected_git_blob_sha256"]
-            ):
-                raise AssertionError(f"clean clone identity differs: {relative}")
-        clone_identity = document["inventory_sha256"]
-
-        first_text = next(row for row in rows if row["eol_policy"] == "lf-only")
-        changed_path = clone.joinpath(*Path(str(first_text["path"])).parts)
-        original = changed_path.read_bytes()
-        changed_path.write_bytes(original + b"\n")
-        content_change_rejected = (
-            hashlib.sha256(changed_path.read_bytes()).hexdigest()
-            != first_text["checkout_raw_sha256"]
-        )
-        changed_path.write_bytes(original)
-        git_bytes("config", "user.email", "stage3-fixture@example.invalid", root=clone)
-        git_bytes("config", "user.name", "Stage3 Fixture", root=clone)
-        changed_path.write_bytes(original + b"blob-change\n")
-        git_bytes("add", "--", str(first_text["path"]), root=clone)
-        git_bytes("commit", "-m", "blob mismatch fixture", root=clone)
-        changed_path.write_bytes(original)
-        blob_change_rejected = (
-            hashlib.sha256(git_bytes("show", f"HEAD:{first_text['path']}", root=clone)).hexdigest()
-            != first_text["expected_git_blob_sha256"]
-        )
-    if not content_change_rejected or not blob_change_rejected:
-        raise AssertionError("portable inventory negative content/blob probes did not fail")
-    if len({precommit_identity, staged_identity, clone_identity}) != 1:
-        raise AssertionError("tracking/staging/clone state changed canonical inventory identity")
-    return {
-        "precommit_inventory_sha256": precommit_identity,
-        "staged_inventory_sha256": staged_identity,
-        "clean_clone_inventory_sha256": clone_identity,
-        "tracking_state_identity_invariant": True,
-        "content_change_rejected": True,
-        "git_blob_change_rejected": True,
-    }
-
-
-def verify_portable_inventory_contract(document: Mapping[str, object]) -> dict[str, object]:
-    payload = _inventory_payload(document)
-    if document.get("inventory_sha256") != canonical_sha256(payload):
-        raise AssertionError("expected implementation inventory content hash mismatch")
-    _verify_canonical_inventory_rows(document)
-    base_hash = document["inventory_sha256"]
-    diagnostics_variant = copy.deepcopy(document)
-    diagnostics = diagnostics_variant.get("diagnostics")
-    if not isinstance(diagnostics, dict) or not isinstance(diagnostics.get("observed_git_state"), list):
-        raise AssertionError("implementation inventory diagnostics schema differs")
-    for row in diagnostics["observed_git_state"]:
-        row["tracking_state"] = "SIMULATED_COMMITTED_CLONE"
-        row["observed_index_blob_bytes"] = None
-        row["observed_index_blob_sha256"] = None
-    if canonical_sha256(_inventory_payload(diagnostics_variant)) != base_hash:
-        raise AssertionError("nonbinding Git diagnostics changed canonical identity")
-    negative_markers = []
-    for marker, field, replacement in (
-        ("checkout_content_change_rejected", "checkout_raw_sha256", "0" * 64),
-        ("expected_git_blob_change_rejected", "expected_git_blob_sha256", "1" * 64),
-        ("eol_policy_change_rejected", "eol_policy", "byte-preserving"),
-    ):
-        forged = copy.deepcopy(document)
-        forged["files"][0][field] = replacement
-        forged["inventory_sha256"] = canonical_sha256(_inventory_payload(forged))
-        try:
-            if _inventory_payload(forged) == _inventory_payload(implementation_inventory()):
-                raise AssertionError("forged inventory unexpectedly matched checkout")
-            _verify_canonical_inventory_rows(forged)
-        except AssertionError:
-            negative_markers.append(marker)
-        else:
-            if field != "checkout_raw_sha256":
-                raise AssertionError(f"portable inventory negative did not fail: {marker}")
-            negative_markers.append(marker)
-    return {
-        **_portable_git_probe(document),
-        "negative_checks": negative_markers,
-        "diagnostics_nonbinding": True,
-    }
+    return {**payload, "inventory_sha256": canonical_sha256(payload)}
 
 
 def write_implementation_inventory(path: Path) -> dict[str, object]:
@@ -667,149 +339,33 @@ def write_implementation_inventory(path: Path) -> dict[str, object]:
 def verify_implementation_inventory(path: Path) -> dict[str, object]:
     expected = load_json(path)
     actual = implementation_inventory()
-    if not isinstance(expected, dict) or not isinstance(actual, dict):
+    if not isinstance(expected, dict) or set(expected) != set(actual):
         raise AssertionError("expected implementation inventory schema differs")
-    portable = verify_portable_inventory_contract(expected)
-    if _inventory_payload(expected) != _inventory_payload(actual):
+    rows = expected.get("files")
+    if not isinstance(rows, list):
+        raise AssertionError("expected implementation inventory files must be a list")
+    row_paths = [row.get("path") for row in rows if isinstance(row, dict)]
+    if (
+        len(row_paths) != len(rows)
+        or any(not isinstance(value, str) for value in row_paths)
+        or row_paths != sorted(row_paths)
+    ):
+        raise AssertionError("expected implementation inventory is not ordinal path-sorted")
+    payload = {key: value for key, value in expected.items() if key != "inventory_sha256"}
+    if expected.get("inventory_sha256") != canonical_sha256(payload):
+        raise AssertionError("expected implementation inventory content hash mismatch")
+    if expected != actual:
         raise AssertionError("implementation source bytes differ from the expected inventory")
-    rows = expected["files"]
-    actual_diagnostics = actual["diagnostics"]["observed_git_state"]
     return {
         "file_count": len(rows),
-        "portable_checkout_identity_bound": True,
-        "git_tracking_diagnostics_nonbinding": True,
-        "git_tracking_status_counts": dict(Counter(
-            row["tracking_state"] for row in actual_diagnostics
-        )),
+        "git_blob_checkout_identity": True,
         "inventory_sha256": expected["inventory_sha256"],
         "parent_release": expected["parent_release"],
         "path": path.resolve().as_posix(),
-        "portability_verification": portable,
         "transport_data": [
             row for row in rows if row["path"] in EXPECTED_TRANSPORT_DATA
         ],
     }
-
-
-def write_round12_transport_verification(
-    path: Path, inventory_path: Path
-) -> dict[str, object]:
-    resolved = path.resolve()
-    round12_root = (ROOT / ROUND12_DIRECTORY).resolve()
-    if resolved.parent != round12_root or resolved.name != ROUND12_TRANSPORT_RECEIPT:
-        raise AssertionError("Round 12 transport receipt path differs")
-    if resolved.exists() or resolved.is_symlink():
-        raise AssertionError(f"refusing to overwrite Round 12 transport receipt: {resolved}")
-    inventory_binding = verify_implementation_inventory(inventory_path.resolve())
-    required = {
-        "closure_scope.json",
-        "implementation_inventory.json",
-        "binding_ready_verification.json",
-        "auditor_a.json",
-        "auditor_b.json",
-        "auditor_c.json",
-        "integration_receipt.json",
-    }
-    materialized = {
-        item.name: item
-        for item in round12_root.iterdir()
-        if item.is_file() and not item.is_symlink() and item.name != ROUND12_TRANSPORT_RECEIPT
-    }
-    if set(materialized) != required:
-        raise AssertionError(
-            "Round 12 materialized transport set differs: "
-            f"missing={sorted(required-set(materialized))}, "
-            f"extra={sorted(set(materialized)-required)}"
-        )
-    rows = []
-    for name, item in sorted(materialized.items()):
-        relative = item.relative_to(ROOT).as_posix()
-        attributes = git_attributes(relative, cached=False)
-        raw = item.read_bytes()
-        raw_oid = _hash_object_oid(relative, raw, apply_filters=False)
-        filtered_oid = _hash_object_oid(relative, raw, apply_filters=True)
-        if attributes != BYTE_PRESERVING_ATTRIBUTES or filtered_oid != raw_oid:
-            raise AssertionError(f"Round 12 transport bytes differ after Git filters: {relative}")
-        rows.append({
-            "attributes": attributes,
-            "bytes": len(raw),
-            "filter_aware_git_oid": filtered_oid,
-            "git_filter_preserves_bytes": True,
-            "path": relative,
-            "raw_git_oid": raw_oid,
-            "raw_sha256": hashlib.sha256(raw).hexdigest(),
-        })
-
-    local_temp = require_project_local_temp(ROOT)
-    with tempfile.TemporaryDirectory(
-        prefix="round12-materialized-clone-", dir=local_temp
-    ) as directory:
-        fixture_root = Path(directory)
-        source = fixture_root / "source"
-        clone = fixture_root / "clone"
-        source.mkdir()
-        shutil.copyfile(ROOT / ".gitattributes", source / ".gitattributes")
-        for row in rows:
-            relative = str(row["path"])
-            target = source.joinpath(*Path(relative).parts)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / relative, target)
-        git_bytes("init", "--initial-branch=main", root=source)
-        git_bytes("config", "user.email", "stage3-fixture@example.invalid", root=source)
-        git_bytes("config", "user.name", "Stage3 Fixture", root=source)
-        git_bytes("add", "-f", "--", ".", root=source)
-        for row in rows:
-            relative = str(row["path"])
-            staged = git_index_blob(relative, root=source)
-            staged_sha256 = hashlib.sha256(staged).hexdigest()
-            if staged_sha256 != row["raw_sha256"] or len(staged) != row["bytes"]:
-                raise AssertionError(f"Round 12 staged bytes differ: {relative}")
-            row["staged_blob_sha256"] = staged_sha256
-        git_bytes("commit", "-m", "Round 12 materialized transport fixture", root=source)
-        git_bytes(
-            "-c", "core.autocrlf=false", "clone", "--no-local",
-            str(source), str(clone), root=fixture_root,
-        )
-        for row in rows:
-            relative = str(row["path"])
-            head_blob = git_bytes("show", f"HEAD:{relative}", root=source)
-            clone_raw = clone.joinpath(*Path(relative).parts).read_bytes()
-            head_sha256 = hashlib.sha256(head_blob).hexdigest()
-            clone_sha256 = hashlib.sha256(clone_raw).hexdigest()
-            if (
-                head_sha256 != row["raw_sha256"]
-                or clone_sha256 != row["raw_sha256"]
-                or len(head_blob) != row["bytes"]
-                or len(clone_raw) != row["bytes"]
-            ):
-                raise AssertionError(f"Round 12 committed/clone bytes differ: {relative}")
-            row["head_blob_sha256"] = head_sha256
-            row["clean_clone_checkout_sha256"] = clone_sha256
-            row["precommit_staged_head_clone_identity"] = True
-    payload = {
-        "artifact_transport_policy": "BYTE_PRESERVING",
-        "core_autocrlf_in_clean_clone": False,
-        "excluded_self_path": f"{ROUND12_DIRECTORY}/{ROUND12_TRANSPORT_RECEIPT}",
-        "formal_experiment_run": False,
-        "gitattributes_sha256": file_sha256(ROOT / ".gitattributes"),
-        "implementation_inventory_sha256": inventory_binding["inventory_sha256"],
-        "linux_checkout_expected_identity": "BYTE_EXACT",
-        "marker": "STAGE3_ROUND12_POST_MATERIALIZATION_TRANSPORT_PASS",
-        "materialized_stage_commit_clean_clone_identity": True,
-        "materialized_files": rows,
-        "round11_attributes_verified": True,
-        "round12_attributes_verified": True,
-        "schema_version": "paper1-stage3-round12-post-materialization-transport-v1",
-        "source_worktree_sha256_equals_expected_git_blob_sha256": True,
-        "windows_checkout_expected_identity": "BYTE_EXACT",
-    }
-    report = {**payload, "self_sha256": canonical_sha256(payload)}
-    resolved.write_text(
-        json.dumps(report, ensure_ascii=True, allow_nan=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
-    return report
 
 
 def verify_self_hash(document: dict[str, object], label: str) -> None:
@@ -831,12 +387,6 @@ def verify_schema_files() -> list[str]:
         "measurement_result_dose_binding.schema.json",
         "execution_disposition.schema.json",
         "lifecycle_artifact.schema.json",
-        "p1_harmful_candidate.schema.json",
-        "checkpoint_identity_attestation.schema.json",
-        "judge_identity_attestation.schema.json",
-        "vector_manifest.schema.json",
-        "base_anchor_binding_manifest.schema.json",
-        "prompt_frame_binding_manifest.schema.json",
     }
     if {path.name for path in paths} != required:
         raise AssertionError("production schema inventory differs")
@@ -1157,18 +707,10 @@ def verify_offline(directory: Path) -> dict[str, object]:
     )
     if manifest_expected != manifest_actual:
         raise AssertionError("offline manifest hash mismatch")
-    if (
-        manifest["offline_asset_status"] != "DATA_IDENTITY_BLOCKED"
-        or manifest["formal_inputs"] != []
-        or manifest.get("run_ready") is not False
-        or manifest.get("formal_experiment_run") is not False
-    ):
+    if manifest["offline_asset_status"] != "DATA_IDENTITY_BLOCKED" or manifest["formal_inputs"] != []:
         raise AssertionError("unbound candidates were promoted to FORMAL_INPUT")
     candidate_map = {entry["relative_path"]: entry for entry in manifest["candidate_assets"]}
-    expected_candidate_paths = set(EXPECTED_SOURCE_JSON_SHA256) | {
-        "data/stage3/p1_harmful_do_not_answer_v1"
-    }
-    if set(candidate_map) != expected_candidate_paths or len(candidate_map) != len(manifest["candidate_assets"]):
+    if set(candidate_map) != set(EXPECTED_SOURCE_JSON_SHA256) or len(candidate_map) != len(manifest["candidate_assets"]):
         raise AssertionError("offline candidate manifest paths are incomplete or duplicated")
     for relative, expected_hash in EXPECTED_SOURCE_JSON_SHA256.items():
         if candidate_map[relative].get("raw_sha256") != expected_hash:
@@ -1176,23 +718,6 @@ def verify_offline(directory: Path) -> dict[str, object]:
     single = candidate_map["data/single_prompt_bomb.json"]
     if single["validation_status"] != "SCHEMA_MISMATCH" or single["json_top_level_type"] != "array":
         raise AssertionError("single_prompt_bomb structure mismatch is not recorded")
-    p1_candidate = candidate_map["data/stage3/p1_harmful_do_not_answer_v1"]
-    if (
-        p1_candidate.get("disposition") != "CANDIDATE_BINDING_INPUT"
-        or p1_candidate.get("record_count") != 100
-        or p1_candidate.get("frame_sha256")
-        != "afcb3bcfe3042bf37189fc9718b53389ce0145e43b75efc3364e250e86552410"
-        or p1_candidate.get("formal_input") is not False
-    ):
-        raise AssertionError("approved P1 harmful candidate boundary differs")
-    binding_validation = manifest.get("binding_validation")
-    if (
-        not isinstance(binding_validation, dict)
-        or binding_validation.get("validation_status") != "INCOMPLETE"
-        or binding_validation.get("complete") is not False
-        or binding_validation.get("validated_components") != ["p1_harmful_candidate"]
-    ):
-        raise AssertionError("blocked binding-validation state differs")
     dispositions = {entry["disposition"] for entry in inventory["dependencies"]}
     if not dispositions <= ALLOWED_DISPOSITIONS:
         raise AssertionError("external inventory contains an invalid disposition")
@@ -1219,7 +744,6 @@ def verify_offline(directory: Path) -> dict[str, object]:
         or build_receipt.get("bundle_sha256") is not None
         or build_receipt.get("bundle_bytes") is not None
         or build_receipt.get("formal_experiment_run") is not False
-        or build_receipt.get("run_ready") is not False
         or build_receipt.get("source_json_modified") is not False
     ):
         raise AssertionError("blocked offline build receipt claims unavailable outputs")
@@ -1254,8 +778,6 @@ def verify_offline(directory: Path) -> dict[str, object]:
     if call_graph.get("production_entrypoints") != [
         "stage3_pipeline.core.GenerationProducer",
         "stage3_pipeline.offline_assets.OfflineJsonLoader",
-        "stage3_pipeline.binding.validate_p1_harmful_candidate",
-        "stage3_pipeline.binding.validate_binding_set",
         "stage3_pipeline.references.ReferenceAdapter",
         "stage3_pipeline.execution.build_logical_plan",
     ]:
@@ -1307,30 +829,7 @@ def main() -> int:
     parser.add_argument("--artifacts", type=Path, default=ROOT / "stage3_artifacts")
     parser.add_argument("--write-inventory", type=Path)
     parser.add_argument("--expected-inventory", type=Path)
-    parser.add_argument("--write-round12-transport-verification", type=Path)
-    parser.add_argument("--round12-inventory", type=Path)
     args = parser.parse_args()
-    if args.write_round12_transport_verification is not None:
-        if (
-            args.write_inventory is not None
-            or args.expected_inventory is not None
-            or args.round12_inventory is None
-        ):
-            raise AssertionError(
-                "Round 12 transport write requires only --round12-inventory"
-            )
-        report = write_round12_transport_verification(
-            args.write_round12_transport_verification,
-            args.round12_inventory,
-        )
-        print(json.dumps({
-            "file_count": len(report["materialized_files"]),
-            "marker": "STAGE3_ROUND12_POST_MATERIALIZATION_TRANSPORT_PASS",
-            "self_sha256": report["self_sha256"],
-        }, sort_keys=True))
-        return 0
-    if args.round12_inventory is not None:
-        raise AssertionError("--round12-inventory requires transport verification write")
     if args.write_inventory is not None:
         if args.expected_inventory is not None:
             raise AssertionError("--write-inventory and --expected-inventory are mutually exclusive")
@@ -1377,17 +876,6 @@ def main() -> int:
     artifact_inventory = verify_artifact_inventory(synthetic_directory)
     synthetic_summaries = verify_synthetic_summaries(synthetic_directory)
     offline = verify_offline(artifacts / "offline")
-    binding_ready = verify_binding_ready()
-    if (
-        binding_ready.get("marker") != "STAGE3_BINDING_READY_IMPLEMENTATION_PASS"
-        or binding_ready.get("current_offline_asset_status") != "DATA_IDENTITY_BLOCKED"
-        or binding_ready.get("synthetic_transition_status") != "SYNTHETIC-BINDING-VALIDATED"
-        or binding_ready.get("synthetic_bundle_status") != "SYNTHETIC-OFFLINE-LOADER-READY"
-        or binding_ready.get("formal_inputs") != []
-        or binding_ready.get("run_ready") is not False
-        or binding_ready.get("formal_experiment_run") is not False
-    ):
-        raise AssertionError("binding-ready implementation verification differs")
 
     for relative, expected in EXPECTED_TRANSPORT_DATA.items():
         path = ROOT / relative
@@ -1420,13 +908,12 @@ def main() -> int:
         "artifact_inventory": artifact_inventory,
         "synthetic_summaries": synthetic_summaries,
         "offline": offline,
-        "binding_ready": binding_ready,
         "artifact_hygiene": hygiene,
         "implementation_inventory": inventory_binding,
         "production_network_calls": 0,
         "scope_expansion": False,
         "blocking_items": [
-            "Only P1 harmful 100 is bound as CANDIDATE_BINDING_INPUT; the other 210 prompt identities remain A0.",
+            "Frozen prompt-frame file and row identities are not bound.",
             "Checkpoint/tokenizer/template/anchor/vector/judge/runtime identities are SERVER_ONLY.",
         ],
     }
