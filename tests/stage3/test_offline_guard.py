@@ -62,15 +62,19 @@ class OfflineGuardTests(unittest.TestCase):
                 with self.assertRaises(OfflineOperationError):
                     os.execv("stage3-command-that-does-not-exist", ["stage3-command-that-does-not-exist"])
             if hasattr(os, "fork"):
+                # POSIX os.spawnv may be implemented via fork and add an earlier fork event.
+                fork_before = offline_audit_snapshot()["category_counts"]["fork"]
                 with self.assertRaises(OfflineOperationError):
                     sys.audit("os.fork")
+                fork_after = offline_audit_snapshot()["category_counts"]["fork"]
+                self.assertEqual(fork_after, fork_before + 1)
         counts = guard.report["category_counts"]
         self.assertEqual(counts["system"], 2)
         self.assertGreaterEqual(counts["subprocess"], 1)
         self.assertGreaterEqual(counts["spawn"], 1)
         self.assertGreaterEqual(counts["exec"], 1)
         if hasattr(os, "fork"):
-            self.assertEqual(counts["fork"], 1)
+            self.assertGreaterEqual(counts["fork"], 1)
 
     def test_new_thread_cannot_bypass_process_scope(self) -> None:
         failures: list[BaseException] = []

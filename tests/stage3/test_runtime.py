@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -225,32 +226,61 @@ class RuntimeTests(unittest.TestCase):
             with self.assertRaises(PipelineError):
                 store.write_json_once("record.json", {"ok": False})
 
-    def test_manifest_records_dirty_config_and_refuses_overwrite(self) -> None:
+    def test_manifest_records_clean_and_dirty_git_state_and_refuses_overwrite(self) -> None:
         chain = completed_chain("support", run_mode="pilot")
         guard = offline_execution_guard()
         with guard:
             pass
         with tempfile.TemporaryDirectory(dir=ROOT / ".codex-temp") as temporary:
-            output = Path(temporary) / "pilot-output"
-            manifest = build_run_manifest(
-                repo_root=ROOT, run_mode="pilot", command=["python", "pilot.py"],
+            temporary_root = Path(temporary)
+            repository = temporary_root / "repository"
+            repository.mkdir()
+            subprocess.run(
+                ["git", "init"], cwd=repository, check=True, capture_output=True, text=True,
+            )
+            subprocess.run(
+                [
+                    "git", "-c", "user.name=Stage3 Test",
+                    "-c", "user.email=stage3-test@example.invalid",
+                    "commit", "--allow-empty", "-m", "initial",
+                ],
+                cwd=repository, check=True, capture_output=True, text=True,
+            )
+            clean_output = temporary_root / "clean-output"
+            clean_manifest = build_run_manifest(
+                repo_root=repository, run_mode="pilot", command=["python", "pilot.py"],
                 started_at_utc="2026-07-30T00:00:00Z",
                 completed_at_utc="2026-07-30T00:00:01Z",
                 model_path_or_id="fake-model", tokenizer_path_or_id="fake-tokenizer",
                 input_paths=[P1_INPUT], generation_config=DECODE_CONFIG, seed=42,
-                gpu_identity=None, output_directory=output, exit_status="success", exit_code=0,
+                gpu_identity=None, output_directory=clean_output, exit_status="success", exit_code=0,
                 fake_backend=True, reconciliation=chain["reconciliation"], offline_guard=guard,
                 runtime_versions={"python": "test", "torch": None, "transformers": None, "cuda": None},
             )
-            self.assertTrue(manifest["dirty"])
-            path = write_run_manifest(output, manifest)
+            self.assertFalse(clean_manifest["dirty"])
+
+            (repository / "untracked.txt").write_text("dirty\n", encoding="utf-8")
+            dirty_output = temporary_root / "dirty-output"
+            dirty_manifest = build_run_manifest(
+                repo_root=repository, run_mode="pilot", command=["python", "pilot.py"],
+                started_at_utc="2026-07-30T00:00:00Z",
+                completed_at_utc="2026-07-30T00:00:01Z",
+                model_path_or_id="fake-model", tokenizer_path_or_id="fake-tokenizer",
+                input_paths=[P1_INPUT], generation_config=DECODE_CONFIG, seed=42,
+                gpu_identity=None, output_directory=dirty_output, exit_status="success", exit_code=0,
+                fake_backend=True, reconciliation=chain["reconciliation"], offline_guard=guard,
+                runtime_versions={"python": "test", "torch": None, "transformers": None, "cuda": None},
+            )
+            self.assertTrue(dirty_manifest["dirty"])
+
+            path = write_run_manifest(clean_output, clean_manifest)
             self.assertEqual(validate_run_manifest(json.loads(path.read_text(encoding="utf-8")))["run_mode"], "pilot")
-            invalid = manifest.as_dict()
+            invalid = clean_manifest.as_dict()
             invalid["reconciliation"]["completed_item_count"] = 0
             with self.assertRaises(RunManifestError):
                 validate_run_manifest(invalid)
             with self.assertRaises(RunManifestError):
-                write_run_manifest(output, manifest)
+                write_run_manifest(clean_output, clean_manifest)
 
 
 if __name__ == "__main__":
