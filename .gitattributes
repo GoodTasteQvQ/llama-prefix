@@ -10,9 +10,4 @@ data/safe_pairs.json -text -diff
 data/safe_pairs.example.json -text -diff
 data/single_prompt_bomb.json -text -diff
 data/stage3/p1_harmful_do_not_answer_v1/** -text -diff
-
-stage3_artifacts_final_round7/** -text -diff
-stage3_artifacts_final_round8/** -text -diff
-stage3_artifacts_final_round9/** -text -diff
-stage3_artifacts_final_round10/** -text -diff
-"writing/stage3 design/verification_receipts/**" -text -diff
+configs/stage3/p1_harmful_do_not_answer_v1.json text eol=lf

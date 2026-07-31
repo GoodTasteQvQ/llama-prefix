@@ -1,0 +1,21 @@
+{
+  "fixture_schema": "paper1-stage3-two-phase-failure-v1",
+  "synthetic_data": true,
+  "results": [
+    {"case_id":"incomplete_pair","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"INCOMPLETE_PAIR","detail":"P2-U(A):syn-A-pair-00"},
+    {"case_id":"empty_arm","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"EMPTY_ARM","detail":"P2-U(A)"},
+    {"case_id":"invalid_pi","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"INVALID_PI","detail":"pi:syn-A-00-all"},
+    {"case_id":"phase2_n_h_zero","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"PHASE2_ZERO_SAMPLE","detail":"h-A-all"},
+    {"case_id":"phase2_n_h_one_noncensus","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"PHASE2_NONCENSUS_SINGLETON","detail":"h-A-all"},
+    {"case_id":"nonfinite_value","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"NONFINITE_VALUE","detail":"judge:syn-A-00-all"},
+    {"case_id":"invalid_residual_denominator","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"INVALID_RESIDUAL_DENOMINATOR","detail":"P2-U(A):content-token"},
+    {"case_id":"frame_hash_mismatch","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"FRAME_HASH_MISMATCH","detail":"prompt_frame"},
+    {"case_id":"compound_hash_precedes_invalid_pi","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"FRAME_HASH_MISMATCH","detail":"prompt_frame"},
+    {"case_id":"wrong_member_order","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"MEMBER_ORDER"},
+    {"case_id":"insufficient_prompt_clusters","status":"INSUFFICIENT_CLUSTERS_NON_ESTIMABLE","reason_code":"FEWER_THAN_15_UNIQUE_PROMPTS","detail":"P2-U(A)"},
+    {"case_id":"kish_ess_below_20","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"KISH_ESS_BELOW_20","detail":"P2-B(T)"},
+    {"case_id":"max_normalized_weight_above_0_20","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"MAX_NORMALIZED_WEIGHT_ABOVE_0_20","detail":"P2-U(A)"},
+    {"case_id":"common_success_9499","status":"RESAMPLING_COMPLETION_NON_ESTIMABLE","reason_code":"COMMON_SUCCESSES_BELOW_9500","detail":"9499<9500"},
+    {"case_id":"member_id_forbidden_in_sync","status":"INPUT_INVALID_NON_ESTIMABLE","reason_code":"MEMBER_ID_IN_SYNC_UNIT","detail":"member_id"}
+  ]
+}

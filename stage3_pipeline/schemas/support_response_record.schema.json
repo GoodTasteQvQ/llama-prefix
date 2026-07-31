@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Paper 1 Stage 3 support response record",
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "binary64": {"type": "object", "additionalProperties": false, "required": ["value", "binary64_hex"], "properties": {"value": {"type": "number"}, "binary64_hex": {"type": "string", "minLength": 1}}},
+    "binaryOrNull": {"anyOf": [{"$ref": "#/$defs/binary64"}, {"type": "null"}]},
+    "dose": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "required": ["status", "failure_code", "nominal_c", "mu_estimator", "mu_value", "mu_source_sha256", "alpha_pre_dtype", "alpha_post_dtype", "pre_hook_l2", "post_hook_l2", "relative_dose", "norm_ratio", "vector_alignment", "cosine_drift", "measurement_dose_sha256", "generation_status", "phase", "use_cache"],
+      "properties": {
+        "status": {"enum": ["VALIDATED", "INVALID"]}, "failure_code": {"type": ["string", "null"]},
+        "nominal_c": {"$ref": "#/$defs/binaryOrNull"}, "mu_estimator": {"const": "mu_all_tw"}, "mu_value": {"$ref": "#/$defs/binaryOrNull"},
+        "mu_source_sha256": {"$ref": "#/$defs/sha"}, "alpha_pre_dtype": {"$ref": "#/$defs/binaryOrNull"}, "alpha_post_dtype": {"$ref": "#/$defs/binaryOrNull"},
+        "pre_hook_l2": {"$ref": "#/$defs/binaryOrNull"}, "post_hook_l2": {"$ref": "#/$defs/binaryOrNull"}, "relative_dose": {"$ref": "#/$defs/binaryOrNull"},
+        "norm_ratio": {"$ref": "#/$defs/binaryOrNull"}, "vector_alignment": {"$ref": "#/$defs/binaryOrNull"}, "cosine_drift": {"$ref": "#/$defs/binaryOrNull"},
+        "measurement_dose_sha256": {"$ref": "#/$defs/sha"},
+        "generation_status": {"enum": ["COMPLETED", "TERMINAL_TECHNICAL_FAILURE", "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"]},
+        "phase": {"const": "decode-only"}, "use_cache": {"const": true}
+      }
+    }
+  },
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend", "logical_id", "identity_sha256", "generation_record_sha256", "judge_record_sha256", "prompt_id", "vector_id", "anchor", "estimator", "scheduled_identity_match", "generation_completed", "judge_eligible", "judge_label_parsed", "identity_complete", "identity_collision", "dose_denominator_valid", "dose_geometry_finite", "post_dtype_alpha_finite", "generation_terminal_status", "judge_terminal_status", "dose_evidence", "label", "terminal_status", "missingness_code", "retained", "record_sha256"],
+  "properties": {
+    "schema_version": {"const": "paper1-stage3-support-response-record-v1"}, "protocol_version": {"const": "paper1-stage3-current-v1"},
+    "run_mode": {"enum": ["smoke", "pilot", "paper"]}, "paper_result_eligible": {"const": false}, "fake_backend": {"type": "boolean"},
+    "logical_id": {"type": "string", "minLength": 1}, "identity_sha256": {"$ref": "#/$defs/sha"}, "generation_record_sha256": {"$ref": "#/$defs/sha"},
+    "judge_record_sha256": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]}, "prompt_id": {"type": "string", "minLength": 1}, "vector_id": {"type": "string", "minLength": 1},
+    "anchor": {"enum": ["A", "T", "H"]}, "estimator": {"const": "mu_all_tw"},
+    "scheduled_identity_match": {"type": "boolean"}, "generation_completed": {"type": "boolean"}, "judge_eligible": {"type": "boolean"}, "judge_label_parsed": {"type": "boolean"},
+    "identity_complete": {"type": "boolean"}, "identity_collision": {"type": "boolean"}, "dose_denominator_valid": {"type": "boolean"}, "dose_geometry_finite": {"type": "boolean"}, "post_dtype_alpha_finite": {"type": "boolean"},
+    "generation_terminal_status": {"enum": ["COMPLETED", "TERMINAL_TECHNICAL_FAILURE", "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"]},
+    "judge_terminal_status": {"enum": ["PARSED", "TERMINAL_PARSE_OR_INFRASTRUCTURE_FAILURE", "TERMINAL_INDETERMINATE_FAILURE", null]},
+    "dose_evidence": {"$ref": "#/$defs/dose"}, "label": {"enum": ["broken", "unsafe", "refusal", "safe", null]},
+    "terminal_status": {"enum": ["COMPLETED_PARSED", "NON_ESTIMABLE_IDENTITY", "NON_ESTIMABLE_DOSE", "TERMINAL_GENERATION_TECHNICAL_FAILURE", "TERMINAL_GENERATION_DETERMINISTIC_FAILURE", "TERMINAL_GENERATION_INDETERMINATE_FAILURE", "TERMINAL_PREJUDGE_FAILURE", "TERMINAL_JUDGE_FAILURE", "TERMINAL_JUDGE_INDETERMINATE_FAILURE"]},
+    "missingness_code": {"type": ["string", "null"]}, "retained": {"type": "boolean"}, "record_sha256": {"$ref": "#/$defs/sha"}
+  },
+  "allOf": [{"if": {"properties": {"generation_completed": {"const": false}}, "required": ["generation_completed"]}, "then": {"properties": {"judge_eligible": {"const": false}, "judge_record_sha256": {"type": "null"}}}}]
+}

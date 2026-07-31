@@ -1,38 +1,52 @@
 {
-  "additionalProperties": false,
-  "properties": {
-    "attempt_count": {"maximum": 2, "minimum": 1, "type": "integer"},
-    "attempts": {
-      "items": {
-        "additionalProperties": false,
-        "properties": {
-          "attempt_index": {"maximum": 2, "minimum": 1, "type": "integer"},
-          "diagnostics": {"type": "object"},
-          "failure_code": {"minLength": 1, "type": ["string", "null"]},
-          "output_text": {"type": ["string", "null"]},
-          "status": {"enum": ["COMPLETED", "TECHNICAL_FAILURE_RETRYABLE", "TERMINAL_TECHNICAL_FAILURE", "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"]}
-        },
-        "required": ["attempt_index", "status", "output_text", "failure_code", "diagnostics"],
-        "type": "object"
-      },
-      "maxItems": 2,
-      "minItems": 1,
-      "type": "array"
-    },
-    "formal_experiment": {"type": "boolean"},
-    "generation_completed": {"type": "boolean"},
-    "identity_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
-    "logical_id": {"minLength": 1, "type": "string"},
-    "output_text": {"type": ["string", "null"]},
-    "protocol_version": {"const": "v3.5-rc2"},
-    "record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
-    "request_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
-    "retry_count": {"maximum": 1, "minimum": 0, "type": "integer"},
-    "schema_version": {"const": "paper1-stage3-generation-record-v1"},
-    "synthetic": {"type": "boolean"},
-    "terminal_status": {"enum": ["COMPLETED", "TERMINAL_TECHNICAL_FAILURE", "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"]}
-  },
-  "required": ["schema_version", "protocol_version", "synthetic", "formal_experiment", "logical_id", "identity_sha256", "request_sha256", "attempts", "attempt_count", "retry_count", "terminal_status", "generation_completed", "output_text", "record_sha256"],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Paper 1 Stage 3 generation record",
-  "type": "object"
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "logical_id", "identity_sha256", "request_sha256", "generation_config", "attempts",
+    "attempt_count", "retry_count", "terminal_status", "generation_completed", "output_text",
+    "record_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "paper1-stage3-generation-record-v2"},
+    "protocol_version": {"const": "paper1-stage3-current-v1"},
+    "run_mode": {"enum": ["smoke", "pilot", "paper"]},
+    "paper_result_eligible": {"const": false},
+    "fake_backend": {"type": "boolean"},
+    "logical_id": {"type": "string", "minLength": 1},
+    "identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "request_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "generation_config": {"type": "object"},
+    "attempts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["attempt_index", "status", "output_text", "failure_code", "diagnostics"],
+        "properties": {
+          "attempt_index": {"type": "integer", "minimum": 1, "maximum": 2},
+          "status": {"enum": [
+            "COMPLETED", "TECHNICAL_FAILURE_RETRYABLE", "TERMINAL_TECHNICAL_FAILURE",
+            "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"
+          ]},
+          "output_text": {"type": ["string", "null"]},
+          "failure_code": {"type": ["string", "null"]},
+          "diagnostics": {"type": "object"}
+        }
+      }
+    },
+    "attempt_count": {"type": "integer", "minimum": 1, "maximum": 2},
+    "retry_count": {"type": "integer", "minimum": 0, "maximum": 1},
+    "terminal_status": {"enum": [
+      "COMPLETED", "TERMINAL_TECHNICAL_FAILURE", "TERMINAL_FAILURE",
+      "TERMINAL_INDETERMINATE_FAILURE"
+    ]},
+    "generation_completed": {"type": "boolean"},
+    "output_text": {"type": ["string", "null"]},
+    "record_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
 }

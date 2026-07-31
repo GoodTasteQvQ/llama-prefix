@@ -1,0 +1,225 @@
+{
+  "fixture_schema": "paper1-stage3-retained-bootstrap-success-input-v1",
+  "synthetic_data": true,
+  "rng_success": {
+    "cases": [
+      {"case_id": "k1_prompt_rep1", "block_id": "k1-profile", "family": "k1-profile", "axis": "prompt", "frame_hash": "0000000000000000000000000000000000000000000000000000000000000000", "replicate": 1, "upper": 3, "draw_count": 5},
+      {"case_id": "k1_vector_rep1", "block_id": "k1-profile", "family": "k1-profile", "axis": "vector", "frame_hash": "1111111111111111111111111111111111111111111111111111111111111111", "replicate": 1, "upper": 3, "draw_count": 5},
+      {"case_id": "clean_prompt_rep10000", "block_id": "harmful-clean-prompt", "family": "harmful-clean", "axis": "prompt", "frame_hash": "2222222222222222222222222222222222222222222222222222222222222222", "replicate": 10000, "upper": 5, "draw_count": 5},
+      {"case_id": "benign_prompt_rep1", "block_id": "benign-broken-prompt", "family": "benign-broken", "axis": "prompt", "frame_hash": "3333333333333333333333333333333333333333333333333333333333333333", "replicate": 1, "upper": 3, "draw_count": 5}
+    ],
+    "scripted_rejection": {
+      "upper": 10,
+      "words": [18446744073709551615, 17]
+    }
+  },
+  "k1": {
+    "schema_version": "paper1-stage3-retained-bootstrap-input-v1",
+    "synthetic_data": true,
+    "block_type": "k1",
+    "prompt_frame": [
+      {"position": 0, "prompt_id": "syn-kp01"},
+      {"position": 1, "prompt_id": "syn-kp02"},
+      {"position": 2, "prompt_id": "syn-kp03"}
+    ],
+    "vector_frame": [
+      {"position": 0, "vector_id": "syn-kv01"},
+      {"position": 1, "vector_id": "syn-kv02"},
+      {"position": 2, "vector_id": "syn-kv03"}
+    ],
+    "cells": [
+      {
+        "cell_id": "P2_A_all",
+        "records": [
+          {"row_id": "syn-kaa-01-01", "prompt_id": "syn-kp01", "vector_id": "syn-kv01", "label": "broken"},
+          {"row_id": "syn-kaa-01-02", "prompt_id": "syn-kp01", "vector_id": "syn-kv02", "label": "unsafe"},
+          {"row_id": "syn-kaa-01-03", "prompt_id": "syn-kp01", "vector_id": "syn-kv03", "label": "safe"},
+          {"row_id": "syn-kaa-02-01", "prompt_id": "syn-kp02", "vector_id": "syn-kv01", "label": "refusal"},
+          {"row_id": "syn-kaa-02-02", "prompt_id": "syn-kp02", "vector_id": "syn-kv02", "label": "unsafe"},
+          {"row_id": "syn-kaa-02-03", "prompt_id": "syn-kp02", "vector_id": "syn-kv03", "label": "safe"},
+          {"row_id": "syn-kaa-03-01", "prompt_id": "syn-kp03", "vector_id": "syn-kv01", "label": "broken"},
+          {"row_id": "syn-kaa-03-02", "prompt_id": "syn-kp03", "vector_id": "syn-kv02", "label": "refusal"},
+          {"row_id": "syn-kaa-03-03", "prompt_id": "syn-kp03", "vector_id": "syn-kv03", "label": "safe"}
+        ]
+      },
+      {
+        "cell_id": "P2_A_content",
+        "records": [
+          {"row_id": "syn-kac-01-01", "prompt_id": "syn-kp01", "vector_id": "syn-kv01", "label": "unsafe"},
+          {"row_id": "syn-kac-01-02", "prompt_id": "syn-kp01", "vector_id": "syn-kv02", "label": "refusal"},
+          {"row_id": "syn-kac-01-03", "prompt_id": "syn-kp01", "vector_id": "syn-kv03", "label": "safe"},
+          {"row_id": "syn-kac-02-01", "prompt_id": "syn-kp02", "vector_id": "syn-kv01", "label": "broken"},
+          {"row_id": "syn-kac-02-02", "prompt_id": "syn-kp02", "vector_id": "syn-kv02", "label": "refusal"},
+          {"row_id": "syn-kac-02-03", "prompt_id": "syn-kp02", "vector_id": "syn-kv03", "label": "safe"},
+          {"row_id": "syn-kac-03-01", "prompt_id": "syn-kp03", "vector_id": "syn-kv01", "label": "unsafe"},
+          {"row_id": "syn-kac-03-02", "prompt_id": "syn-kp03", "vector_id": "syn-kv02", "label": "unsafe"},
+          {"row_id": "syn-kac-03-03", "prompt_id": "syn-kp03", "vector_id": "syn-kv03", "label": "safe"}
+        ]
+      },
+      {
+        "cell_id": "P2_T_all",
+        "records": [
+          {"row_id": "syn-kta-01-01", "prompt_id": "syn-kp01", "vector_id": "syn-kv01", "label": "broken"},
+          {"row_id": "syn-kta-01-02", "prompt_id": "syn-kp01", "vector_id": "syn-kv02", "label": "broken"},
+          {"row_id": "syn-kta-01-03", "prompt_id": "syn-kp01", "vector_id": "syn-kv03", "label": "unsafe"},
+          {"row_id": "syn-kta-02-01", "prompt_id": "syn-kp02", "vector_id": "syn-kv01", "label": "refusal"},
+          {"row_id": "syn-kta-02-02", "prompt_id": "syn-kp02", "vector_id": "syn-kv02", "label": "safe"},
+          {"row_id": "syn-kta-02-03", "prompt_id": "syn-kp02", "vector_id": "syn-kv03", "label": "safe"},
+          {"row_id": "syn-kta-03-01", "prompt_id": "syn-kp03", "vector_id": "syn-kv01", "label": "broken"},
+          {"row_id": "syn-kta-03-02", "prompt_id": "syn-kp03", "vector_id": "syn-kv02", "label": "unsafe"},
+          {"row_id": "syn-kta-03-03", "prompt_id": "syn-kp03", "vector_id": "syn-kv03", "label": "refusal"}
+        ]
+      },
+      {
+        "cell_id": "P2_T_content",
+        "records": [
+          {"row_id": "syn-ktc-01-01", "prompt_id": "syn-kp01", "vector_id": "syn-kv01", "label": "refusal"},
+          {"row_id": "syn-ktc-01-02", "prompt_id": "syn-kp01", "vector_id": "syn-kv02", "label": "unsafe"},
+          {"row_id": "syn-ktc-01-03", "prompt_id": "syn-kp01", "vector_id": "syn-kv03", "label": "safe"},
+          {"row_id": "syn-ktc-02-01", "prompt_id": "syn-kp02", "vector_id": "syn-kv01", "label": "broken"},
+          {"row_id": "syn-ktc-02-02", "prompt_id": "syn-kp02", "vector_id": "syn-kv02", "label": "unsafe"},
+          {"row_id": "syn-ktc-02-03", "prompt_id": "syn-kp02", "vector_id": "syn-kv03", "label": "safe"},
+          {"row_id": "syn-ktc-03-01", "prompt_id": "syn-kp03", "vector_id": "syn-kv01", "label": "refusal"},
+          {"row_id": "syn-ktc-03-02", "prompt_id": "syn-kp03", "vector_id": "syn-kv02", "label": "broken"},
+          {"row_id": "syn-ktc-03-03", "prompt_id": "syn-kp03", "vector_id": "syn-kv03", "label": "safe"}
+        ]
+      }
+    ]
+  },
+  "harmful_clean": {
+    "schema_version": "paper1-stage3-retained-bootstrap-input-v1",
+    "synthetic_data": true,
+    "block_type": "harmful_clean",
+    "prompt_frame": [
+      {"position": 0, "prompt_id": "syn-hc01"},
+      {"position": 1, "prompt_id": "syn-hc02"},
+      {"position": 2, "prompt_id": "syn-hc03"},
+      {"position": 3, "prompt_id": "syn-hc04"},
+      {"position": 4, "prompt_id": "syn-hc05"}
+    ],
+    "records": [
+      {"row_id": "syn-hcr01", "prompt_id": "syn-hc01", "label": "broken"},
+      {"row_id": "syn-hcr02", "prompt_id": "syn-hc02", "label": "unsafe"},
+      {"row_id": "syn-hcr03", "prompt_id": "syn-hc03", "label": "refusal"},
+      {"row_id": "syn-hcr04", "prompt_id": "syn-hc04", "label": "safe"},
+      {"row_id": "syn-hcr05", "prompt_id": "syn-hc05", "label": "safe"}
+    ]
+  },
+  "zero_sd": {
+    "schema_version": "paper1-stage3-retained-bootstrap-input-v1",
+    "synthetic_data": true,
+    "block_type": "harmful_clean",
+    "prompt_frame": [
+      {"position": 0, "prompt_id": "syn-z01"},
+      {"position": 1, "prompt_id": "syn-z02"},
+      {"position": 2, "prompt_id": "syn-z03"}
+    ],
+    "records": [
+      {"row_id": "syn-zr01", "prompt_id": "syn-z01", "label": "safe"},
+      {"row_id": "syn-zr02", "prompt_id": "syn-z02", "label": "safe"},
+      {"row_id": "syn-zr03", "prompt_id": "syn-z03", "label": "safe"}
+    ]
+  },
+  "benign_broken": {
+    "schema_version": "paper1-stage3-retained-bootstrap-input-v1",
+    "synthetic_data": true,
+    "block_type": "benign_broken",
+    "complete_prompt_frame": [
+      {"position": 0, "prompt_id": "syn-bp01"},
+      {"position": 1, "prompt_id": "syn-bp02"},
+      {"position": 2, "prompt_id": "syn-bp03"}
+    ],
+    "vector_frame": [
+      {"position": 0, "vector_id": "syn-bv01"}, {"position": 1, "vector_id": "syn-bv02"},
+      {"position": 2, "vector_id": "syn-bv03"}, {"position": 3, "vector_id": "syn-bv04"},
+      {"position": 4, "vector_id": "syn-bv05"}, {"position": 5, "vector_id": "syn-bv06"},
+      {"position": 6, "vector_id": "syn-bv07"}, {"position": 7, "vector_id": "syn-bv08"},
+      {"position": 8, "vector_id": "syn-bv09"}, {"position": 9, "vector_id": "syn-bv10"},
+      {"position": 10, "vector_id": "syn-bv11"}, {"position": 11, "vector_id": "syn-bv12"},
+      {"position": 12, "vector_id": "syn-bv13"}, {"position": 13, "vector_id": "syn-bv14"},
+      {"position": 14, "vector_id": "syn-bv15"}, {"position": 15, "vector_id": "syn-bv16"},
+      {"position": 16, "vector_id": "syn-bv17"}, {"position": 17, "vector_id": "syn-bv18"},
+      {"position": 18, "vector_id": "syn-bv19"}, {"position": 19, "vector_id": "syn-bv20"}
+    ],
+    "prompts": [
+      {
+        "prompt_id": "syn-bp01",
+        "clean": {"response_id": "syn-bp01-clean", "label": "helpful"},
+        "steered": [
+          {"response_id": "syn-bp01-v01", "vector_id": "syn-bv01", "label": "broken"},
+          {"response_id": "syn-bp01-v02", "vector_id": "syn-bv02", "label": "broken"},
+          {"response_id": "syn-bp01-v03", "vector_id": "syn-bv03", "label": "broken"},
+          {"response_id": "syn-bp01-v04", "vector_id": "syn-bv04", "label": "broken"},
+          {"response_id": "syn-bp01-v05", "vector_id": "syn-bv05", "label": "broken"},
+          {"response_id": "syn-bp01-v06", "vector_id": "syn-bv06", "label": "helpful"},
+          {"response_id": "syn-bp01-v07", "vector_id": "syn-bv07", "label": "helpful"},
+          {"response_id": "syn-bp01-v08", "vector_id": "syn-bv08", "label": "helpful"},
+          {"response_id": "syn-bp01-v09", "vector_id": "syn-bv09", "label": "helpful"},
+          {"response_id": "syn-bp01-v10", "vector_id": "syn-bv10", "label": "helpful"},
+          {"response_id": "syn-bp01-v11", "vector_id": "syn-bv11", "label": "helpful"},
+          {"response_id": "syn-bp01-v12", "vector_id": "syn-bv12", "label": "helpful"},
+          {"response_id": "syn-bp01-v13", "vector_id": "syn-bv13", "label": "helpful"},
+          {"response_id": "syn-bp01-v14", "vector_id": "syn-bv14", "label": "helpful"},
+          {"response_id": "syn-bp01-v15", "vector_id": "syn-bv15", "label": "helpful"},
+          {"response_id": "syn-bp01-v16", "vector_id": "syn-bv16", "label": "helpful"},
+          {"response_id": "syn-bp01-v17", "vector_id": "syn-bv17", "label": "helpful"},
+          {"response_id": "syn-bp01-v18", "vector_id": "syn-bv18", "label": "helpful"},
+          {"response_id": "syn-bp01-v19", "vector_id": "syn-bv19", "label": "helpful"},
+          {"response_id": "syn-bp01-v20", "vector_id": "syn-bv20", "label": "helpful"}
+        ]
+      },
+      {
+        "prompt_id": "syn-bp02",
+        "clean": {"response_id": "syn-bp02-clean", "label": "broken"},
+        "steered": [
+          {"response_id": "syn-bp02-v01", "vector_id": "syn-bv01", "label": "broken"},
+          {"response_id": "syn-bp02-v02", "vector_id": "syn-bv02", "label": "broken"},
+          {"response_id": "syn-bp02-v03", "vector_id": "syn-bv03", "label": "broken"},
+          {"response_id": "syn-bp02-v04", "vector_id": "syn-bv04", "label": "broken"},
+          {"response_id": "syn-bp02-v05", "vector_id": "syn-bv05", "label": "broken"},
+          {"response_id": "syn-bp02-v06", "vector_id": "syn-bv06", "label": "broken"},
+          {"response_id": "syn-bp02-v07", "vector_id": "syn-bv07", "label": "broken"},
+          {"response_id": "syn-bp02-v08", "vector_id": "syn-bv08", "label": "broken"},
+          {"response_id": "syn-bp02-v09", "vector_id": "syn-bv09", "label": "broken"},
+          {"response_id": "syn-bp02-v10", "vector_id": "syn-bv10", "label": "broken"},
+          {"response_id": "syn-bp02-v11", "vector_id": "syn-bv11", "label": "helpful"},
+          {"response_id": "syn-bp02-v12", "vector_id": "syn-bv12", "label": "helpful"},
+          {"response_id": "syn-bp02-v13", "vector_id": "syn-bv13", "label": "helpful"},
+          {"response_id": "syn-bp02-v14", "vector_id": "syn-bv14", "label": "helpful"},
+          {"response_id": "syn-bp02-v15", "vector_id": "syn-bv15", "label": "helpful"},
+          {"response_id": "syn-bp02-v16", "vector_id": "syn-bv16", "label": "helpful"},
+          {"response_id": "syn-bp02-v17", "vector_id": "syn-bv17", "label": "helpful"},
+          {"response_id": "syn-bp02-v18", "vector_id": "syn-bv18", "label": "helpful"},
+          {"response_id": "syn-bp02-v19", "vector_id": "syn-bv19", "label": "helpful"},
+          {"response_id": "syn-bp02-v20", "vector_id": "syn-bv20", "label": "helpful"}
+        ]
+      },
+      {
+        "prompt_id": "syn-bp03",
+        "clean": {"response_id": "syn-bp03-clean", "label": "helpful"},
+        "steered": [
+          {"response_id": "syn-bp03-v01", "vector_id": "syn-bv01", "label": "broken"},
+          {"response_id": "syn-bp03-v02", "vector_id": "syn-bv02", "label": "broken"},
+          {"response_id": "syn-bp03-v03", "vector_id": "syn-bv03", "label": "broken"},
+          {"response_id": "syn-bp03-v04", "vector_id": "syn-bv04", "label": "broken"},
+          {"response_id": "syn-bp03-v05", "vector_id": "syn-bv05", "label": "broken"},
+          {"response_id": "syn-bp03-v06", "vector_id": "syn-bv06", "label": "broken"},
+          {"response_id": "syn-bp03-v07", "vector_id": "syn-bv07", "label": "broken"},
+          {"response_id": "syn-bp03-v08", "vector_id": "syn-bv08", "label": "broken"},
+          {"response_id": "syn-bp03-v09", "vector_id": "syn-bv09", "label": "broken"},
+          {"response_id": "syn-bp03-v10", "vector_id": "syn-bv10", "label": "broken"},
+          {"response_id": "syn-bp03-v11", "vector_id": "syn-bv11", "label": "broken"},
+          {"response_id": "syn-bp03-v12", "vector_id": "syn-bv12", "label": "broken"},
+          {"response_id": "syn-bp03-v13", "vector_id": "syn-bv13", "label": "broken"},
+          {"response_id": "syn-bp03-v14", "vector_id": "syn-bv14", "label": "broken"},
+          {"response_id": "syn-bp03-v15", "vector_id": "syn-bv15", "label": "broken"},
+          {"response_id": "syn-bp03-v16", "vector_id": "syn-bv16", "label": "helpful"},
+          {"response_id": "syn-bp03-v17", "vector_id": "syn-bv17", "label": "helpful"},
+          {"response_id": "syn-bp03-v18", "vector_id": "syn-bv18", "label": "helpful"},
+          {"response_id": "syn-bp03-v19", "vector_id": "syn-bv19", "label": "helpful"},
+          {"response_id": "syn-bp03-v20", "vector_id": "syn-bv20", "label": "helpful"}
+        ]
+      }
+    ]
+  }
+}

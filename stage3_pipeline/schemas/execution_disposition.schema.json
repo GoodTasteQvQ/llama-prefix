@@ -1,15 +1,31 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Paper 1 Stage 3 per-identity terminal disposition",
+  "type": "object",
   "additionalProperties": false,
+  "required": [
+    "schema_version", "logical_id", "identity_sha256", "terminal_disposition",
+    "generation_record_sha256", "judge_record_sha256", "response_record_sha256",
+    "integrity_block_reason"
+  ],
   "properties": {
-    "disposition": {"enum": ["EXECUTED", "UNATTEMPTED_DUE_INTEGRITY_BLOCK", "SYNTHETIC_NOT_EXECUTED"]},
-    "generation_record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
-    "identity_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
-    "judge_record_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
-    "logical_id": {"minLength": 1, "type": "string"},
-    "parent_self_sha256": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
-    "parent_status": {"minLength": 1, "type": ["string", "null"]}
-  },
-  "required": ["logical_id", "identity_sha256", "disposition", "generation_record_sha256", "judge_record_sha256", "parent_status", "parent_self_sha256"],
-  "title": "Paper 1 Stage 3 per-identity execution disposition",
-  "type": "object"
+    "schema_version": {"const": "paper1-stage3-execution-disposition-v2"},
+    "logical_id": {"type": "string", "minLength": 1},
+    "identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "terminal_disposition": {"enum": [
+      "COMPLETED_PARSED", "NON_ESTIMABLE_IDENTITY", "NON_ESTIMABLE_DOSE",
+      "TERMINAL_GENERATION_TECHNICAL_FAILURE",
+      "TERMINAL_GENERATION_DETERMINISTIC_FAILURE",
+      "TERMINAL_GENERATION_INDETERMINATE_FAILURE", "TERMINAL_PREJUDGE_FAILURE",
+      "TERMINAL_JUDGE_FAILURE", "TERMINAL_JUDGE_INDETERMINATE_FAILURE",
+      "UNATTEMPTED_DUE_INTEGRITY_BLOCK"
+    ]},
+    "generation_record_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "judge_record_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "response_record_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "integrity_block_reason": {"enum": [
+      "SUPPORT_A_NON_ESTIMABLE_IDENTITY", "SUPPORT_T_NON_ESTIMABLE_IDENTITY",
+      "EXTERNAL_INPUT_INTEGRITY", "P1_DOSE_NON_ESTIMABLE", null
+    ]}
+  }
 }

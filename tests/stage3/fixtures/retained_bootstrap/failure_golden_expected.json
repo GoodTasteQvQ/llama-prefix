@@ -1,0 +1,16 @@
+{
+  "fixture_schema": "paper1-stage3-retained-bootstrap-failure-v1",
+  "synthetic_data": true,
+  "results": [
+    {"case_id": "identity_collision_precedes_order_and_membership", "code": "IDENTITY_COLLISION", "detail": "duplicate prompt_id", "report_status": "INPUT_INVALID_NON_ESTIMABLE", "status": "NON_ESTIMABLE"},
+    {"case_id": "record_collision_precedes_frame_order", "code": "IDENTITY_COLLISION", "detail": "duplicate harmful-clean row_id", "report_status": "INPUT_INVALID_NON_ESTIMABLE", "status": "NON_ESTIMABLE"},
+    {"case_id": "insufficient_prompt_units", "code": "INSUFFICIENT_RESAMPLING_UNITS", "detail": "harmful clean requires at least two prompts", "report_status": "INSUFFICIENT_CLUSTERS_NON_ESTIMABLE", "status": "NON_ESTIMABLE"},
+    {"case_id": "invalid_profile_denominator", "code": "INVALID_DENOMINATOR", "detail": "profile denominator is zero", "report_status": "INPUT_INVALID_NON_ESTIMABLE", "status": "NON_ESTIMABLE"},
+    {"case_id": "common_success_9499_fails", "code": "RESAMPLING_COMPLETION_INSUFFICIENT", "detail": "9499<9500", "report_status": "RESAMPLING_COMPLETION_NON_ESTIMABLE", "status": "NON_ESTIMABLE"},
+    {"case_id": "common_success_9500_passes", "code": null, "degenerate_bootstrap": true, "detail": "9500 common successes accepted; degenerate interval retained", "replicates_successful": 9500, "report_status": null, "status": "EXPECTED_PASS"},
+    {"case_id": "nonfinite_point", "code": "NONFINITE_INPUT", "detail": "point statistic is nonfinite", "report_status": "INPUT_INVALID_NON_ESTIMABLE", "status": "NON_ESTIMABLE"},
+    {"case_id": "member_id_forbidden_in_sync", "code": "RNG_IDENTITY_INVALID", "detail": "member identity must not enter sync_unit_id", "report_status": "IMPLEMENTATION_FIX_REQUIRED", "status": "NON_ESTIMABLE"},
+    {"case_id": "replicate_zero_forbidden", "code": "RNG_IDENTITY_INVALID", "detail": "replicate_index must start at one", "report_status": "IMPLEMENTATION_FIX_REQUIRED", "status": "NON_ESTIMABLE"},
+    {"case_id": "wrong_block_family_forbidden", "code": "RNG_IDENTITY_INVALID", "detail": "block/family/axis combination is not registered", "report_status": "IMPLEMENTATION_FIX_REQUIRED", "status": "NON_ESTIMABLE"}
+  ]
+}

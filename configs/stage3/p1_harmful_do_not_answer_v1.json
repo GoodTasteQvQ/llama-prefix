@@ -1,0 +1,62 @@
+{
+  "schema_version": "paper1-stage3-active-dataset-entry-v1",
+  "role": "D_norm_confirm.harmful",
+  "status": "design_selected",
+  "relative_path": "data/stage3/p1_harmful_do_not_answer_v1/selected_p1_harmful_100.json",
+  "raw_byte_length": 70705,
+  "row_count": 100,
+  "selected_top_level_ordered_fields": [
+    "artifact_type",
+    "candidate_only",
+    "formal_input",
+    "frame_order_rule",
+    "frame_selection_ranks_sha256",
+    "frame_sha256",
+    "frame_source_ids_sha256",
+    "record_count",
+    "records",
+    "schema",
+    "selection_namespace",
+    "self_sha256"
+  ],
+  "selected_record_ordered_fields": [
+    "frame_position",
+    "question",
+    "question_sha256",
+    "record_identity_sha256",
+    "replacement_for_source_id",
+    "risk_area",
+    "selection_disposition",
+    "selection_rank_sha256",
+    "source_id",
+    "specific_harms",
+    "types_of_harm"
+  ],
+  "selected_identity_field": "record_identity_sha256",
+  "selected_source_id_field": "source_id",
+  "selected_raw_sha256": "700c2c391c86273fca01ec9823feb66a3b1927ac39cc81d1de7567c71bebfd36",
+  "canonical_ordered_frame_sha256": "afcb3bcfe3042bf37189fc9718b53389ce0145e43b75efc3364e250e86552410",
+  "source_repository": "Libr-AI/do-not-answer",
+  "source_revision": "460703484df354958a5e1cd7378a38fcb94a2f3e",
+  "source_path": "datasets/Instruction/do_not_answer_en.csv",
+  "source_prompt_field": "question",
+  "upstream_source_id_field": "id",
+  "upstream_raw_sha256": "06acfa39a06a1b33d1f264ce41b4f7a95812010c594fb733ae4717ee0a4544fc",
+  "source_row_count": 939,
+  "selection_filter": {
+    "field": "risk_area",
+    "operator": "strict_string_equality",
+    "value": "Malicious Uses"
+  },
+  "eligible_count": 239,
+  "category_quotas": {
+    "Assisting illegal activities": 55,
+    "Nudging or advising users to perform unethical or unsafe actions": 29,
+    "Reducing the cost of disinformation campaigns": 16
+  },
+  "license": "CC-BY-NC-SA-4.0",
+  "selection_manifest_relative_path": "data/stage3/p1_harmful_do_not_answer_v1/p1_harmful_selection_manifest.json",
+  "category_registry_relative_path": "data/stage3/p1_harmful_do_not_answer_v1/category_registry.json",
+  "license_notice_relative_path": "data/stage3/p1_harmful_do_not_answer_v1/data_license_notice.md",
+  "license_notice_raw_sha256": "cf90c23995486ac9bdb26b6145bec0fee906201bb85ddf4fe06c988a52f98c23"
+}

@@ -1,0 +1,22 @@
+{
+  "fixture_schema": "paper1-stage3-two-phase-failure-input-v1",
+  "synthetic_data": true,
+  "description": "Mutation instructions applied only to the explicitly synthetic success input.",
+  "cases": [
+    {"case_id": "incomplete_pair", "mutation": "incomplete_pair"},
+    {"case_id": "empty_arm", "mutation": "empty_arm"},
+    {"case_id": "invalid_pi", "mutation": "invalid_pi"},
+    {"case_id": "phase2_n_h_zero", "mutation": "phase2_zero_sample"},
+    {"case_id": "phase2_n_h_one_noncensus", "mutation": "phase2_singleton_noncensus"},
+    {"case_id": "nonfinite_value", "mutation": "nonfinite_value"},
+    {"case_id": "invalid_residual_denominator", "mutation": "invalid_residual_denominator"},
+    {"case_id": "frame_hash_mismatch", "mutation": "frame_hash_mismatch"},
+    {"case_id": "compound_hash_precedes_invalid_pi", "mutation": "compound_hash_before_pi"},
+    {"case_id": "wrong_member_order", "mutation": "member_order"},
+    {"case_id": "insufficient_prompt_clusters", "mutation": "insufficient_prompt_clusters"},
+    {"case_id": "kish_ess_below_20", "mutation": "kish_ess_below_20"},
+    {"case_id": "max_normalized_weight_above_0_20", "mutation": "max_normalized_weight_above_0_20"},
+    {"case_id": "common_success_9499", "mutation": "completion_9499"},
+    {"case_id": "member_id_forbidden_in_sync", "mutation": "member_id_in_sync_unit"}
+  ]
+}

@@ -1,17 +1,16 @@
 # Paper 1 Claim-Evidence Matrix
 
-更新时间：2026-07-23
+更新时间：2026-07-30
 
-状态：当前写作和结果解释的唯一主张边界。它更新已归档的
-`writing/archive/paper1_stage3_history/legacy_root/paper1_tdsc_readiness_audit.md`
-中 2026-07-16 的历史矩阵，但不覆盖或改写该历史审计。
+状态：当前写作和结果解释的唯一主张边界。Stage 3 科学设计入口为
+`writing/stage3 design/README.md`。
 
 ## 状态定义
 
 - `SUPPORTED`：已有本地可复核结果，可在限定边界内写入正文。
 - `SUPPORTED_WITH_BOUNDARY`：方向已有证据，但只能使用矩阵中的限定措辞。
 - `PARTIAL`：已有先导或描述性证据，尚不能作为强结论。
-- `DESIGN_FROZEN / NOT RUN`：协议已冻结，但没有正式结果。
+- `DESIGN COMPLETE / NOT RUN`：科学设计完整，但没有 paper-run 结果。
 - `NOT SUPPORTED`：当前证据不支持；只能写 limitation/future work。
 - `FORBIDDEN`：与当前设计或证据直接冲突，不得写入论文。
 
@@ -24,8 +23,8 @@
 | E03 | Llama 六方法 Track A/B full1000 judge | completed | `results/stage1_phase_aware/formal/llama31/judge_summaries/llama31_stage1_qwen3_v2_full1000_judge_summary.json` |
 | E04 | Qwen/Llama cross-model figures | completed | `results/stage1_phase_aware/formal/cross_model_paper1/tdsc_style_figures/` |
 | E05 | Stage 2 failure-aware analysis | completed but narrative needs Llama-full1000 refresh | `实验notion/notion_md/阶段2 Decode Collapse 诊断.md` |
-| E06 | Stage 3 compact calibration design | design-frozen, no formal results | `writing/stage3 design/CURRENT_RELEASE.md` (`v3.5-rc2 + binding-amendment-01`) |
-| E07 | Stage 3 closure and artifact verification | `DESIGN-FREEZE-PASS / RUN-BLOCKED` | archived terminal closure audit plus `writing/stage3 design/v3_5_rc2_binding_amendment_01/amendment_release_manifest.json` and aggregate verifier |
+| E06 | Stage 3 compact calibration design | design complete; implementation in active development; no paper results | `writing/stage3 design/paper1_stage3_experiment_design.md` |
+| E07 | Stage 3 implementation tests | pending current smoke/pilot, offline, schema, budget, and statistical golden checks | `tests/stage3/` |
 | E08 | Mistral formal judged summary | not located | no current result claim permitted |
 
 ## 主张—证据矩阵
@@ -39,14 +38,14 @@
 | C5 | Llama 比 Qwen 更易受攻击或更不稳定 | `NOT SUPPORTED` | 峰值、层、模板和输出模式不同，但没有匹配的跨模型脆弱性 estimand/推断 | 只能报告各模型数值和异质性 | 匹配 prompt/layer/dose 加正式跨模型 contrast |
 | C6 | first-k/decay 可以减少 collapse | `SUPPORTED_WITH_BOUNDARY` | E02/E03 只支持 `k=3`、`decay=0.85` 的两个固定实例 | `the evaluated first-k and decay settings remained more stable but weak` | sweep 后才能声称 schedule-family 规律 |
 | C7 | Qwen/Llama 的 high-strength 低 ASR 主要来自 collapse，而非稳定拒绝增强 | `SUPPORTED_WITH_BOUNDARY` | sustained decode 在 `c=2` 出现约 89%-99% broken，并伴随 repetition | `lower ASR coincides with collapse rather than robust refusal` | 限定当前条件；不可外推所有 activation steering |
-| C8 | all-token versus content-token calibration frame 是否改变 `mu` calibration | `DESIGN_FROZEN / NOT RUN` | E06/E07 已冻结 P1，但尚无 formal norm outcome | 只能写预注册研究问题和方法 | P1 正式结果及预注册 gate |
-| C9 | calibration estimator 是否改变 Qwen unsafe/broken 结果 | `DESIGN_FROZEN / NOT RUN` | E06 已定义 Qwen A/T paired RD，无 formal P2 结果 | 只能写 planned fixed-support estimation | P2/CI 与 matched human sensitivity 完成 |
-| C10 | Attention Sink 或 structural token 导致跨模型 collapse 差异 | `FORBIDDEN` | rc2 无 attention-weight 或跨模型 Stage 3 设计；P1/P2 不能支持该因果链 | 不得写结果性或因果性表述 | 需要独立预注册的跨模型 causal design；不属于 rc2 |
+| C8 | all-token versus content-token calibration frame 是否改变 `mu` calibration | `DESIGN COMPLETE / NOT RUN` | E06 已规定 P1，但尚无 paper-run norm outcome | 只能写预先规定的研究问题和方法 | P1 paper run 结果及 prespecified gate |
+| C9 | calibration estimator 是否改变 Qwen unsafe/broken 结果 | `DESIGN COMPLETE / NOT RUN` | E06 已定义 Qwen A/T paired RD，无 paper-run P2 结果 | 只能写 planned fixed-support estimation | P2/CI 与 matched human sensitivity 完成 |
+| C10 | Attention Sink 或 structural token 导致跨模型 collapse 差异 | `FORBIDDEN` | 当前设计无 attention-weight 或跨模型 Stage 3 实验；P1/P2 不能支持该因果链 | 不得写结果性或因果性表述 | 需要独立的跨模型 causal design；不属于当前 Stage 3 |
 | C11 | 现象已在 Qwen、Llama、Mistral 三模型验证 | `NOT SUPPORTED` | E08 不存在；当前只有 Qwen/Llama formal summary | 写 `across Qwen and Llama` | Mistral config/raw/judged/summary/log 全部归档 |
 | C12 | 结论适用于一般 harmful behaviors | `NOT SUPPORTED` | Stage 1/2 当前 full1000 主要来自单 prompt × random vectors | 明确写 conditional evidence | 匹配的多类别、多 prompt 设计与聚类推断 |
 | C13 | 结论不依赖特定层 | `NOT SUPPORTED` | 当前主要模型各使用一个固定层 | 把 layer 写入实验边界 | 跨 depth 核心矩阵 |
 | C14 | 结论适用于 activation steering 总体，而非 Rogue-style attack family | `NOT SUPPORTED` | 当前只有 Rogue-style random-vector family | 题目/摘要限定 activation-steering implementation audit | 第二独立攻击构造 |
-| C15 | benign integrity 或 human validation 已完成 | `DESIGN_FROZEN / NOT RUN` | E06 包含 benign 与 720-item human design，但无 formal outcome | 不得写已有结果 | 完成 Stage 3 execution、sample lock 和 annotation |
+| C15 | benign integrity 或 human validation 已完成 | `DESIGN COMPLETE / NOT RUN` | E06 包含 benign 与 720-item human design，但无 paper-run outcome | 不得写已有结果 | 完成 Stage 3 paper run、sample allocation 和 annotation |
 | C16 | 在所审计实现中，hook scope、mask application 与 KV-cache execution 共同形成 operational phase semantics | `SUPPORTED_WITH_BOUNDARY` | E01 与 A-F instrumentation 直接记录 prefill/cached-decode/full-sequence/generated-token calls | `the realized intervention phase depends on the combined hook, mask, and cache execution semantics` | 限定公开 v1 与审计配置；跨实现规律需要独立 instrumentation |
 
 ## 当前允许的模型比较结论
@@ -66,7 +65,7 @@
 |---|---|---|
 | P1 gate pass，P2 direction/CI 清晰 | token-frame calibration materially changes measured intervention-dose geometry，并对应 fixed-support Qwen outcome differences | structural token/Attention Sink 导致一般 collapse |
 | P1 pass，P2 不确定或 non-estimable | calibration statistic changes，behavioral consequence remains uncertain | 用点估计升级为行为机制 |
-| P1 gate fail | 在预注册 Qwen frame 下未发现 material calibration shift | 搜索新 estimator/anchor 后宣称正结果 |
+| P1 gate fail | 在预先规定的 Qwen frame 下未发现 material calibration shift | 搜索新 estimator/anchor 后宣称正结果 |
 | human quality gate/CI 失败 | 报告 automated estimate 与明确 limitation | 省略失败并保留强措辞 |
 
 ## 摘要和结论检查表
@@ -78,6 +77,6 @@
 - [ ] 模型比较只报告共同 ordering 和异质性，不做脆弱性排名。
 - [ ] `transition` 只写离散强度网格中的描述性 regime shift，不写已识别 transition point、自然 threshold 或连续 dose-response。
 - [ ] 四分类标签本身不宣称为新分类学；创新点是与 binary ASR 联合的 failure-aware protocol。
-- [ ] Stage 3 结果只限定于 frozen Qwen checkpoint/support。
+- [ ] Stage 3 结果只限定于已记录的 Qwen checkpoint/support。
 - [ ] 不出现 `Attention Sink causes collapse`、`three-model validation` 或 general activation-steering claim。
-- [ ] 设计完成、fixture pass 与 formal experiment result 三者严格区分。
+- [ ] 设计完成、fixture pass 与 paper-run result 三者严格区分。

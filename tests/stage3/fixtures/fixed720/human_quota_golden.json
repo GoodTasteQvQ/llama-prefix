@@ -1,0 +1,134 @@
+{
+  "schema_version": "paper1-stage3-human-quota-golden-v1",
+  "description": "Test-only pre-gold frames; no model, judge, or human experiment output.",
+  "cases": [
+    {
+      "name": "balanced",
+      "strata": [
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "broken", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "unsafe", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "refusal", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "safe", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "broken", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "unsafe", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "refusal", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "safe", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "broken", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "unsafe", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "refusal", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "safe", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "broken", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "unsafe", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "refusal", "matched": true, "count": 60},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "safe", "matched": true, "count": 60},
+        {"block": "harmful_clean", "predicted_class": "broken", "count": 100},
+        {"block": "harmful_clean", "predicted_class": "unsafe", "count": 100},
+        {"block": "benign_clean", "predicted_class": "refusal", "count": 100},
+        {"block": "benign_steered", "predicted_class": "helpful", "count": 100}
+      ],
+      "expected": {
+        "selected_n": 720,
+        "fixed720_status": "complete",
+        "nominal_class_targets": {"broken": 216, "unsafe": 216, "refusal": 144, "safe_helpful": 144},
+        "final_class_quotas": {"broken": 216, "unsafe": 216, "refusal": 144, "safe_helpful": 144},
+        "critical_cell_floor_shortfalls": {},
+        "member_quota_status": {"P2-U(A)": "quota_complete", "P2-B(T)": "quota_complete"},
+        "selected_ids_sha256": "0993e261bce8f2b63be5caf34b51cd5f7780c9d181ad923600b422711f4fa049",
+        "trace_sha256": "bfd69d33dfefaa5c0c72d24e1894f5e2e83f1c011380ac26fc54002d02fd976d"
+      }
+    },
+    {
+      "name": "class_capacity_redistribution",
+      "strata": [
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "broken", "matched": true, "count": 5},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "unsafe", "matched": true, "count": 45},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "refusal", "matched": true, "count": 35},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "safe", "matched": true, "count": 35},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "broken", "matched": true, "count": 5},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "unsafe", "matched": true, "count": 45},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "refusal", "matched": true, "count": 35},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "safe", "matched": true, "count": 35},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "broken", "matched": true, "count": 5},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "unsafe", "matched": true, "count": 45},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "refusal", "matched": true, "count": 35},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "safe", "matched": true, "count": 35},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "broken", "matched": true, "count": 5},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "unsafe", "matched": true, "count": 45},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "refusal", "matched": true, "count": 35},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "safe", "matched": true, "count": 35},
+        {"block": "harmful_clean", "predicted_class": "broken", "count": 80},
+        {"block": "harmful_clean", "predicted_class": "unsafe", "count": 100},
+        {"block": "benign_clean", "predicted_class": "refusal", "count": 100},
+        {"block": "benign_steered", "predicted_class": "helpful", "count": 100}
+      ],
+      "expected": {
+        "selected_n": 720,
+        "fixed720_status": "complete",
+        "nominal_class_targets": {"broken": 216, "unsafe": 216, "refusal": 144, "safe_helpful": 144},
+        "final_class_quotas": {"broken": 100, "unsafe": 266, "refusal": 177, "safe_helpful": 177},
+        "critical_cell_floor_shortfalls": {},
+        "member_quota_status": {"P2-U(A)": "quota_complete", "P2-B(T)": "quota_complete"},
+        "selected_ids_sha256": "f0d40d08fb0cba6992ac21fc0b2ecd10dc66cb21fd79d9d8c22f5a0e333f021b",
+        "trace_sha256": "5e10b4d7cd3f950f6ddc2b6ee7194798998dc1a4886ff037b5d843721c484b14"
+      }
+    },
+    {
+      "name": "critical_cell_shortfall",
+      "strata": [
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "broken", "matched": true, "count": 5},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "unsafe", "matched": true, "count": 5},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "refusal", "matched": true, "count": 5},
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "safe", "matched": true, "count": 5},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "broken", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "unsafe", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "refusal", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "safe", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "broken", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "unsafe", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "refusal", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "safe", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "broken", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "unsafe", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "refusal", "matched": true, "count": 40},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "safe", "matched": true, "count": 40},
+        {"block": "harmful_clean", "predicted_class": "broken", "count": 100},
+        {"block": "harmful_clean", "predicted_class": "unsafe", "count": 100},
+        {"block": "benign_clean", "predicted_class": "refusal", "count": 100},
+        {"block": "benign_steered", "predicted_class": "helpful", "count": 100}
+      ],
+      "expected": {
+        "selected_n": 720,
+        "fixed720_status": "complete",
+        "nominal_class_targets": {"broken": 216, "unsafe": 216, "refusal": 144, "safe_helpful": 144},
+        "final_class_quotas": {"broken": 216, "unsafe": 216, "refusal": 144, "safe_helpful": 144},
+        "critical_cell_floor_shortfalls": {"P2_A_all": 10},
+        "member_quota_status": {"P2-U(A)": "non_estimable_matched_cell_capacity", "P2-B(T)": "quota_complete"},
+        "selected_ids_sha256": "2bafb16e46caf5fb3bcd60c8ffd126519a3332490d9d034b7ab4e77751c18c9f",
+        "trace_sha256": "80f8524649368ab389e5ccb0d3c3fa9eb7e9cdb1228b01d10b5d48d97470434b"
+      }
+    },
+    {
+      "name": "eligible_below_720",
+      "strata": [
+        {"block": "P2", "logical_cell": "P2_A_all", "predicted_class": "broken", "matched": true, "count": 20},
+        {"block": "P2", "logical_cell": "P2_A_content", "predicted_class": "unsafe", "matched": true, "count": 20},
+        {"block": "P2", "logical_cell": "P2_T_all", "predicted_class": "refusal", "matched": true, "count": 20},
+        {"block": "P2", "logical_cell": "P2_T_content", "predicted_class": "safe", "matched": true, "count": 20},
+        {"block": "harmful_clean", "predicted_class": "broken", "count": 100},
+        {"block": "harmful_clean", "predicted_class": "unsafe", "count": 100},
+        {"block": "benign_clean", "predicted_class": "refusal", "count": 100},
+        {"block": "benign_steered", "predicted_class": "helpful", "count": 100}
+      ],
+      "expected": {
+        "selected_n": 480,
+        "fixed720_status": "incomplete_capacity",
+        "nominal_class_targets": {"broken": 216, "unsafe": 216, "refusal": 144, "safe_helpful": 144},
+        "final_class_quotas": {"broken": 120, "unsafe": 120, "refusal": 120, "safe_helpful": 120},
+        "critical_cell_floor_shortfalls": {"P2_A_all": 10, "P2_A_content": 10, "P2_T_all": 10, "P2_T_content": 10},
+        "member_quota_status": {"P2-U(A)": "non_estimable_fixed720_capacity", "P2-B(T)": "non_estimable_fixed720_capacity"},
+        "selected_ids_sha256": "737f395211e661da1d3eeaa609963b0d4638cc2398edc7052af5f06cdc7fbb47",
+        "trace_sha256": "740698e563985656c54587fe52d57f348616273082af271b9ad5c3b388b4add4"
+      }
+    }
+  ]
+}

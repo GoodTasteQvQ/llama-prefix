@@ -44,7 +44,7 @@ calibration-aware 是尚待 Stage 3 正式结果支持的 Qwen case study。
   `unsafe/refusal/safe/broken`、ARR、repetition 和输出诊断分解 binary-negative 结果。
 7. Qwen 与 Llama 共享相同的定性 ordering，但观测到的 attack peak、collapse onset/严重度区间、
   短拒答模式和 metric artifact 不同；本文报告条件化的描述性异质性，不进行模型脆弱性排名。
-8. Stage 3 当前是 `DESIGN-FROZEN / NOT RUN`。它在固定 Qwen checkpoint/support 上审计
+8. Stage 3 当前是 `DESIGN COMPLETE / IMPLEMENTATION IN ACTIVE DEVELOPMENT / NOT RUN`。它在固定 Qwen checkpoint/support 上审计
   all-token versus content-token calibration frame 是否改变 `mu`、intervention-dose geometry
    (`alpha`、`rho`、relative dose) 与 unsafe/broken paired RD。P2 是 estimation-only；Stage 3
    不是 Attention Sink 因果证明，也不负责新的跨模型主结论。
@@ -75,7 +75,7 @@ calibration-aware 是尚待 Stage 3 正式结果支持的 Qwen case study。
    不把该 ordering 写成已识别的连续转变点或模型排名。
 4. **Calibration-aware reproducibility audit**：在 Qwen 上检验 all-token/content-token frame 对
   `mu` 与 intervention-dose geometry 的影响，并把该影响与 fixed-support unsafe/broken 估计连接。
-   该贡献在 Stage 3 结果产生前只能写成预注册研究问题和方法，不能写成已证实发现。
+   该贡献在 Stage 3 结果产生前只能写成预先规定的研究问题和方法，不能写成已证实发现。
 
 
 
@@ -144,8 +144,9 @@ Mistral 若完成，作为第三模型外部验证加入；若未完成，不影
 
 ### 6. Calibration-Frame Sensitivity
 
-本节对应唯一冻结基线 `v3.5-rc2 + binding-amendment-01`；实现入口为
-`writing/stage3 design/CURRENT_RELEASE.md`。标题不再使用 `Attention Sink Explanation`。
+本节对应唯一当前科学设计；入口为
+`writing/stage3 design/README.md`，设计正文为
+`writing/stage3 design/paper1_stage3_experiment_design.md`。标题不再使用 `Attention Sink Explanation`。
 
 - P1：all-token 与 content-token pooled norm、token shares、equal-domain sensitivity；
 - nominal `c`、`mu` 与 intervention-dose geometry (`alpha`、`rho`、relative dose) 的映射；
@@ -186,7 +187,7 @@ Mistral 若完成，作为第三模型外部验证加入；若未完成，不影
 3. Qwen/Llama Track B 的 ASR 与 broken 强度曲线。
 4. Qwen/Llama repetition 与 failure-aware outcome decomposition。
 5. attack peak、observed collapse onset/严重度区间和稳定性 ordering 的跨模型摘要。
-6. Stage 3 P1 norm/token-share 与 P2 fixed-support RD；仅在正式结果产生后加入。
+6. Stage 3 P1 norm/token-share 与 P2 fixed-support RD；仅在 paper run 结果产生后加入。
 
 
 
@@ -219,7 +220,7 @@ intervention-dose geometry，
    不声称识别了连续 transition point、自然阈值或一般 dose-response。
 3. **评估结论**：Rogue-compatible ASR 仍是攻击成功指标，但不能诊断 binary-negative 输出的组成
   或生成完整性；需要与 four-class outcome、ARR、repetition 和输出诊断联合报告。
-4. **Calibration 结论**：在 Stage 3 正式完成前只保留为预注册问题。完成后只能按 P1/P2 分支报告
+4. **Calibration 结论**：在 Stage 3 paper run 完成前只保留为预先规定的问题。完成后只能按 P1/P2 分支报告
   Qwen 固定 support 上的 calibration-frame sensitivity，不得升级为 Attention Sink 或跨模型机制解释。
 
 
@@ -261,4 +262,3 @@ intervention-dose geometry，
 - 不把四分类标签本身宣称为新的分类学；贡献是与 binary ASR 联合使用的 failure-aware protocol。
 - 不把 Stage 3 estimation-only interval 写成显著性、检测或确认性结论。
 - 不把未完成的扩展实验当作当前论文成立的前提或已有贡献。
-

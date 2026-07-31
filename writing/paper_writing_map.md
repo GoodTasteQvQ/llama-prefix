@@ -6,7 +6,8 @@
 
 主文档：
 
-- [paper1_writing_blueprint.md](/D:/llama_prefix/paper1_writing_blueprint.md)
+- [paper1_writing_blueprint.md](paper1_writing_blueprint.md)
+- [Stage 3 current design](stage3%20design/README.md)
 
 最核心问题：
 
@@ -26,7 +27,7 @@
 
 主文档：
 
-- [paper2_writing_blueprint.md](/D:/llama_prefix/paper2_writing_blueprint.md)
+- [paper2_writing_blueprint.md](paper2_writing_blueprint.md)
 
 最核心问题：
 
@@ -44,7 +45,7 @@
 
 ## 推荐写作顺序
 
-1. 先按 [paper1_writing_blueprint.md](/D:/llama_prefix/paper1_writing_blueprint.md) 整理 Paper 1
+1. 先按 [paper1_writing_blueprint.md](paper1_writing_blueprint.md) 整理 Paper 1
 2. Paper 1 的图表编号和主结论稳定后，再开始 Paper 2
 3. Paper 2 只复用 Paper 1 的必要背景，不重复大段机制审计
 4. 所有实验结果文件都尽量按“能直接映射到章节”的方式归档

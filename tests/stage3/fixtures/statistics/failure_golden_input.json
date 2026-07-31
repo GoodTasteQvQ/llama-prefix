@@ -1,0 +1,10 @@
+{
+  "fixture_schema": "paper1-stage3-statistical-failure-input-v1",
+  "cases": [
+    {"case_id": "p1_one_prompt_per_stratum", "mutation": "p1_truncate_one_per_stratum"},
+    {"case_id": "p1_zero_bootstrap_se", "mutation": "p1_make_all_rows_constant"},
+    {"case_id": "p2_duplicate_pair", "mutation": "p2_duplicate_first_pair"},
+    {"case_id": "p2_member_order", "mutation": "p2_reverse_member_order"},
+    {"case_id": "p2_nonpositive_cr1_variance", "mutation": "p2_make_all_differences_zero"}
+  ]
+}

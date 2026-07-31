@@ -1,79 +1,45 @@
-"""Strict production record schemas and validators for Stage 3 ledgers."""
+"""Schema-backed semantic validators for Stage 3 runtime records."""
 
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any, Callable
 
-from .core import FORMAL_LOGICAL_GENERATION, LogicalIdentityRegistry, PipelineError, canonical_sha256
+from .core import (
+    BLOCK_IDENTITY_RULES,
+    JUDGE_LABELS,
+    PROTOCOL_VERSION,
+    LogicalIdentityRegistry,
+    PipelineError,
+    canonical_sha256,
+    normalize_identity,
+    validate_generation_config,
+    validate_judge_config,
+    validate_run_mode,
+)
 from .dose import validate_dose_binding
+from .json_schema import SchemaDefinitionError, SchemaValidationError, validate_schema
+
+
+SCHEMA_DIRECTORY = Path(__file__).with_name("schemas")
 
 
 class RecordSchemaError(PipelineError):
-    """A record did not match its registered production schema."""
+    """A runtime record failed structural or semantic validation."""
 
 
-_DOSE_CONTEXT_SEAL = object()
-
-
-class AuthenticatedDoseContext:
-    """Immutable lifecycle-authenticated context for dose materialization."""
-
-    __slots__ = (
-        "synthetic", "registry_sha256", "measurement_result_self_sha256",
-        "parent_self_sha256", "authorized_event", "authorized_tip_sha256",
-    )
-
-    def __init__(
-        self,
-        *,
-        synthetic: bool,
-        registry_sha256: str,
-        measurement_result_self_sha256: str,
-        parent_self_sha256: Mapping[str, str],
-        authorized_event: str,
-        authorized_tip_sha256: str,
-        _seal: object,
-    ) -> None:
-        if _seal is not _DOSE_CONTEXT_SEAL:
-            raise RecordSchemaError("dose context may only be issued by lifecycle verification")
-        object.__setattr__(self, "synthetic", synthetic)
-        object.__setattr__(self, "registry_sha256", registry_sha256)
-        object.__setattr__(
-            self, "measurement_result_self_sha256", measurement_result_self_sha256
-        )
-        object.__setattr__(
-            self, "parent_self_sha256", tuple(sorted(parent_self_sha256.items()))
-        )
-        object.__setattr__(self, "authorized_event", authorized_event)
-        object.__setattr__(self, "authorized_tip_sha256", authorized_tip_sha256)
-
-    def __setattr__(self, _name: str, _value: object) -> None:
-        raise AttributeError("authenticated dose context is immutable")
-
-
-def _issue_authenticated_dose_context(
-    *,
-    synthetic: bool,
-    registry_sha256: str,
-    measurement_result_self_sha256: str,
-    parent_self_sha256: Mapping[str, str],
-    authorized_event: str,
-    authorized_tip_sha256: str,
-) -> AuthenticatedDoseContext:
-    """Private factory used after FreezeLifecycle validates its prefix."""
-    return AuthenticatedDoseContext(
-        synthetic=synthetic,
-        registry_sha256=registry_sha256,
-        measurement_result_self_sha256=measurement_result_self_sha256,
-        parent_self_sha256=parent_self_sha256,
-        authorized_event=authorized_event,
-        authorized_tip_sha256=authorized_tip_sha256,
-        _seal=_DOSE_CONTEXT_SEAL,
-    )
+def _schema(record: Mapping[str, Any], name: str) -> None:
+    try:
+        validate_schema(record, SCHEMA_DIRECTORY / f"{name}.schema.json")
+    except (SchemaDefinitionError, SchemaValidationError) as exc:
+        raise RecordSchemaError(f"{name} schema rejected record: {exc}") from exc
 
 
 def _exact_keys(record: Mapping[str, Any], required: set[str], name: str) -> None:
+    if not isinstance(record, Mapping):
+        raise RecordSchemaError(f"{name} must be an object")
     actual = set(record)
     if actual != required:
         raise RecordSchemaError(
@@ -81,15 +47,7 @@ def _exact_keys(record: Mapping[str, Any], required: set[str], name: str) -> Non
         )
 
 
-def _bool(record: Mapping[str, Any], field: str) -> bool:
-    value = record[field]
-    if not isinstance(value, bool):
-        raise RecordSchemaError(f"{field} must be boolean")
-    return value
-
-
-def _text(record: Mapping[str, Any], field: str, *, nullable: bool = False) -> str | None:
-    value = record[field]
+def _text(value: Any, field: str, *, nullable: bool = False) -> str | None:
     if nullable and value is None:
         return None
     if not isinstance(value, str) or not value:
@@ -97,762 +55,75 @@ def _text(record: Mapping[str, Any], field: str, *, nullable: bool = False) -> s
     return value
 
 
-def _count(record: Mapping[str, Any], field: str) -> int:
-    value = record[field]
-    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+def _sha(value: Any, field: str, *, nullable: bool = False) -> str | None:
+    text = _text(value, field, nullable=nullable)
+    if text is None:
+        return None
+    if len(text) != 64 or any(char not in "0123456789abcdef" for char in text):
+        raise RecordSchemaError(f"{field} must be lowercase SHA256")
+    return text
+
+
+def _count(value: Any, field: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise RecordSchemaError(f"{field} must be a nonnegative integer")
     return value
 
 
-def _finite(record: Mapping[str, Any], field: str) -> float:
-    value = record[field]
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
-        raise RecordSchemaError(f"{field} must be finite")
-    return float(value)
-
-
-def _finite_or_none(record: Mapping[str, Any], field: str) -> float | None:
-    if record[field] is None:
-        return None
-    return _finite(record, field)
-
-
-def _sha256_value(value: Any, field: str) -> str:
-    if (
-        not isinstance(value, str)
-        or len(value) != 64
-        or any(char not in "0123456789abcdef" for char in value)
-    ):
-        raise RecordSchemaError(f"{field} must be lowercase SHA256")
-    return value
-
-
-DOSE_EVIDENCE_KEYS = {
-    "status",
-    "failure_code",
-    "nominal_c",
-    "mu_estimator",
-    "mu_value",
-    "mu_source_sha256",
-    "alpha_pre_dtype",
-    "alpha_post_dtype",
-    "pre_hook_l2",
-    "post_hook_l2",
-    "relative_dose",
-    "norm_ratio",
-    "vector_alignment",
-    "cosine_drift",
-    "measurement_result_dose_binding_sha256",
-    "generation_status",
-    "phase",
-    "use_cache",
-}
-DOSE_NUMERIC_FIELDS = (
-    "nominal_c",
-    "mu_value",
-    "alpha_pre_dtype",
-    "alpha_post_dtype",
-    "pre_hook_l2",
-    "post_hook_l2",
-    "relative_dose",
-    "norm_ratio",
-    "vector_alignment",
-    "cosine_drift",
-)
-
-
-def _binary64_evidence(value: Any, field: str, *, nullable: bool) -> float | None:
+def _finite(value: Any, field: str, *, nullable: bool = False, nonnegative: bool = False) -> float | None:
     if nullable and value is None:
         return None
-    if not isinstance(value, Mapping) or set(value) != {"value", "binary64_hex"}:
-        raise RecordSchemaError(f"{field} must be an exact binary64 object")
-    number = value["value"]
-    if isinstance(number, bool) or not isinstance(number, (int, float)):
-        raise RecordSchemaError(f"{field}.value must be numeric")
-    converted = float(number)
-    if not math.isfinite(converted) or value["binary64_hex"] != converted.hex():
-        raise RecordSchemaError(f"{field} is nonfinite or has a binary64 mismatch")
-    return converted
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise RecordSchemaError(f"{field} must be a finite number")
+    number = float(value)
+    if not math.isfinite(number) or (nonnegative and number < 0.0):
+        raise RecordSchemaError(f"{field} must be finite and nonnegative")
+    return number
 
 
-def _validate_dose_evidence(
-    evidence: Any,
-    *,
-    estimator: str,
-    generation_completed: bool,
-    dose_valid: bool,
-) -> dict[str, Any]:
-    if not isinstance(evidence, Mapping) or set(evidence) != DOSE_EVIDENCE_KEYS:
-        raise RecordSchemaError("steered response requires exact dose_evidence fields")
-    status = evidence["status"]
-    failure_code = evidence["failure_code"]
-    if dose_valid:
-        if status != "VALIDATED" or failure_code is not None:
-            raise RecordSchemaError("valid dose flags require VALIDATED evidence without failure")
-    elif status != "INVALID" or not isinstance(failure_code, str) or not failure_code:
-        raise RecordSchemaError("invalid dose flags require one explicit dose failure code")
-    if evidence["mu_estimator"] != estimator:
-        raise RecordSchemaError("dose evidence estimator differs from response identity")
-    _sha256_value(evidence["mu_source_sha256"], "dose_evidence.mu_source_sha256")
-    _sha256_value(
-        evidence["measurement_result_dose_binding_sha256"],
-        "dose_evidence.measurement_result_dose_binding_sha256",
-    )
-    if evidence["phase"] != "decode-only" or evidence["use_cache"] is not True:
-        raise RecordSchemaError("dose evidence phase/cache differs from frozen generation")
-    if generation_completed:
-        if evidence["generation_status"] != "COMPLETED":
-            raise RecordSchemaError("completed response dose evidence has wrong generation status")
-    elif evidence["generation_status"] == "COMPLETED" or not isinstance(
-        evidence["generation_status"], str
-    ):
-        raise RecordSchemaError("failed response dose evidence has wrong generation status")
-    numeric = {
-        field: _binary64_evidence(evidence[field], f"dose_evidence.{field}", nullable=not dose_valid)
-        for field in DOSE_NUMERIC_FIELDS
-    }
-    if not dose_valid and any(numeric[field] is not None for field in DOSE_NUMERIC_FIELDS):
-        raise RecordSchemaError("invalid dose evidence requires the canonical all-null geometry")
-    if dose_valid:
-        if any(numeric[field] is None for field in DOSE_NUMERIC_FIELDS):
-            raise RecordSchemaError("validated dose evidence cannot contain null numeric fields")
-        c_value = numeric["nominal_c"]
-        mu_value = numeric["mu_value"]
-        alpha_pre = numeric["alpha_pre_dtype"]
-        alpha_post = numeric["alpha_post_dtype"]
-        pre_hook = numeric["pre_hook_l2"]
-        post_hook = numeric["post_hook_l2"]
-        if any(
-            value is None or value <= 0.0
-            for value in (c_value, mu_value, alpha_pre, alpha_post, pre_hook, post_hook)
-        ):
-            raise RecordSchemaError("validated dose evidence requires positive geometry values")
-        if alpha_pre.hex() != (c_value * mu_value).hex():
-            raise RecordSchemaError("dose evidence alpha_pre formula mismatch")
-        if numeric["relative_dose"].hex() != (alpha_post / pre_hook).hex():
-            raise RecordSchemaError("dose evidence relative_dose formula mismatch")
-        if numeric["norm_ratio"].hex() != (post_hook / pre_hook).hex():
-            raise RecordSchemaError("dose evidence norm_ratio formula mismatch")
-        alignment = numeric["vector_alignment"]
-        drift = numeric["cosine_drift"]
-        if alignment < -1.0 or alignment > 1.0 or drift < 0.0 or drift > 2.0:
-            raise RecordSchemaError("dose evidence alignment/drift is outside cosine bounds")
-    return dict(evidence)
+def _record_hash(record: Mapping[str, Any]) -> None:
+    expected = canonical_sha256({key: value for key, value in record.items() if key != "record_sha256"})
+    if record.get("record_sha256") != expected:
+        raise RecordSchemaError("record_sha256 mismatch")
 
 
-MEASUREMENT_RESULT_DOSE_MANIFEST_KEYS = {
-    "schema_version", "protocol_version", "artifact_kind", "synthetic",
-    "formal_experiment", "registry_sha256", "logical_identity_count", "parents",
-    "scheduled_p1_identity_count", "terminal_status", "dose_binding",
-    "code_sha256", "config_sha256", "environment_sha256", "created_at_utc",
-    "self_sha256",
-}
-
-
-def _validate_frozen_dose_source(
-    document: Mapping[str, Any],
-    *,
-    registry: LogicalIdentityRegistry,
-    dose_context: AuthenticatedDoseContext,
-) -> Mapping[str, Any]:
-    if not isinstance(dose_context, AuthenticatedDoseContext):
-        raise RecordSchemaError("dose materialization requires authenticated lifecycle context")
-    _sha256_value(dose_context.registry_sha256, "dose_context.registry_sha256")
-    _sha256_value(
-        dose_context.measurement_result_self_sha256,
-        "dose_context.measurement_result_self_sha256",
-    )
-    _sha256_value(dose_context.authorized_tip_sha256, "dose_context.authorized_tip_sha256")
-    if (
-        dose_context.synthetic is not registry.synthetic
-        or dose_context.registry_sha256 != registry.manifest()["registry_sha256"]
-        or dose_context.measurement_result_self_sha256 != document.get("self_sha256")
-        or dose_context.authorized_event not in {
-            "FORMAL_SUPPORT_GENERATION_STARTED",
-            "SUPPORT_EXECUTION_MANIFEST_FROZEN",
-            "BEHAVIOR_CONFIRMATION_FROZEN",
-            "FORMAL_CONFIRMATION_GENERATION_STARTED",
-        }
-    ):
-        raise RecordSchemaError("dose context is not bound to the supplied lifecycle source")
-    _exact_keys(
-        document,
-        MEASUREMENT_RESULT_DOSE_MANIFEST_KEYS,
-        "measurement-result dose manifest",
-    )
-    if (
-        document["schema_version"] != "paper1-stage3-measurement-result-dose-manifest-v1"
-        or document["protocol_version"] != "v3.5-rc2"
-        or document["artifact_kind"] != "measurement_result_dose_manifest"
-        or document["synthetic"] is not registry.synthetic
-        or document["formal_experiment"] is not (not registry.synthetic)
-        or document["registry_sha256"] != registry.manifest()["registry_sha256"]
-        or document["logical_identity_count"] != FORMAL_LOGICAL_GENERATION
-        or document["scheduled_p1_identity_count"] != 200
-        or document["terminal_status"] != "ESTIMABLE"
-    ):
-        raise RecordSchemaError("measurement-result dose source is not the frozen estimable source")
-    if document["self_sha256"] != canonical_sha256(
-        {key: value for key, value in document.items() if key != "self_sha256"}
-    ):
-        raise RecordSchemaError("measurement-result dose source self hash mismatch")
-    parents = document["parents"]
-    expected_parent_keys = {
-        "measurement_specification_freeze", "experiment_identity_manifest",
-        "base_anchor_manifest", "p1_terminal_records",
-    }
-    if not isinstance(parents, Mapping) or set(parents) != expected_parent_keys:
-        raise RecordSchemaError("measurement-result dose source parent set differs")
-    for name, value in parents.items():
-        _sha256_value(value, f"measurement_result.parents.{name}")
-    if parents != dict(dose_context.parent_self_sha256):
-        raise RecordSchemaError(
-            "measurement-result parents differ from lifecycle-authenticated context"
-        )
-    for field in ("code_sha256", "config_sha256", "environment_sha256"):
-        _sha256_value(document[field], f"measurement_result.{field}")
-    if not isinstance(document["created_at_utc"], str) or not document["created_at_utc"]:
-        raise RecordSchemaError("measurement-result dose source timestamp is invalid")
-    dose_binding = document["dose_binding"]
-    if not isinstance(dose_binding, Mapping):
-        raise RecordSchemaError("measurement-result dose source lacks its dose binding")
-    validate_dose_binding(dose_binding)
-    if (
-        dose_binding["synthetic"] is not registry.synthetic
-        or dose_binding["parent_self_sha256"]
-        != {
-            "measurement_specification_freeze": parents["measurement_specification_freeze"],
-            "experiment_identity_manifest": parents["experiment_identity_manifest"],
-            "base_anchor_manifest": parents["base_anchor_manifest"],
-        }
-    ):
-        raise RecordSchemaError("dose binding mode or parent hashes differ from its frozen manifest")
-    return dose_binding
-
-
-def _validate_materialized_dose_source(
-    record: Mapping[str, Any],
-    *,
-    registry: LogicalIdentityRegistry,
-    identity: Mapping[str, Any],
-    generation: Mapping[str, Any],
-    measurement_result_dose_manifest: Mapping[str, Any],
-    dose_context: AuthenticatedDoseContext,
-) -> None:
-    dose_binding = _validate_frozen_dose_source(
-        measurement_result_dose_manifest,
-        registry=registry,
-        dose_context=dose_context,
-    )
-    terminal_diagnostics = generation["attempts"][-1]["diagnostics"]
-    if (
-        terminal_diagnostics.get("measurement_result_dose_manifest_self_sha256")
-        != measurement_result_dose_manifest["self_sha256"]
-    ):
-        raise RecordSchemaError(
-            "generation record is not bound to the frozen measurement-result dose manifest"
-        )
-    evidence = record["dose_evidence"]
-    clean = identity["block"] in {"harmful_clean", "benign_clean"}
-    if clean:
-        if evidence is not None:
-            raise RecordSchemaError("clean response cannot contain steered dose evidence")
-        return
-    if not isinstance(evidence, Mapping):
-        raise RecordSchemaError("steered response lacks materialized dose evidence")
-    estimator = identity["estimator"]
-    anchor = identity["anchor"]
-    if (
-        evidence["measurement_result_dose_binding_sha256"] != dose_binding["self_sha256"]
-        or evidence["mu_estimator"] != estimator
-        or evidence["mu_source_sha256"] != canonical_sha256(dose_binding[estimator])
-        or evidence["generation_status"] != generation["terminal_status"]
-    ):
-        raise RecordSchemaError("response dose provenance differs from the frozen dose source")
-    if evidence["status"] == "VALIDATED":
-        bound = validate_dose_binding(dose_binding)[anchor][estimator]
-        expected_hex = {
-            "nominal_c": identity["c_hex"],
-            "mu_value": dose_binding[estimator]["binary64_hex"],
-            "alpha_pre_dtype": identity["alpha_pre_dtype_hex"],
-            "alpha_post_dtype": identity["alpha_post_dtype_hex"],
-        }
-        if (
-            identity["c_hex"] != bound["c_hex"]
-            or identity["alpha_pre_dtype_hex"] != bound["alpha_pre_dtype_hex"]
-            or identity["alpha_post_dtype_hex"] != bound["alpha_post_dtype_hex"]
-        ):
-            raise RecordSchemaError("logical identity dose differs from the frozen dose source")
-        for field, expected in expected_hex.items():
-            item = evidence[field]
-            if not isinstance(item, Mapping) or item.get("binary64_hex") != expected:
-                raise RecordSchemaError(f"dose_evidence.{field} differs from frozen dose identity")
-        if terminal_diagnostics.get("dose_evidence_sha256") != canonical_sha256(evidence):
-            raise RecordSchemaError(
-                "validated per-call dose evidence is not bound to the generation record"
-            )
-
-
-P1_KEYS = {
-    "schema_version",
-    "protocol_version",
-    "synthetic",
-    "logical_id",
-    "prompt_id",
-    "stratum",
-    "identity_complete",
-    "render_complete",
-    "valid_mask_complete",
-    "forward_complete",
-    "identity_collision",
-    "valid_token_count",
-    "content_token_count",
-    "unresolved_valid_token_count",
-    "required_norms_finite",
-    "v_sum",
-    "c_sum",
-    "terminal_status",
-    "exclusion_reason",
-}
-
-
-def validate_p1_record(record: Mapping[str, Any]) -> dict[str, Any]:
-    _exact_keys(record, P1_KEYS, "P1 record")
-    if record["schema_version"] != "paper1-stage3-p1-measurement-record-v1":
-        raise RecordSchemaError("invalid P1 schema_version")
-    if record["protocol_version"] != "v3.5-rc2":
-        raise RecordSchemaError("invalid protocol_version")
-    _bool(record, "synthetic")
-    _text(record, "logical_id")
-    _text(record, "prompt_id")
-    if record["stratum"] not in {"harmful", "benign"}:
-        raise RecordSchemaError("P1 stratum must be harmful or benign")
-    flags = {
-        field: _bool(record, field)
-        for field in (
-            "identity_complete",
-            "render_complete",
-            "valid_mask_complete",
-            "forward_complete",
-            "identity_collision",
-            "required_norms_finite",
-        )
-    }
-    valid_count = _count(record, "valid_token_count")
-    content_count = _count(record, "content_token_count")
-    unresolved_count = _count(record, "unresolved_valid_token_count")
-    v_sum = _finite_or_none(record, "v_sum")
-    c_sum = _finite_or_none(record, "c_sum")
-    if v_sum is not None and v_sum < 0.0:
-        raise RecordSchemaError("v_sum must be nonnegative when present")
-    if c_sum is not None and c_sum < 0.0:
-        raise RecordSchemaError("c_sum must be nonnegative when present")
-    terminal_status = _text(record, "terminal_status")
-    exclusion_reason = _text(record, "exclusion_reason", nullable=True)
-    complete_case = (
-        flags["identity_complete"]
-        and flags["render_complete"]
-        and flags["valid_mask_complete"]
-        and flags["forward_complete"]
-        and not flags["identity_collision"]
-        and flags["required_norms_finite"]
-        and unresolved_count == 0
-        and valid_count > 0
-        and content_count > 0
-        and content_count <= valid_count
-        and v_sum is not None
-        and c_sum is not None
-        and v_sum >= 0.0
-        and c_sum >= 0.0
-    )
-    if terminal_status == "COMPLETE_CASE" and (
-        not complete_case or exclusion_reason is not None
-    ):
-        raise RecordSchemaError(
-            "COMPLETE_CASE requires a complete record and null exclusion_reason"
-        )
-    if complete_case and terminal_status != "COMPLETE_CASE":
-        raise RecordSchemaError("complete P1 record requires COMPLETE_CASE status")
-    if not complete_case and exclusion_reason is None:
-        raise RecordSchemaError("excluded P1 record requires one exclusion_reason")
-    if not flags["identity_complete"] or flags["identity_collision"]:
-        expected_status = "EXCLUDED_IDENTITY"
-    elif not flags["render_complete"]:
-        expected_status = "EXCLUDED_RENDER"
-    elif not flags["valid_mask_complete"]:
-        expected_status = "EXCLUDED_VALID_MASK"
-    elif not flags["forward_complete"]:
-        expected_status = "EXCLUDED_FORWARD"
-    elif unresolved_count != 0:
-        expected_status = "EXCLUDED_UNRESOLVED"
-    elif not flags["required_norms_finite"] or v_sum is None or c_sum is None:
-        expected_status = "EXCLUDED_NONFINITE"
-    elif valid_count == 0 or content_count == 0 or content_count > valid_count:
-        expected_status = "EXCLUDED_ZERO_DENOMINATOR"
-    else:
-        expected_status = "COMPLETE_CASE"
-    if terminal_status != expected_status:
-        raise RecordSchemaError(
-            f"P1 terminal_status {terminal_status!r}, expected first failure {expected_status!r}"
-        )
-    expected_reason = None if complete_case else expected_status
-    if exclusion_reason != expected_reason:
-        raise RecordSchemaError("P1 exclusion_reason must equal the first terminal failure code")
-    result = dict(record)
-    result["complete_case"] = complete_case
-    result["record_sha256"] = canonical_sha256(record)
-    return result
-
-
-P2_CELLS = {"P2_A_all", "P2_A_content", "P2_T_all", "P2_T_content"}
-P2_KEYS = {
-    "schema_version",
-    "protocol_version",
-    "synthetic",
-    "logical_id",
-    "identity_sha256",
-    "generation_record_sha256",
-    "judge_record_sha256",
-    "cell",
-    "prompt_id",
-    "vector_id",
-    "pair_id",
-    "arm",
-    "anchor",
-    "estimator",
-    "scheduled_identity_match",
-    "generation_completed",
-    "judge_eligible",
-    "judge_label_parsed",
-    "identity_complete",
-    "identity_collision",
-    "dose_denominator_valid",
-    "dose_geometry_finite",
-    "post_dtype_alpha_finite",
-    "dose_evidence",
-    "label",
-    "terminal_status",
-}
-
-
-def validate_p2_record(record: Mapping[str, Any]) -> dict[str, Any]:
-    _exact_keys(record, P2_KEYS, "P2 record")
-    if record["schema_version"] != "paper1-stage3-p2-response-record-v1":
-        raise RecordSchemaError("invalid P2 schema_version")
-    if record["protocol_version"] != "v3.5-rc2":
-        raise RecordSchemaError("invalid protocol_version")
-    _bool(record, "synthetic")
-    _sha256_value(record["identity_sha256"], "identity_sha256")
-    _sha256_value(record["generation_record_sha256"], "generation_record_sha256")
-    if record["judge_record_sha256"] is not None:
-        _sha256_value(record["judge_record_sha256"], "judge_record_sha256")
-    for field in ("logical_id", "prompt_id", "vector_id", "pair_id", "estimator", "terminal_status"):
-        _text(record, field)
-    cell = record["cell"]
-    if cell not in P2_CELLS:
-        raise RecordSchemaError("invalid P2 cell")
-    expected = {
-        "P2_A_all": ("all-token", "A", "mu_all_tw"),
-        "P2_A_content": ("content-token", "A", "mu_content_tw"),
-        "P2_T_all": ("all-token", "T", "mu_all_tw"),
-        "P2_T_content": ("content-token", "T", "mu_content_tw"),
-    }[cell]
-    if (record["arm"], record["anchor"], record["estimator"]) != expected:
-        raise RecordSchemaError("P2 cell/arm/anchor/estimator mapping changed")
-    flags = {
-        field: _bool(record, field)
-        for field in (
-            "scheduled_identity_match",
-            "generation_completed",
-            "judge_eligible",
-            "judge_label_parsed",
-            "identity_complete",
-            "identity_collision",
-            "dose_denominator_valid",
-            "dose_geometry_finite",
-            "post_dtype_alpha_finite",
-        )
-    }
-    label = _text(record, "label", nullable=True)
-    if flags["judge_label_parsed"] and not flags["judge_eligible"]:
-        raise RecordSchemaError("parsed P2 label requires judge_eligible")
-    if flags["judge_eligible"] and not flags["generation_completed"]:
-        raise RecordSchemaError("judge-eligible P2 row requires completed generation")
-    if flags["judge_label_parsed"]:
-        if label not in {"broken", "unsafe", "refusal", "safe"}:
-            raise RecordSchemaError("parsed P2 status requires a registered harmful label")
-    elif label is not None:
-        raise RecordSchemaError("unparsed P2 status requires a null label")
-    if flags["judge_label_parsed"] != (label in {"broken", "unsafe", "refusal", "safe"}):
-        raise RecordSchemaError("P2 parsed status disagrees with label")
-    dose_valid = all(
-        flags[field]
-        for field in ("dose_denominator_valid", "dose_geometry_finite", "post_dtype_alpha_finite")
-    )
-    _validate_dose_evidence(
-        record["dose_evidence"],
-        estimator=record["estimator"],
-        generation_completed=flags["generation_completed"],
-        dose_valid=dose_valid,
-    )
-    if (
-        not flags["scheduled_identity_match"]
-        or flags["identity_collision"]
-        or not flags["identity_complete"]
-    ):
-        expected_terminal = "NON_ESTIMABLE_IDENTITY"
-    elif not all(
-        flags[field]
-        for field in ("dose_denominator_valid", "dose_geometry_finite", "post_dtype_alpha_finite")
-    ):
-        expected_terminal = "NON_ESTIMABLE_DOSE"
-    elif not flags["generation_completed"]:
-        expected_terminal = "TERMINAL_GENERATION_FAILURE"
-    elif not flags["judge_eligible"] or not flags["judge_label_parsed"]:
-        expected_terminal = "TERMINAL_JUDGE_FAILURE"
-    else:
-        expected_terminal = "COMPLETED_PARSED"
-    if record["terminal_status"] != expected_terminal:
-        raise RecordSchemaError("P2 terminal_status violates failure precedence")
-    result = dict(record)
-    result["retained"] = (
-        flags["scheduled_identity_match"]
-        and flags["generation_completed"]
-        and flags["judge_eligible"]
-        and flags["judge_label_parsed"]
-        and flags["identity_complete"]
-        and not flags["identity_collision"]
-        and flags["dose_denominator_valid"]
-        and flags["dose_geometry_finite"]
-        and flags["post_dtype_alpha_finite"]
-    )
-    result["record_sha256"] = canonical_sha256(record)
-    return result
-
-
-K1_KEYS = {
-    "schema_version",
-    "protocol_version",
-    "synthetic",
-    "logical_id",
-    "source_p2_logical_id",
-    "source_p2_record_sha256",
-    "cell",
-    "prompt_id",
-    "vector_id",
-    "label",
-    "generation_calls_added",
-    "judge_calls_added",
-}
-
-
-def validate_k1_record(record: Mapping[str, Any]) -> dict[str, Any]:
-    _exact_keys(record, K1_KEYS, "K1 record")
-    if record["schema_version"] != "paper1-stage3-k1-reuse-record-v1":
-        raise RecordSchemaError("invalid K1 schema_version")
-    if record["protocol_version"] != "v3.5-rc2":
-        raise RecordSchemaError("invalid protocol_version")
-    _bool(record, "synthetic")
-    for field in (
-        "logical_id",
-        "source_p2_logical_id",
-        "prompt_id",
-        "vector_id",
-    ):
-        _text(record, field)
-    source_hash = _text(record, "source_p2_record_sha256")
-    if len(source_hash) != 64 or any(char not in "0123456789abcdef" for char in source_hash):
-        raise RecordSchemaError("source_p2_record_sha256 must be lowercase SHA256")
-    if record["logical_id"] != record["source_p2_logical_id"]:
-        raise RecordSchemaError("K1 must reuse the exact P2 logical identity")
-    if record["cell"] not in P2_CELLS:
-        raise RecordSchemaError("K1 source cell is not a P2 cell")
-    if record["label"] not in {"broken", "unsafe", "refusal", "safe"}:
-        raise RecordSchemaError("invalid K1 label")
-    if _count(record, "generation_calls_added") != 0 or _count(record, "judge_calls_added") != 0:
-        raise RecordSchemaError("K1 adds zero generation and judge calls")
-    result = dict(record)
-    result["record_sha256"] = canonical_sha256(record)
-    return result
-
-
-BENIGN_KEYS = {
-    "schema_version",
-    "protocol_version",
-    "synthetic",
-    "logical_id",
-    "identity_sha256",
-    "generation_record_sha256",
-    "judge_record_sha256",
-    "cell",
-    "prompt_id",
-    "vector_id",
-    "anchor",
-    "estimator",
-    "scheduled_identity_match",
-    "generation_completed",
-    "judge_eligible",
-    "judge_label_parsed",
-    "identity_complete",
-    "identity_collision",
-    "dose_denominator_valid",
-    "dose_geometry_finite",
-    "post_dtype_alpha_finite",
-    "dose_evidence",
-    "label",
-    "terminal_status",
-}
-
-
-def validate_benign_record(record: Mapping[str, Any]) -> dict[str, Any]:
-    _exact_keys(record, BENIGN_KEYS, "benign record")
-    if record["schema_version"] != "paper1-stage3-benign-response-record-v1":
-        raise RecordSchemaError("invalid benign schema_version")
-    if record["protocol_version"] != "v3.5-rc2":
-        raise RecordSchemaError("invalid protocol_version")
-    _bool(record, "synthetic")
-    _sha256_value(record["identity_sha256"], "identity_sha256")
-    _sha256_value(record["generation_record_sha256"], "generation_record_sha256")
-    if record["judge_record_sha256"] is not None:
-        _sha256_value(record["judge_record_sha256"], "judge_record_sha256")
-    for field in ("logical_id", "prompt_id", "terminal_status"):
-        _text(record, field)
-    cell = record["cell"]
-    if cell == "benign_clean":
-        if record["vector_id"] is not None or record["anchor"] != "clean" or record["estimator"] != "clean":
-            raise RecordSchemaError("benign clean identity changed")
-    elif cell == "benign_T":
-        _text(record, "vector_id")
-        if record["anchor"] != "T" or record["estimator"] != "mu_all_tw":
-            raise RecordSchemaError("benign T identity changed")
-    else:
-        raise RecordSchemaError("invalid benign cell")
-    flags = {
-        field: _bool(record, field)
-        for field in (
-            "scheduled_identity_match",
-            "generation_completed",
-            "judge_eligible",
-            "judge_label_parsed",
-            "identity_complete",
-            "identity_collision",
-            "dose_denominator_valid",
-            "dose_geometry_finite",
-            "post_dtype_alpha_finite",
-        )
-    }
-    label = _text(record, "label", nullable=True)
-    if flags["judge_label_parsed"] and not flags["judge_eligible"]:
-        raise RecordSchemaError("parsed benign label requires judge_eligible")
-    if flags["judge_eligible"] and not flags["generation_completed"]:
-        raise RecordSchemaError("judge-eligible benign row requires completed generation")
-    if flags["judge_label_parsed"]:
-        if label not in {"broken", "unsafe", "refusal", "helpful"}:
-            raise RecordSchemaError("parsed benign status requires a registered benign label")
-    elif label is not None:
-        raise RecordSchemaError("unparsed benign status requires a null label")
-    if flags["judge_label_parsed"] != (label in {"broken", "unsafe", "refusal", "helpful"}):
-        raise RecordSchemaError("benign parsed status disagrees with label")
-    dose_valid = all(
-        flags[field]
-        for field in ("dose_denominator_valid", "dose_geometry_finite", "post_dtype_alpha_finite")
-    )
-    if cell == "benign_clean":
-        if record["dose_evidence"] is not None:
-            raise RecordSchemaError("benign clean response must not contain steered dose evidence")
-    else:
-        _validate_dose_evidence(
-            record["dose_evidence"],
-            estimator=record["estimator"],
-            generation_completed=flags["generation_completed"],
-            dose_valid=dose_valid,
-        )
-    if (
-        not flags["scheduled_identity_match"]
-        or flags["identity_collision"]
-        or not flags["identity_complete"]
-    ):
-        expected_terminal = "NON_ESTIMABLE_IDENTITY"
-    elif not all(
-        flags[field]
-        for field in ("dose_denominator_valid", "dose_geometry_finite", "post_dtype_alpha_finite")
-    ):
-        expected_terminal = "NON_ESTIMABLE_DOSE"
-    elif not flags["generation_completed"]:
-        expected_terminal = "TERMINAL_GENERATION_FAILURE"
-    elif not flags["judge_eligible"] or not flags["judge_label_parsed"]:
-        expected_terminal = "TERMINAL_JUDGE_FAILURE"
-    else:
-        expected_terminal = "COMPLETED_PARSED"
-    if record["terminal_status"] != expected_terminal:
-        raise RecordSchemaError("benign terminal_status violates failure precedence")
-    result = dict(record)
-    result["retained"] = (
-        flags["scheduled_identity_match"]
-        and flags["generation_completed"]
-        and flags["judge_eligible"]
-        and flags["judge_label_parsed"]
-        and flags["identity_complete"]
-        and not flags["identity_collision"]
-        and flags["dose_denominator_valid"]
-        and flags["dose_geometry_finite"]
-        and flags["post_dtype_alpha_finite"]
-    )
-    result["record_sha256"] = canonical_sha256(record)
-    return result
-
-
-GENERATION_KEYS = {
-    "schema_version",
-    "protocol_version",
-    "synthetic",
-    "formal_experiment",
-    "logical_id",
-    "identity_sha256",
-    "request_sha256",
-    "attempts",
-    "attempt_count",
-    "retry_count",
-    "terminal_status",
-    "generation_completed",
-    "output_text",
+GENERATION_RECORD_KEYS = {
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "logical_id", "identity_sha256", "request_sha256", "generation_config", "attempts",
+    "attempt_count", "retry_count", "terminal_status", "generation_completed", "output_text",
     "record_sha256",
 }
-ATTEMPT_KEYS = {"attempt_index", "status", "output_text", "failure_code", "diagnostics"}
 
 
 def validate_generation_record(record: Mapping[str, Any]) -> dict[str, Any]:
-    _exact_keys(record, GENERATION_KEYS, "generation record")
-    if record["schema_version"] != "paper1-stage3-generation-record-v1":
+    _schema(record, "generation_record")
+    _exact_keys(record, GENERATION_RECORD_KEYS, "generation record")
+    if record["schema_version"] != "paper1-stage3-generation-record-v2":
         raise RecordSchemaError("invalid generation schema_version")
-    if record["protocol_version"] != "v3.5-rc2":
-        raise RecordSchemaError("invalid protocol_version")
-    synthetic = _bool(record, "synthetic")
-    formal = _bool(record, "formal_experiment")
-    if formal == synthetic:
-        raise RecordSchemaError("synthetic and formal_experiment flags are inconsistent")
-    _text(record, "logical_id")
-    for field in ("identity_sha256", "request_sha256", "record_sha256"):
-        value = _text(record, field)
-        if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
-            raise RecordSchemaError(f"{field} must be lowercase SHA256")
+    if record["protocol_version"] != PROTOCOL_VERSION:
+        raise RecordSchemaError("invalid generation protocol_version")
+    mode = validate_run_mode(record["run_mode"])
+    if record["paper_result_eligible"] is not False or not isinstance(record["fake_backend"], bool):
+        raise RecordSchemaError("invalid generation eligibility/backend flags")
+    _text(record["logical_id"], "logical_id")
+    _sha(record["identity_sha256"], "identity_sha256")
+    _sha(record["request_sha256"], "request_sha256")
+    validate_generation_config(record["generation_config"], run_mode=mode)
     attempts = record["attempts"]
     if not isinstance(attempts, list) or not 1 <= len(attempts) <= 2:
         raise RecordSchemaError("generation attempts must contain one or two entries")
-    statuses = []
+    statuses: list[str] = []
     for index, attempt in enumerate(attempts, 1):
-        if not isinstance(attempt, Mapping):
-            raise RecordSchemaError("generation attempt must be an object")
-        _exact_keys(attempt, ATTEMPT_KEYS, "generation attempt")
-        if attempt["attempt_index"] != index:
-            raise RecordSchemaError("generation attempt indices must be contiguous one-based")
+        if not isinstance(attempt, Mapping) or set(attempt) != {
+            "attempt_index", "status", "output_text", "failure_code", "diagnostics"
+        }:
+            raise RecordSchemaError("generation attempt fields differ")
+        if attempt["attempt_index"] != index or not isinstance(attempt["diagnostics"], Mapping):
+            raise RecordSchemaError("generation attempt order or diagnostics are invalid")
         status = attempt["status"]
         if status not in {
-            "COMPLETED",
-            "TECHNICAL_FAILURE_RETRYABLE",
-            "TERMINAL_TECHNICAL_FAILURE",
-            "TERMINAL_FAILURE",
-            "TERMINAL_INDETERMINATE_FAILURE",
+            "COMPLETED", "TECHNICAL_FAILURE_RETRYABLE", "TERMINAL_TECHNICAL_FAILURE",
+            "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE",
         }:
             raise RecordSchemaError("invalid generation attempt status")
         statuses.append(status)
@@ -865,476 +136,1111 @@ def validate_generation_record(record: Mapping[str, Any]) -> dict[str, Any]:
             or not attempt["failure_code"]
         ):
             raise RecordSchemaError("failed generation attempt has invalid payload")
-        if not isinstance(attempt["diagnostics"], Mapping):
-            raise RecordSchemaError("attempt diagnostics must be an object")
     if len(attempts) == 2:
         if statuses[0] != "TECHNICAL_FAILURE_RETRYABLE" or statuses[1] not in {
-            "COMPLETED",
-            "TERMINAL_TECHNICAL_FAILURE",
-            "TERMINAL_FAILURE",
+            "COMPLETED", "TERMINAL_TECHNICAL_FAILURE", "TERMINAL_FAILURE",
             "TERMINAL_INDETERMINATE_FAILURE",
         }:
-            raise RecordSchemaError("generation retry must follow one retryable first failure")
-    elif statuses[0] not in {
-        "COMPLETED", "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"
-    }:
-        raise RecordSchemaError("single generation attempt must be terminal")
+            raise RecordSchemaError("generation retry violates the one-identical-retry rule")
+    elif statuses[0] not in {"COMPLETED", "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"}:
+        raise RecordSchemaError("a single generation attempt must already be terminal")
     if record["attempt_count"] != len(attempts) or record["retry_count"] != len(attempts) - 1:
-        raise RecordSchemaError("generation attempt counters disagree with ledger")
-    if record["terminal_status"] != statuses[-1]:
-        raise RecordSchemaError("generation terminal_status disagrees with final attempt")
-    completed = _bool(record, "generation_completed")
-    if completed != (statuses[-1] == "COMPLETED"):
-        raise RecordSchemaError("generation_completed disagrees with terminal attempt")
-    if completed != isinstance(record["output_text"], str):
-        raise RecordSchemaError("generation output_text disagrees with completion")
-    if record["output_text"] != attempts[-1]["output_text"]:
-        raise RecordSchemaError("generation output_text differs from the terminal attempt")
-    expected_hash = canonical_sha256(
-        {key: value for key, value in record.items() if key != "record_sha256"}
-    )
-    if record["record_sha256"] != expected_hash:
-        raise RecordSchemaError("generation record_sha256 mismatch")
+        raise RecordSchemaError("generation attempt counters differ")
+    terminal = attempts[-1]
+    if record["terminal_status"] != terminal["status"]:
+        raise RecordSchemaError("generation terminal status differs")
+    completed = terminal["status"] == "COMPLETED"
+    if record["generation_completed"] is not completed or record["output_text"] != terminal["output_text"]:
+        raise RecordSchemaError("generation terminal fields differ from the final attempt")
+    _record_hash(record)
     return dict(record)
 
 
-JUDGE_KEYS = {
-    "schema_version",
-    "protocol_version",
-    "logical_id",
-    "identity_sha256",
-    "generation_record_sha256",
-    "domain",
-    "judge_freeze_self_sha256",
-    "rubric_sha256",
-    "request_sha256",
-    "synthetic",
-    "formal_experiment",
-    "attempts",
-    "judge_label_parsed",
-    "terminal_status",
-    "label",
-    "rationale",
+JUDGE_RECORD_KEYS = {
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "logical_id", "identity_sha256", "generation_record_sha256", "domain", "judge_config",
+    "judge_identity", "request_sha256", "attempts", "judge_label_parsed", "terminal_status",
+    "label", "rationale", "record_sha256",
 }
 
 
 def validate_judge_record(record: Mapping[str, Any]) -> dict[str, Any]:
-    _exact_keys(record, JUDGE_KEYS, "judge record")
-    if record["schema_version"] != "paper1-stage3-judge-record-v1":
-        raise RecordSchemaError("invalid judge schema_version")
-    if record["protocol_version"] != "v3.5-rc2":
-        raise RecordSchemaError("invalid protocol_version")
-    _text(record, "logical_id")
-    for field in (
-        "identity_sha256", "generation_record_sha256", "judge_freeze_self_sha256",
-        "rubric_sha256",
-    ):
-        _sha256_value(record[field], field)
-    if record["domain"] not in {"harmful", "benign"}:
-        raise RecordSchemaError("judge domain must be harmful or benign")
-    request_sha256 = _text(record, "request_sha256")
-    if len(request_sha256) != 64 or any(char not in "0123456789abcdef" for char in request_sha256):
-        raise RecordSchemaError("judge request_sha256 must be lowercase SHA256")
-    synthetic = _bool(record, "synthetic")
-    formal = _bool(record, "formal_experiment")
-    if formal == synthetic:
-        raise RecordSchemaError("synthetic and formal judge flags are inconsistent")
+    _schema(record, "judge_record")
+    _exact_keys(record, JUDGE_RECORD_KEYS, "judge record")
+    if record["schema_version"] != "paper1-stage3-judge-record-v2" or record["protocol_version"] != PROTOCOL_VERSION:
+        raise RecordSchemaError("invalid judge schema/protocol version")
+    mode = validate_run_mode(record["run_mode"])
+    if record["paper_result_eligible"] is not False or not isinstance(record["fake_backend"], bool):
+        raise RecordSchemaError("invalid judge eligibility/backend flags")
+    _text(record["logical_id"], "logical_id")
+    for field in ("identity_sha256", "generation_record_sha256", "request_sha256"):
+        _sha(record[field], field)
+    domain = record["domain"]
+    if domain not in JUDGE_LABELS:
+        raise RecordSchemaError("invalid judge domain")
+    validate_judge_config(record["judge_config"], run_mode=mode)
+    identity = record["judge_identity"]
+    if not isinstance(identity, Mapping) or set(identity) != {
+        "model_path_or_id", "tokenizer_path_or_id", "rubric_sha256"
+    }:
+        raise RecordSchemaError("judge_identity fields differ")
+    _text(identity["model_path_or_id"], "judge.model_path_or_id")
+    _text(identity["tokenizer_path_or_id"], "judge.tokenizer_path_or_id")
+    _sha(identity["rubric_sha256"], "judge.rubric_sha256")
     attempts = record["attempts"]
     if not isinstance(attempts, list) or not 1 <= len(attempts) <= 2:
         raise RecordSchemaError("judge attempts must contain one or two entries")
+    statuses: list[str] = []
     for index, attempt in enumerate(attempts, 1):
         if not isinstance(attempt, Mapping) or set(attempt) != {
             "attempt_index", "status", "failure_code", "payload_sha256", "request_sha256"
         }:
-            raise RecordSchemaError("invalid judge attempt object")
-        if attempt["attempt_index"] != index:
-            raise RecordSchemaError("judge attempt indices must be contiguous one-based")
-        if attempt["request_sha256"] != request_sha256:
-            raise RecordSchemaError("judge retry changed request identity")
+            raise RecordSchemaError("judge attempt fields differ")
+        if attempt["attempt_index"] != index or attempt["request_sha256"] != record["request_sha256"]:
+            raise RecordSchemaError("judge attempt order or request hash differs")
         status = attempt["status"]
-        if status not in {
-            "PARSED", "RETRYABLE_FAILURE", "TERMINAL_FAILURE",
-            "TERMINAL_INDETERMINATE_FAILURE",
-        }:
+        if status not in {"PARSED", "RETRYABLE_FAILURE", "TERMINAL_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"}:
             raise RecordSchemaError("invalid judge attempt status")
-        payload_hash = attempt["payload_sha256"]
-        if payload_hash is not None and (
-            not isinstance(payload_hash, str)
-            or len(payload_hash) != 64
-            or any(char not in "0123456789abcdef" for char in payload_hash)
-        ):
-            raise RecordSchemaError("judge payload_sha256 must be null or lowercase SHA256")
+        statuses.append(status)
+        if attempt["payload_sha256"] is not None:
+            _sha(attempt["payload_sha256"], "judge.payload_sha256")
         if status == "PARSED":
-            if attempt["failure_code"] is not None or payload_hash is None:
-                raise RecordSchemaError("parsed judge attempt has invalid failure/hash fields")
+            if attempt["failure_code"] is not None or attempt["payload_sha256"] is None:
+                raise RecordSchemaError("parsed judge attempt has invalid payload")
         elif not isinstance(attempt["failure_code"], str) or not attempt["failure_code"]:
             raise RecordSchemaError("failed judge attempt requires a failure_code")
     if len(attempts) == 2:
-        if attempts[0]["status"] != "RETRYABLE_FAILURE" or attempts[1]["status"] not in {
-            "PARSED", "TERMINAL_FAILURE"
-        }:
-            raise RecordSchemaError("judge retry must follow one retryable first failure")
-    elif attempts[0]["status"] not in {"PARSED", "TERMINAL_INDETERMINATE_FAILURE"}:
-        raise RecordSchemaError(
-            "single judge attempt must parse or terminate indeterminately"
-        )
-    parsed = _bool(record, "judge_label_parsed")
-    label = _text(record, "label", nullable=True)
-    rationale = _text(record, "rationale", nullable=True)
-    allowed = {
-        "harmful": {"broken", "unsafe", "refusal", "safe"},
-        "benign": {"broken", "unsafe", "refusal", "helpful"},
-    }[record["domain"]]
+        if statuses[0] != "RETRYABLE_FAILURE" or statuses[1] not in {"PARSED", "TERMINAL_FAILURE"}:
+            raise RecordSchemaError("judge retry violates the one-identical-retry rule")
+    elif statuses[0] not in {"PARSED", "TERMINAL_INDETERMINATE_FAILURE"}:
+        raise RecordSchemaError("a single judge attempt must already be terminal")
+    expected_terminal = {
+        "PARSED": "PARSED",
+        "TERMINAL_FAILURE": "TERMINAL_PARSE_OR_INFRASTRUCTURE_FAILURE",
+        "TERMINAL_INDETERMINATE_FAILURE": "TERMINAL_INDETERMINATE_FAILURE",
+    }[statuses[-1]]
+    if record["terminal_status"] != expected_terminal:
+        raise RecordSchemaError("judge terminal status differs from terminal attempt")
+    parsed = expected_terminal == "PARSED"
+    if record["judge_label_parsed"] is not parsed:
+        raise RecordSchemaError("judge_label_parsed differs from terminal status")
     if parsed:
-        if record["terminal_status"] != "PARSED" or label not in allowed or rationale is None:
-            raise RecordSchemaError("parsed judge terminal fields are inconsistent")
-        if attempts[-1]["status"] != "PARSED":
-            raise RecordSchemaError("parsed judge record lacks parsed terminal attempt")
-    else:
-        parse_failure = (
-            record["terminal_status"] == "TERMINAL_PARSE_OR_INFRASTRUCTURE_FAILURE"
-            and len(attempts) == 2
-            and attempts[-1]["status"] == "TERMINAL_FAILURE"
-        )
-        indeterminate_failure = (
-            record["terminal_status"] == "TERMINAL_INDETERMINATE_FAILURE"
-            and len(attempts) == 1
-            and attempts[-1]["status"] == "TERMINAL_INDETERMINATE_FAILURE"
-        )
-        if label is not None or rationale is not None or not (
-            parse_failure or indeterminate_failure
-        ):
-            raise RecordSchemaError("failed judge terminal fields are inconsistent")
+        if record["label"] not in JUDGE_LABELS[domain] or not isinstance(record["rationale"], str) or not record["rationale"]:
+            raise RecordSchemaError("parsed judge output is invalid")
+    elif record["label"] is not None or record["rationale"] is not None:
+        raise RecordSchemaError("failed judge output must not contain a label")
+    _record_hash(record)
     return dict(record)
 
 
-def _validate_response_sources(
-    record: Mapping[str, Any],
-    *,
-    registry: LogicalIdentityRegistry,
-    generation_record: Mapping[str, Any],
-    judge_record: Mapping[str, Any] | None,
-    expected_domain: str,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None, dict[str, Any]]:
-    identity = registry.require(record["logical_id"])
-    generation = validate_generation_record(generation_record)
-    judge = validate_judge_record(judge_record) if judge_record is not None else None
-    if record["synthetic"] is not registry.synthetic:
-        raise RecordSchemaError("response mode differs from the fixed registry")
-    if (
-        generation["logical_id"] != record["logical_id"]
-        or generation["synthetic"] is not registry.synthetic
-        or generation["identity_sha256"] != canonical_sha256(identity)
-        or record["identity_sha256"] != generation["identity_sha256"]
-        or record["generation_record_sha256"] != generation["record_sha256"]
-        or record["generation_completed"] is not generation["generation_completed"]
-    ):
-        raise RecordSchemaError("response generation provenance differs from fixed sources")
-    if generation["generation_completed"]:
-        if judge is None:
-            raise RecordSchemaError("completed generation requires its materialized judge record")
-        if (
-            judge["logical_id"] != record["logical_id"]
-            or judge["synthetic"] is not registry.synthetic
-            or judge["domain"] != expected_domain
-            or judge["identity_sha256"] != generation["identity_sha256"]
-            or judge["generation_record_sha256"] != generation["record_sha256"]
-            or record["judge_record_sha256"] != canonical_sha256(judge)
-            or record["judge_eligible"] is not True
-            or record["judge_label_parsed"] is not judge["judge_label_parsed"]
-            or record["label"] != judge["label"]
-        ):
-            raise RecordSchemaError("response judge provenance differs from fixed sources")
-    elif (
-        judge is not None
-        or record["judge_record_sha256"] is not None
-        or record["judge_eligible"] is not False
-        or record["judge_label_parsed"] is not False
-        or record["label"] is not None
-    ):
-        raise RecordSchemaError("failed generation cannot claim judge provenance")
-    if (
-        record["scheduled_identity_match"] is not True
-        or record["identity_complete"] is not True
-        or record["identity_collision"] is not False
-    ):
-        raise RecordSchemaError("registered response cannot self-report an identity mismatch")
-    return dict(record), generation, judge, identity
-
-
-def validate_p2_materialization(
-    record: Mapping[str, Any],
-    *,
-    registry: LogicalIdentityRegistry,
-    generation_record: Mapping[str, Any],
-    judge_record: Mapping[str, Any] | None,
-    measurement_result_dose_manifest: Mapping[str, Any],
-    dose_context: AuthenticatedDoseContext,
-) -> dict[str, Any]:
-    validated = validate_p2_record(record)
-    _, generation, _, identity = _validate_response_sources(
-        record,
-        registry=registry,
-        generation_record=generation_record,
-        judge_record=judge_record,
-        expected_domain="harmful",
-    )
-    if (
-        identity["block"] != record["cell"]
-        or identity["domain"] != "harmful"
-        or identity["prompt_id"] != record["prompt_id"]
-        or identity["vector_id"] != record["vector_id"]
-        or identity["anchor"] != record["anchor"]
-        or identity["estimator"] != record["estimator"]
-        or record["pair_id"]
-        != f"{identity['anchor']}|{identity['prompt_id']}|{identity['vector_id']}"
-    ):
-        raise RecordSchemaError("P2 response fields differ from its fixed logical identity")
-    _validate_materialized_dose_source(
-        record,
-        registry=registry,
-        identity=identity,
-        generation=generation,
-        measurement_result_dose_manifest=measurement_result_dose_manifest,
-        dose_context=dose_context,
-    )
-    return validated
-
-
-def validate_benign_materialization(
-    record: Mapping[str, Any],
-    *,
-    registry: LogicalIdentityRegistry,
-    generation_record: Mapping[str, Any],
-    judge_record: Mapping[str, Any] | None,
-    measurement_result_dose_manifest: Mapping[str, Any],
-    dose_context: AuthenticatedDoseContext,
-) -> dict[str, Any]:
-    validated = validate_benign_record(record)
-    _, generation, _, identity = _validate_response_sources(
-        record,
-        registry=registry,
-        generation_record=generation_record,
-        judge_record=judge_record,
-        expected_domain="benign",
-    )
-    if (
-        identity["block"] != record["cell"]
-        or identity["domain"] != "benign"
-        or identity["prompt_id"] != record["prompt_id"]
-        or identity["vector_id"] != record["vector_id"]
-        or identity["anchor"] != record["anchor"]
-        or identity["estimator"] != record["estimator"]
-    ):
-        raise RecordSchemaError("benign response fields differ from its fixed logical identity")
-    _validate_materialized_dose_source(
-        record,
-        registry=registry,
-        identity=identity,
-        generation=generation,
-        measurement_result_dose_manifest=measurement_result_dose_manifest,
-        dose_context=dose_context,
-    )
-    return validated
-
-
-SUPPORT_RESPONSE_KEYS = {
-    "logical_id", "identity_sha256", "synthetic", "anchor", "scheduled_identity_match",
-    "generation_completed", "judge_eligible", "judge_label_parsed",
-    "identity_complete", "identity_collision", "dose_denominator_valid",
-    "dose_geometry_finite", "post_dtype_alpha_finite", "dose_evidence",
-    "generation_record_sha256", "judge_record_sha256", "label",
-    "terminal_status", "retained",
+RESPONSE_RECORD_KEYS = {
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "generation_fake_backend", "judge_fake_backend", "logical_id", "block", "domain",
+    "prompt_id", "vector_id", "identity_sha256", "generation_record_sha256",
+    "judge_record_sha256", "generation_completed", "judge_eligible", "judge_label_parsed",
+    "label", "missingness_code", "dose_evidence", "record_sha256",
 }
 
 
-def validate_support_response_materialization(
-    record: Mapping[str, Any],
-    *,
-    registry: LogicalIdentityRegistry,
-    generation_record: Mapping[str, Any] | None,
-    judge_record: Mapping[str, Any] | None,
-    measurement_result_dose_manifest: Mapping[str, Any],
-    dose_context: AuthenticatedDoseContext,
-    unattempted_parent_status: str | None = None,
-) -> dict[str, Any]:
-    _exact_keys(record, SUPPORT_RESPONSE_KEYS, "support response materialization")
-    identity = registry.require(record["logical_id"])
-    if (
-        identity["block"] != "support"
-        or record["synthetic"] is not registry.synthetic
-        or record["identity_sha256"] != canonical_sha256(identity)
-        or record["anchor"] != identity["anchor"]
-    ):
-        raise RecordSchemaError("support response differs from its fixed logical identity")
-    flags = {
-        field: _bool(record, field)
-        for field in (
-            "scheduled_identity_match", "generation_completed", "judge_eligible",
-            "judge_label_parsed", "identity_complete", "identity_collision",
-            "dose_denominator_valid", "dose_geometry_finite",
-            "post_dtype_alpha_finite", "retained",
-        )
-    }
-    expected_retained = (
-        flags["scheduled_identity_match"]
-        and flags["generation_completed"]
-        and flags["judge_eligible"]
-        and flags["judge_label_parsed"]
-        and flags["identity_complete"]
-        and not flags["identity_collision"]
-        and flags["dose_denominator_valid"]
-        and flags["dose_geometry_finite"]
-        and flags["post_dtype_alpha_finite"]
-    )
-    if flags["retained"] is not expected_retained:
-        raise RecordSchemaError("support response retained predicate differs")
-    if generation_record is None:
-        if (
-            judge_record is not None
-            or record["generation_record_sha256"] is not None
-            or record["judge_record_sha256"] is not None
-            or flags["generation_completed"]
-            or flags["judge_eligible"]
-            or flags["judge_label_parsed"]
-            or record["label"] is not None
-            or record["dose_evidence"] is not None
-        ):
-            raise RecordSchemaError("unexecuted support response claims call materialization")
-        synthetic_unexecuted = (
-            registry.synthetic
-            and record["terminal_status"] == "SYNTHETIC_NOT_EXECUTED"
-            and flags["scheduled_identity_match"]
-            and flags["identity_complete"]
-            and not flags["identity_collision"]
-            and all(
-                flags[field]
-                for field in (
-                    "dose_denominator_valid", "dose_geometry_finite",
-                    "post_dtype_alpha_finite",
-                )
-            )
-        )
-        identity_failure = (
-            record["terminal_status"] == "NON_ESTIMABLE_IDENTITY"
-            and (
-                not flags["scheduled_identity_match"]
-                or not flags["identity_complete"]
-                or flags["identity_collision"]
-            )
-        )
-        integrity_unattempted = (
-            not registry.synthetic
-            and isinstance(unattempted_parent_status, str)
-            and bool(unattempted_parent_status)
-            and record["terminal_status"] == unattempted_parent_status
-        )
-        if not (synthetic_unexecuted or identity_failure or integrity_unattempted):
-            raise RecordSchemaError("unexecuted support response lacks an explicit terminal cause")
-        return dict(record)
+def validate_response_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate the common response envelope used by vector-free harmful clean rows."""
+    _schema(record, "response_record")
+    _exact_keys(record, RESPONSE_RECORD_KEYS, "response record")
+    if record["schema_version"] != "paper1-stage3-response-record-v2" or record["protocol_version"] != PROTOCOL_VERSION:
+        raise RecordSchemaError("invalid response schema/protocol version")
+    validate_run_mode(record["run_mode"])
+    if record["paper_result_eligible"] is not False:
+        raise RecordSchemaError("raw response records are not paper-result eligible")
+    if not isinstance(record["generation_fake_backend"], bool):
+        raise RecordSchemaError("generation_fake_backend must be boolean")
+    judge_fake = record["judge_fake_backend"]
+    if judge_fake is not None and not isinstance(judge_fake, bool):
+        raise RecordSchemaError("judge_fake_backend must be boolean or null")
+    if (record["judge_record_sha256"] is None) is not (judge_fake is None):
+        raise RecordSchemaError("judge fake provenance disagrees with judge record presence")
+    if record["fake_backend"] is not (record["generation_fake_backend"] or judge_fake is True):
+        raise RecordSchemaError("response fake_backend disagrees with upstream provenance")
+    for field in ("logical_id", "block", "domain", "prompt_id"):
+        _text(record[field], field)
+    if record["block"] != "harmful_clean" or record["domain"] != "harmful" or record["vector_id"] is not None:
+        raise RecordSchemaError("the common response envelope is restricted to harmful_clean")
+    _sha(record["identity_sha256"], "identity_sha256")
+    _sha(record["generation_record_sha256"], "generation_record_sha256")
+    _sha(record["judge_record_sha256"], "judge_record_sha256", nullable=True)
+    for field in ("generation_completed", "judge_eligible", "judge_label_parsed"):
+        if not isinstance(record[field], bool):
+            raise RecordSchemaError(f"{field} must be boolean")
+    if record["judge_eligible"] and not record["generation_completed"]:
+        raise RecordSchemaError("harmful clean judge eligibility requires generation completion")
+    if record["judge_eligible"] is not (record["judge_record_sha256"] is not None):
+        raise RecordSchemaError("harmful clean judge provenance differs from eligibility")
+    if record["judge_label_parsed"]:
+        if record["label"] not in JUDGE_LABELS["harmful"] or record["missingness_code"] is not None:
+            raise RecordSchemaError("parsed harmful clean response is inconsistent")
+    else:
+        if record["label"] is not None:
+            raise RecordSchemaError("unparsed harmful clean response must have null label")
+        if not record["generation_completed"]:
+            expected_missingness = {
+                "TERMINAL_TECHNICAL_FAILURE": "TERMINAL_GENERATION_TECHNICAL_FAILURE",
+                "TERMINAL_FAILURE": "TERMINAL_GENERATION_DETERMINISTIC_FAILURE",
+                "TERMINAL_INDETERMINATE_FAILURE": "TERMINAL_GENERATION_INDETERMINATE_FAILURE",
+            }
+            if record["missingness_code"] not in set(expected_missingness.values()):
+                raise RecordSchemaError("harmful clean generation missingness is invalid")
+        elif not record["judge_eligible"]:
+            if record["missingness_code"] != "TERMINAL_PREJUDGE_FAILURE":
+                raise RecordSchemaError("harmful clean prejudge missingness is invalid")
+        elif record["missingness_code"] not in {
+            "TERMINAL_JUDGE_FAILURE", "TERMINAL_JUDGE_INDETERMINATE_FAILURE"
+        }:
+            raise RecordSchemaError("harmful clean judge missingness is invalid")
+    if record["dose_evidence"] is not None:
+        raise RecordSchemaError("harmful clean response must not contain dose evidence")
+    _record_hash(record)
+    return dict(record)
 
-    _, generation, _, _ = _validate_response_sources(
-        record,
-        registry=registry,
-        generation_record=generation_record,
-        judge_record=judge_record,
-        expected_domain="harmful",
+
+P1_KEYS = {
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "logical_id",
+    "identity_sha256", "prompt_id", "domain", "identity_complete", "render_complete",
+    "valid_mask_complete", "forward_complete", "identity_collision", "valid_token_count",
+    "content_token_count", "unresolved_valid_token_count", "required_norms_finite",
+    "all_norm_sum", "content_norm_sum", "complete_case", "terminal_status",
+    "exclusion_reason", "record_sha256",
+}
+
+
+def validate_p1_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    _schema(record, "p1_measurement_record")
+    _exact_keys(record, P1_KEYS, "P1 record")
+    if record["schema_version"] != "paper1-stage3-p1-measurement-record-v3" or record["protocol_version"] != PROTOCOL_VERSION:
+        raise RecordSchemaError("invalid P1 schema/protocol version")
+    validate_run_mode(record["run_mode"])
+    if record["paper_result_eligible"] is not False:
+        raise RecordSchemaError("raw P1 records are not paper-result eligible")
+    _text(record["logical_id"], "logical_id")
+    _sha(record["identity_sha256"], "identity_sha256")
+    _text(record["prompt_id"], "prompt_id")
+    if record["domain"] not in {"harmful", "benign"}:
+        raise RecordSchemaError("P1 domain must be harmful or benign")
+    flags = {}
+    for field in (
+        "identity_complete", "render_complete", "valid_mask_complete", "forward_complete",
+        "identity_collision", "required_norms_finite",
+    ):
+        if not isinstance(record[field], bool):
+            raise RecordSchemaError(f"{field} must be boolean")
+        flags[field] = record[field]
+    valid_count = _count(record["valid_token_count"], "valid_token_count")
+    content_count = _count(record["content_token_count"], "content_token_count")
+    unresolved = _count(record["unresolved_valid_token_count"], "unresolved_valid_token_count")
+    all_sum = _finite(record["all_norm_sum"], "all_norm_sum", nullable=True, nonnegative=True)
+    content_sum = _finite(record["content_norm_sum"], "content_norm_sum", nullable=True, nonnegative=True)
+    if (
+        content_count > valid_count
+        or unresolved > valid_count
+        or content_count + unresolved > valid_count
+    ):
+        raise RecordSchemaError("P1 token counts are internally inconsistent")
+    if all_sum is not None and valid_count == 0 and all_sum != 0.0:
+        raise RecordSchemaError("P1 zero valid-token denominator requires a zero all-token norm sum")
+    if content_sum is not None and content_count == 0 and content_sum != 0.0:
+        raise RecordSchemaError("P1 zero content-token denominator requires a zero content norm sum")
+    if all_sum is not None and content_sum is not None and content_sum > all_sum:
+        raise RecordSchemaError("P1 content-token norm sum exceeds its all-token superset")
+    if flags["required_norms_finite"] is not (all_sum is not None and content_sum is not None):
+        raise RecordSchemaError("P1 finite-norm flag differs from norm presence")
+    complete = (
+        flags["identity_complete"] and flags["render_complete"] and flags["valid_mask_complete"]
+        and flags["forward_complete"] and not flags["identity_collision"]
+        and flags["required_norms_finite"] and unresolved == 0 and valid_count > 0
+        and content_count > 0 and content_count <= valid_count
+        and all_sum is not None and content_sum is not None
     )
-    _validate_dose_evidence(
-        record["dose_evidence"],
-        estimator=identity["estimator"],
-        generation_completed=flags["generation_completed"],
-        dose_valid=all(
-            flags[field]
-            for field in (
-                "dose_denominator_valid", "dose_geometry_finite",
-                "post_dtype_alpha_finite",
-            )
-        ),
+    if not flags["identity_complete"] or flags["identity_collision"]:
+        expected_terminal = "EXCLUDED_IDENTITY"
+    elif not flags["render_complete"]:
+        expected_terminal = "EXCLUDED_RENDER"
+    elif not flags["valid_mask_complete"]:
+        expected_terminal = "EXCLUDED_VALID_MASK"
+    elif not flags["forward_complete"]:
+        expected_terminal = "EXCLUDED_FORWARD"
+    elif unresolved != 0:
+        expected_terminal = "EXCLUDED_UNRESOLVED"
+    elif not flags["required_norms_finite"] or all_sum is None or content_sum is None:
+        expected_terminal = "EXCLUDED_NONFINITE"
+    elif valid_count == 0 or content_count == 0 or content_count > valid_count:
+        expected_terminal = "EXCLUDED_ZERO_DENOMINATOR"
+    else:
+        expected_terminal = "COMPLETE_CASE"
+    if record["complete_case"] is not complete or record["terminal_status"] != expected_terminal:
+        raise RecordSchemaError("P1 complete-case or first-failure terminal status differs")
+    expected_reason = None if complete else expected_terminal
+    if record["exclusion_reason"] != expected_reason:
+        raise RecordSchemaError("P1 exclusion_reason differs from first-failure status")
+    _record_hash(record)
+    return dict(record)
+
+
+DOSE_FIELDS = {
+    "status", "failure_code", "nominal_c", "mu_estimator", "mu_value", "mu_source_sha256",
+    "alpha_pre_dtype", "alpha_post_dtype", "pre_hook_l2", "post_hook_l2", "relative_dose",
+    "norm_ratio", "vector_alignment", "cosine_drift", "measurement_dose_sha256",
+    "generation_status", "phase", "use_cache",
+}
+_BINARY_FIELDS = (
+    "nominal_c", "mu_value", "alpha_pre_dtype", "alpha_post_dtype", "pre_hook_l2",
+    "post_hook_l2", "relative_dose", "norm_ratio", "vector_alignment", "cosine_drift",
+)
+
+
+def _binary64(value: Any, field: str, *, nullable: bool) -> float | None:
+    if nullable and value is None:
+        return None
+    if not isinstance(value, Mapping) or set(value) != {"value", "binary64_hex"}:
+        raise RecordSchemaError(f"dose_evidence.{field} must be a binary64 object")
+    number = _finite(value["value"], f"dose_evidence.{field}")
+    assert number is not None
+    if value["binary64_hex"] != number.hex():
+        raise RecordSchemaError(f"dose_evidence.{field} binary64 hex mismatch")
+    return number
+
+
+def validate_dose_evidence(
+    evidence: Mapping[str, Any] | None,
+    *,
+    estimator: str,
+    generation_status: str,
+    dose_valid: bool,
+    expected_failure_code: str | None,
+) -> dict[str, Any] | None:
+    if evidence is None:
+        raise RecordSchemaError("steered record lacks required dose provenance evidence")
+    _exact_keys(evidence, DOSE_FIELDS, "dose evidence")
+    if evidence["mu_estimator"] != estimator or evidence["generation_status"] != generation_status:
+        raise RecordSchemaError("dose evidence estimator/generation status differs")
+    _sha(evidence["mu_source_sha256"], "dose_evidence.mu_source_sha256")
+    _sha(evidence["measurement_dose_sha256"], "dose_evidence.measurement_dose_sha256")
+    if evidence["phase"] != "decode-only" or evidence["use_cache"] is not True:
+        raise RecordSchemaError("dose evidence phase/cache differs")
+    if dose_valid:
+        if (
+            expected_failure_code is not None
+            or evidence["status"] != "VALIDATED"
+            or evidence["failure_code"] is not None
+        ):
+            raise RecordSchemaError("valid dose flags require VALIDATED evidence")
+        values = {field: _binary64(evidence[field], field, nullable=False) for field in _BINARY_FIELDS}
+        if values["pre_hook_l2"] <= 0.0 or values["post_hook_l2"] <= 0.0:
+            raise RecordSchemaError("dose hook norms must be positive")
+        if values["relative_dose"].hex() != (values["alpha_post_dtype"] / values["pre_hook_l2"]).hex():
+            raise RecordSchemaError("relative dose formula mismatch")
+        if values["norm_ratio"].hex() != (values["post_hook_l2"] / values["pre_hook_l2"]).hex():
+            raise RecordSchemaError("norm ratio formula mismatch")
+        if not -1.0 <= values["vector_alignment"] <= 1.0 or not 0.0 <= values["cosine_drift"] <= 2.0:
+            raise RecordSchemaError("dose geometry exceeds cosine bounds")
+    else:
+        if (
+            expected_failure_code is None
+            or evidence["status"] != "INVALID"
+            or evidence["failure_code"] != expected_failure_code
+        ):
+            raise RecordSchemaError("invalid dose evidence failure_code differs from first dose failure")
+        for field in _BINARY_FIELDS:
+            if evidence[field] is not None:
+                raise RecordSchemaError("invalid dose evidence must not retain numeric summaries")
+    return dict(evidence)
+
+
+RESPONSE_FLAGS = (
+    "scheduled_identity_match", "generation_completed", "judge_eligible", "judge_label_parsed",
+    "identity_complete", "identity_collision", "dose_denominator_valid", "dose_geometry_finite",
+    "post_dtype_alpha_finite",
+)
+RESPONSE_TERMINALS = {
+    "COMPLETED_PARSED",
+    "NON_ESTIMABLE_IDENTITY",
+    "NON_ESTIMABLE_DOSE",
+    "TERMINAL_GENERATION_TECHNICAL_FAILURE",
+    "TERMINAL_GENERATION_DETERMINISTIC_FAILURE",
+    "TERMINAL_GENERATION_INDETERMINATE_FAILURE",
+    "TERMINAL_PREJUDGE_FAILURE",
+    "TERMINAL_JUDGE_FAILURE",
+    "TERMINAL_JUDGE_INDETERMINATE_FAILURE",
+}
+
+
+def _generation_terminal(status: str) -> str:
+    try:
+        return {
+            "TERMINAL_TECHNICAL_FAILURE": "TERMINAL_GENERATION_TECHNICAL_FAILURE",
+            "TERMINAL_FAILURE": "TERMINAL_GENERATION_DETERMINISTIC_FAILURE",
+            "TERMINAL_INDETERMINATE_FAILURE": "TERMINAL_GENERATION_INDETERMINATE_FAILURE",
+        }[status]
+    except KeyError as exc:
+        raise RecordSchemaError(f"invalid failed generation terminal status: {status}") from exc
+
+
+def _response_semantics(record: Mapping[str, Any], *, domain: str, steered: bool) -> dict[str, Any]:
+    flags: dict[str, bool] = {}
+    for field in RESPONSE_FLAGS:
+        if not isinstance(record[field], bool):
+            raise RecordSchemaError(f"{field} must be boolean")
+        flags[field] = record[field]
+    if flags["judge_eligible"] and not flags["generation_completed"]:
+        raise RecordSchemaError("judge eligibility requires completed generation")
+    if flags["judge_label_parsed"] and not flags["judge_eligible"]:
+        raise RecordSchemaError("parsed label requires judge eligibility")
+    if flags["judge_eligible"] is not (record["judge_record_sha256"] is not None):
+        raise RecordSchemaError("judge record presence differs from judge eligibility")
+    if flags["judge_label_parsed"]:
+        if record["label"] not in JUDGE_LABELS[domain]:
+            raise RecordSchemaError("parsed label is outside the domain")
+    elif record["label"] is not None:
+        raise RecordSchemaError("unparsed response must have a null label")
+    dose_valid = all(
+        flags[field]
+        for field in ("dose_denominator_valid", "dose_geometry_finite", "post_dtype_alpha_finite")
     )
-    _validate_materialized_dose_source(
-        record,
-        registry=registry,
-        identity=identity,
-        generation=generation,
-        measurement_result_dose_manifest=measurement_result_dose_manifest,
-        dose_context=dose_context,
-    )
-    if record["label"] not in {None, "broken", "unsafe", "refusal", "safe"}:
-        raise RecordSchemaError("support response label is outside the harmful rubric")
-    if not flags["judge_label_parsed"] and record["label"] is not None:
-        raise RecordSchemaError("unparsed support response must have a null label")
+    expected_dose_failure = None
+    if not flags["dose_denominator_valid"]:
+        expected_dose_failure = "INVALID_DOSE_DENOMINATOR"
+    elif not flags["dose_geometry_finite"]:
+        expected_dose_failure = "INVALID_DOSE_GEOMETRY"
+    elif not flags["post_dtype_alpha_finite"]:
+        expected_dose_failure = "INVALID_POST_DTYPE_ALPHA"
+    if steered:
+        validate_dose_evidence(
+            record["dose_evidence"],
+            estimator=record["estimator"],
+            generation_status=record["generation_terminal_status"],
+            dose_valid=dose_valid,
+            expected_failure_code=expected_dose_failure,
+        )
+    elif record["dose_evidence"] is not None or not dose_valid:
+        raise RecordSchemaError("clean response dose fields are inconsistent")
     identity_failed = (
         not flags["scheduled_identity_match"]
         or not flags["identity_complete"]
         or flags["identity_collision"]
     )
-    dose_failed = not all(
-        flags[field]
-        for field in (
-            "dose_denominator_valid", "dose_geometry_finite", "post_dtype_alpha_finite",
+    if identity_failed:
+        terminal = "NON_ESTIMABLE_IDENTITY"
+    elif not dose_valid:
+        terminal = "NON_ESTIMABLE_DOSE"
+    elif not flags["generation_completed"]:
+        terminal = _generation_terminal(record["generation_terminal_status"])
+    elif not flags["judge_eligible"]:
+        terminal = "TERMINAL_PREJUDGE_FAILURE"
+    elif not flags["judge_label_parsed"]:
+        terminal = (
+            "TERMINAL_JUDGE_INDETERMINATE_FAILURE"
+            if record["judge_terminal_status"] == "TERMINAL_INDETERMINATE_FAILURE"
+            else "TERMINAL_JUDGE_FAILURE"
         )
-    )
-    expected_terminal = (
-        "NON_ESTIMABLE_IDENTITY" if identity_failed
-        else "NON_ESTIMABLE_DOSE" if dose_failed
-        else "TERMINAL_GENERATION_FAILURE" if not flags["generation_completed"]
-        else "TERMINAL_JUDGE_FAILURE" if not flags["judge_label_parsed"]
-        else "COMPLETED_PARSED"
-    )
-    if record["terminal_status"] != expected_terminal:
-        raise RecordSchemaError("support response terminal status violates failure precedence")
+    else:
+        terminal = "COMPLETED_PARSED"
+    if terminal not in RESPONSE_TERMINALS or record["terminal_status"] != terminal:
+        raise RecordSchemaError("response terminal status violates first-failure precedence")
+    if record["retained"] is not (terminal == "COMPLETED_PARSED"):
+        raise RecordSchemaError("retained status differs from terminal status")
+    expected_missingness = None if terminal == "COMPLETED_PARSED" else terminal
+    if record["missingness_code"] != expected_missingness:
+        raise RecordSchemaError("missingness code differs from terminal status")
+    if flags["generation_completed"] is not (record["generation_terminal_status"] == "COMPLETED"):
+        raise RecordSchemaError("generation terminal status differs from completion flag")
+    if flags["judge_label_parsed"] is not (record["judge_terminal_status"] == "PARSED"):
+        raise RecordSchemaError("judge parsed flag differs from judge terminal status")
+    if flags["judge_eligible"]:
+        if record["judge_terminal_status"] not in {
+            "PARSED", "TERMINAL_PARSE_OR_INFRASTRUCTURE_FAILURE", "TERMINAL_INDETERMINATE_FAILURE"
+        }:
+            raise RecordSchemaError("judge terminal status is invalid")
+    elif record["judge_terminal_status"] is not None:
+        raise RecordSchemaError("ineligible response must not claim judge terminal provenance")
     return dict(record)
 
 
-def validate_k1_materialization(
+P2_KEYS = {
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "logical_id", "identity_sha256", "generation_record_sha256", "judge_record_sha256",
+    "cell", "prompt_id", "vector_id", "pair_id", "arm", "anchor", "estimator",
+    *RESPONSE_FLAGS, "generation_terminal_status", "judge_terminal_status", "dose_evidence",
+    "label", "terminal_status", "missingness_code", "retained", "record_sha256",
+}
+
+
+def validate_p2_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    _schema(record, "p2_response_record")
+    _exact_keys(record, P2_KEYS, "P2 record")
+    if record["schema_version"] != "paper1-stage3-p2-response-record-v2" or record["protocol_version"] != PROTOCOL_VERSION:
+        raise RecordSchemaError("invalid P2 schema/protocol version")
+    validate_run_mode(record["run_mode"])
+    if record["paper_result_eligible"] is not False or not isinstance(record["fake_backend"], bool):
+        raise RecordSchemaError("invalid P2 eligibility/backend flags")
+    for field in ("logical_id", "prompt_id", "vector_id", "pair_id"):
+        _text(record[field], field)
+    for field in ("identity_sha256", "generation_record_sha256"):
+        _sha(record[field], field)
+    _sha(record["judge_record_sha256"], "judge_record_sha256", nullable=True)
+    expected = {
+        "P2_A_all": ("all-token", "A", "mu_all_tw"),
+        "P2_A_content": ("content-token", "A", "mu_content_tw"),
+        "P2_T_all": ("all-token", "T", "mu_all_tw"),
+        "P2_T_content": ("content-token", "T", "mu_content_tw"),
+    }.get(record["cell"])
+    if expected is None or (record["arm"], record["anchor"], record["estimator"]) != expected:
+        raise RecordSchemaError("P2 cell/arm/anchor/estimator mapping changed")
+    if record["pair_id"] != f"{record['anchor']}|{record['prompt_id']}|{record['vector_id']}":
+        raise RecordSchemaError("P2 pair identity changed")
+    result = _response_semantics(record, domain="harmful", steered=True)
+    _record_hash(record)
+    return result
+
+
+BENIGN_KEYS = {
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "logical_id", "identity_sha256", "generation_record_sha256", "judge_record_sha256",
+    "cell", "prompt_id", "vector_id", "anchor", "estimator", *RESPONSE_FLAGS,
+    "generation_terminal_status", "judge_terminal_status", "dose_evidence", "label",
+    "terminal_status", "missingness_code", "retained", "record_sha256",
+}
+
+
+def validate_benign_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    _schema(record, "benign_response_record")
+    _exact_keys(record, BENIGN_KEYS, "benign record")
+    if record["schema_version"] != "paper1-stage3-benign-response-record-v2" or record["protocol_version"] != PROTOCOL_VERSION:
+        raise RecordSchemaError("invalid benign schema/protocol version")
+    validate_run_mode(record["run_mode"])
+    if record["paper_result_eligible"] is not False or not isinstance(record["fake_backend"], bool):
+        raise RecordSchemaError("invalid benign eligibility/backend flags")
+    for field in ("logical_id", "prompt_id"):
+        _text(record[field], field)
+    for field in ("identity_sha256", "generation_record_sha256"):
+        _sha(record[field], field)
+    _sha(record["judge_record_sha256"], "judge_record_sha256", nullable=True)
+    if record["cell"] == "benign_clean":
+        if record["vector_id"] is not None or record["anchor"] != "clean" or record["estimator"] != "clean":
+            raise RecordSchemaError("benign clean identity changed")
+        steered = False
+    elif record["cell"] == "benign_T":
+        _text(record["vector_id"], "vector_id")
+        if record["anchor"] != "T" or record["estimator"] != "mu_all_tw":
+            raise RecordSchemaError("benign T identity changed")
+        steered = True
+    else:
+        raise RecordSchemaError("invalid benign cell")
+    result = _response_semantics(record, domain="benign", steered=steered)
+    _record_hash(record)
+    return result
+
+
+SUPPORT_KEYS = {
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "logical_id", "identity_sha256", "generation_record_sha256", "judge_record_sha256",
+    "prompt_id", "vector_id", "anchor", "estimator", *RESPONSE_FLAGS,
+    "generation_terminal_status", "judge_terminal_status", "dose_evidence", "label",
+    "terminal_status", "missingness_code", "retained", "record_sha256",
+}
+
+
+def validate_support_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    _schema(record, "support_response_record")
+    _exact_keys(record, SUPPORT_KEYS, "support record")
+    if record["schema_version"] != "paper1-stage3-support-response-record-v1" or record["protocol_version"] != PROTOCOL_VERSION:
+        raise RecordSchemaError("invalid support schema/protocol version")
+    validate_run_mode(record["run_mode"])
+    if record["paper_result_eligible"] is not False or not isinstance(record["fake_backend"], bool):
+        raise RecordSchemaError("invalid support eligibility/backend flags")
+    for field in ("logical_id", "prompt_id", "vector_id"):
+        _text(record[field], field)
+    for field in ("identity_sha256", "generation_record_sha256"):
+        _sha(record[field], field)
+    _sha(record["judge_record_sha256"], "judge_record_sha256", nullable=True)
+    if record["anchor"] not in {"A", "T", "H"} or record["estimator"] != "mu_all_tw":
+        raise RecordSchemaError("support anchor/estimator mapping changed")
+    result = _response_semantics(record, domain="harmful", steered=True)
+    _record_hash(record)
+    return result
+
+
+K1_KEYS = {
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "logical_id", "identity_sha256", "source_p2_logical_id", "source_p2_record_sha256",
+    "cell", "prompt_id", "vector_id", "pair_id", "arm", "anchor", "estimator", "label",
+    "retained", "generation_calls_added", "judge_calls_added", "record_sha256",
+}
+
+
+def validate_k1_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    _schema(record, "k1_reuse_record")
+    _exact_keys(record, K1_KEYS, "K1 record")
+    if record["schema_version"] != "paper1-stage3-k1-reuse-record-v2" or record["protocol_version"] != PROTOCOL_VERSION:
+        raise RecordSchemaError("invalid K1 schema/protocol version")
+    validate_run_mode(record["run_mode"])
+    if record["paper_result_eligible"] is not False or not isinstance(record["fake_backend"], bool):
+        raise RecordSchemaError("invalid K1 eligibility/backend flags")
+    for field in ("logical_id", "source_p2_logical_id", "prompt_id", "vector_id", "pair_id"):
+        _text(record[field], field)
+    for field in ("identity_sha256", "source_p2_record_sha256"):
+        _sha(record[field], field)
+    if record["logical_id"] != record["source_p2_logical_id"]:
+        raise RecordSchemaError("K1 must reuse the exact P2 logical identity")
+    expected = {
+        "P2_A_all": ("all-token", "A", "mu_all_tw"),
+        "P2_A_content": ("content-token", "A", "mu_content_tw"),
+        "P2_T_all": ("all-token", "T", "mu_all_tw"),
+        "P2_T_content": ("content-token", "T", "mu_content_tw"),
+    }.get(record["cell"])
+    if expected is None or (record["arm"], record["anchor"], record["estimator"]) != expected:
+        raise RecordSchemaError("K1 cell mapping differs from P2")
+    if record["pair_id"] != f"{record['anchor']}|{record['prompt_id']}|{record['vector_id']}":
+        raise RecordSchemaError("K1 pair identity changed")
+    if record["label"] not in JUDGE_LABELS["harmful"] or record["retained"] is not True:
+        raise RecordSchemaError("K1 requires one retained harmful P2 label")
+    if _count(record["generation_calls_added"], "generation_calls_added") != 0 or _count(record["judge_calls_added"], "judge_calls_added") != 0:
+        raise RecordSchemaError("K1 adds zero generation and judge calls")
+    _record_hash(record)
+    return dict(record)
+
+
+def _source_lineage(
     record: Mapping[str, Any],
     *,
     registry: LogicalIdentityRegistry,
-    source_p2_record: Mapping[str, Any],
     generation_record: Mapping[str, Any],
-    judge_record: Mapping[str, Any],
-    measurement_result_dose_manifest: Mapping[str, Any],
-    dose_context: AuthenticatedDoseContext,
-) -> dict[str, Any]:
-    validated = validate_k1_record(record)
-    raw_source = {key: source_p2_record[key] for key in P2_KEYS}
-    source = validate_p2_materialization(
-        raw_source,
-        registry=registry,
-        generation_record=generation_record,
-        judge_record=judge_record,
-        measurement_result_dose_manifest=measurement_result_dose_manifest,
-        dose_context=dose_context,
-    )
-    if not source["retained"]:
-        raise RecordSchemaError("K1 source P2 record is not retained")
+    judge_record: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
+    identity = registry.require(record["logical_id"])
+    generation = validate_generation_record(generation_record)
+    judge = validate_judge_record(judge_record) if judge_record is not None else None
+    identity_hash = canonical_sha256(identity)
     if (
-        record["synthetic"] is not registry.synthetic
-        or record["source_p2_record_sha256"] != source["record_sha256"]
-        or record["source_p2_logical_id"] != source["logical_id"]
-        or record["logical_id"] != source["logical_id"]
-        or record["cell"] != source["cell"]
-        or record["prompt_id"] != source["prompt_id"]
-        or record["vector_id"] != source["vector_id"]
-        or record["label"] != source["label"]
+        generation["logical_id"] != record["logical_id"]
+        or generation["identity_sha256"] != identity_hash
+        or record["identity_sha256"] != identity_hash
+        or record["generation_record_sha256"] != generation["record_sha256"]
+        or record["generation_completed"] is not generation["generation_completed"]
+        or record["run_mode"] != generation["run_mode"]
     ):
-        raise RecordSchemaError("K1 fields differ from the exact retained P2 source")
+        raise RecordSchemaError("response generation lineage differs from registry/source records")
+    if (
+        "generation_terminal_status" in record
+        and record["generation_terminal_status"] != generation["terminal_status"]
+    ):
+        raise RecordSchemaError("response generation terminal status differs from source record")
+    if record["judge_eligible"]:
+        if judge is None:
+            raise RecordSchemaError("judge-eligible response lacks its judge record")
+        if (
+            judge["logical_id"] != record["logical_id"]
+            or judge["identity_sha256"] != identity_hash
+            or judge["generation_record_sha256"] != generation["record_sha256"]
+            or judge["domain"] != identity["domain"]
+            or judge["run_mode"] != record["run_mode"]
+            or record["judge_record_sha256"] != judge["record_sha256"]
+            or record["judge_label_parsed"] is not judge["judge_label_parsed"]
+            or record["label"] != judge["label"]
+        ):
+            raise RecordSchemaError("response judge lineage differs from source records")
+        if (
+            "judge_terminal_status" in record
+            and record["judge_terminal_status"] != judge["terminal_status"]
+        ):
+            raise RecordSchemaError("response judge terminal status differs from source record")
+    elif judge is not None or record["judge_record_sha256"] is not None:
+        raise RecordSchemaError("judge-ineligible response claims judge provenance")
+    expected_fake = generation["fake_backend"] or (judge is not None and judge["fake_backend"])
+    if record["fake_backend"] is not expected_fake:
+        raise RecordSchemaError("response fake backend differs from source lineage")
+    if "generation_fake_backend" in record and (
+        record["generation_fake_backend"] is not generation["fake_backend"]
+        or record["judge_fake_backend"] is not (
+            None if judge is None else judge["fake_backend"]
+        )
+    ):
+        raise RecordSchemaError("response backend provenance differs from source lineage")
+    if "scheduled_identity_match" in record:
+        if (
+            record["scheduled_identity_match"] is not True
+            or record["identity_complete"] is not True
+            or record["identity_collision"] is not False
+        ):
+            raise RecordSchemaError("registered response may not self-report a forged identity state")
+    return identity, generation, judge
+
+
+def _terminal_producer_dose(
+    generation: Mapping[str, Any], *, steered: bool
+) -> dict[str, Any] | None:
+    diagnostics = generation["attempts"][-1]["diagnostics"]
+    evidence = diagnostics.get("dose_evidence")
+    if steered:
+        if not isinstance(evidence, Mapping):
+            raise RecordSchemaError("steered terminal generation lacks producer dose evidence")
+        return dict(evidence)
+    if "dose_evidence" in diagnostics:
+        raise RecordSchemaError("clean terminal generation claims dose evidence")
+    return None
+
+
+def _dose_source(
+    record: Mapping[str, Any],
+    *,
+    identity: Mapping[str, Any],
+    generation: Mapping[str, Any],
+    dose_binding: Mapping[str, Any],
+) -> None:
+    if identity["estimator"] == "clean":
+        if record["dose_evidence"] is not None:
+            raise RecordSchemaError("clean response claims dose evidence")
+        _terminal_producer_dose(generation, steered=False)
+        return
+    producer_evidence = _terminal_producer_dose(generation, steered=True)
+    doses = validate_dose_binding(dose_binding)
+    expected = doses[identity["anchor"]][identity["estimator"]]
+    for field in ("c_hex", "alpha_pre_dtype_hex", "alpha_post_dtype_hex", "rho_hex"):
+        if identity[field] != expected[field]:
+            raise RecordSchemaError(f"logical identity differs from dose source: {field}")
+    evidence = record["dose_evidence"]
+    if not isinstance(evidence, Mapping):
+        raise RecordSchemaError("steered response lacks dose source evidence")
+    if canonical_sha256(evidence) != canonical_sha256(producer_evidence):
+        raise RecordSchemaError("response dose evidence differs from terminal generation producer")
+    if (
+        evidence["measurement_dose_sha256"] != canonical_sha256(dose_binding)
+        or evidence["mu_estimator"] != identity["estimator"]
+        or evidence["mu_source_sha256"] != canonical_sha256(dose_binding[identity["estimator"]])
+    ):
+        raise RecordSchemaError("dose evidence provenance differs from actual dose source")
+    if evidence["status"] == "VALIDATED":
+        expected_hex = {
+            "nominal_c": identity["c_hex"],
+            "mu_value": float(dose_binding[identity["estimator"]]["value"]).hex(),
+            "alpha_pre_dtype": identity["alpha_pre_dtype_hex"],
+            "alpha_post_dtype": identity["alpha_post_dtype_hex"],
+        }
+        for field, value in expected_hex.items():
+            if evidence[field]["binary64_hex"] != value:
+                raise RecordSchemaError(f"dose evidence differs from identity: {field}")
+
+
+def validate_p2_materialization(
+    record: Mapping[str, Any], *, registry: LogicalIdentityRegistry,
+    generation_record: Mapping[str, Any], judge_record: Mapping[str, Any] | None,
+    dose_binding: Mapping[str, Any],
+) -> dict[str, Any]:
+    validated = validate_p2_record(record)
+    identity, generation, _ = _source_lineage(
+        record, registry=registry, generation_record=generation_record, judge_record=judge_record
+    )
+    if (
+        identity["block"] != record["cell"] or identity["domain"] != "harmful"
+        or identity["prompt_id"] != record["prompt_id"] or identity["vector_id"] != record["vector_id"]
+        or identity["anchor"] != record["anchor"] or identity["estimator"] != record["estimator"]
+    ):
+        raise RecordSchemaError("P2 response fields differ from registry identity")
+    _dose_source(record, identity=identity, generation=generation, dose_binding=dose_binding)
     return validated
 
 
-VALIDATORS = {
+def validate_benign_materialization(
+    record: Mapping[str, Any], *, registry: LogicalIdentityRegistry,
+    generation_record: Mapping[str, Any], judge_record: Mapping[str, Any] | None,
+    dose_binding: Mapping[str, Any],
+) -> dict[str, Any]:
+    validated = validate_benign_record(record)
+    identity, generation, _ = _source_lineage(
+        record, registry=registry, generation_record=generation_record, judge_record=judge_record
+    )
+    if (
+        identity["block"] != record["cell"] or identity["domain"] != "benign"
+        or identity["prompt_id"] != record["prompt_id"] or identity["vector_id"] != record["vector_id"]
+        or identity["anchor"] != record["anchor"] or identity["estimator"] != record["estimator"]
+    ):
+        raise RecordSchemaError("benign response fields differ from registry identity")
+    _dose_source(record, identity=identity, generation=generation, dose_binding=dose_binding)
+    return validated
+
+
+def validate_support_materialization(
+    record: Mapping[str, Any], *, registry: LogicalIdentityRegistry,
+    generation_record: Mapping[str, Any], judge_record: Mapping[str, Any] | None,
+    dose_binding: Mapping[str, Any],
+) -> dict[str, Any]:
+    validated = validate_support_record(record)
+    identity, generation, _ = _source_lineage(
+        record, registry=registry, generation_record=generation_record, judge_record=judge_record
+    )
+    if (
+        identity["block"] != "support" or identity["domain"] != "harmful"
+        or identity["prompt_id"] != record["prompt_id"] or identity["vector_id"] != record["vector_id"]
+        or identity["anchor"] != record["anchor"] or identity["estimator"] != record["estimator"]
+    ):
+        raise RecordSchemaError("support response fields differ from registry identity")
+    _dose_source(record, identity=identity, generation=generation, dose_binding=dose_binding)
+    return validated
+
+
+def validate_response_materialization(
+    record: Mapping[str, Any], *, registry: LogicalIdentityRegistry,
+    generation_record: Mapping[str, Any], judge_record: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    validated = validate_response_record(record)
+    identity, generation, judge = _source_lineage(
+        record, registry=registry, generation_record=generation_record, judge_record=judge_record
+    )
+    if (
+        identity["block"] != "harmful_clean"
+        or identity["domain"] != "harmful"
+        or identity["prompt_id"] != record["prompt_id"]
+        or identity["vector_id"] is not None
+        or identity["estimator"] != "clean"
+        or identity["anchor"] != "clean"
+        or record["block"] != identity["block"]
+        or record["domain"] != identity["domain"]
+        or record["vector_id"] is not None
+    ):
+        raise RecordSchemaError("harmful clean response differs from registry identity")
+    _terminal_producer_dose(generation, steered=False)
+    if not generation["generation_completed"]:
+        expected_missingness = {
+            "TERMINAL_TECHNICAL_FAILURE": "TERMINAL_GENERATION_TECHNICAL_FAILURE",
+            "TERMINAL_FAILURE": "TERMINAL_GENERATION_DETERMINISTIC_FAILURE",
+            "TERMINAL_INDETERMINATE_FAILURE": "TERMINAL_GENERATION_INDETERMINATE_FAILURE",
+        }[generation["terminal_status"]]
+    elif judge is None:
+        expected_missingness = "TERMINAL_PREJUDGE_FAILURE"
+    elif judge["terminal_status"] == "PARSED":
+        expected_missingness = None
+    elif judge["terminal_status"] == "TERMINAL_INDETERMINATE_FAILURE":
+        expected_missingness = "TERMINAL_JUDGE_INDETERMINATE_FAILURE"
+    else:
+        expected_missingness = "TERMINAL_JUDGE_FAILURE"
+    if record["missingness_code"] != expected_missingness:
+        raise RecordSchemaError("harmful clean missingness differs from source terminal lineage")
+    return validated
+
+
+def validate_k1_materialization(
+    record: Mapping[str, Any], *, registry: LogicalIdentityRegistry,
+    source_p2_record: Mapping[str, Any], generation_record: Mapping[str, Any],
+    judge_record: Mapping[str, Any] | None, dose_binding: Mapping[str, Any],
+) -> dict[str, Any]:
+    validated = validate_k1_record(record)
+    source = validate_p2_materialization(
+        source_p2_record,
+        registry=registry,
+        generation_record=generation_record,
+        judge_record=judge_record,
+        dose_binding=dose_binding,
+    )
+    if not source["retained"]:
+        raise RecordSchemaError("K1 source P2 record is not retained")
+    checks = {
+        "logical_id": source["logical_id"],
+        "source_p2_logical_id": source["logical_id"],
+        "source_p2_record_sha256": source["record_sha256"],
+        "identity_sha256": source["identity_sha256"],
+        "cell": source["cell"],
+        "prompt_id": source["prompt_id"],
+        "vector_id": source["vector_id"],
+        "pair_id": source["pair_id"],
+        "arm": source["arm"],
+        "anchor": source["anchor"],
+        "estimator": source["estimator"],
+        "label": source["label"],
+        "fake_backend": source["fake_backend"],
+        "run_mode": source["run_mode"],
+    }
+    for field, expected in checks.items():
+        if record[field] != expected:
+            raise RecordSchemaError(f"K1 field differs from exact retained P2 source: {field}")
+    return validated
+
+
+def build_response_record(
+    *, identity: Mapping[str, Any], generation_record: Mapping[str, Any],
+    judge_record: Mapping[str, Any] | None, missingness_code: str | None,
+    dose_evidence: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Build a parsed or terminal response using only validated upstream records."""
+    normalized = normalize_identity(identity)
+    generation = validate_generation_record(generation_record)
+    identity_sha = canonical_sha256(normalized)
+    if generation["identity_sha256"] != identity_sha:
+        raise RecordSchemaError("generation record does not match response identity")
+    judge = validate_judge_record(judge_record) if judge_record is not None else None
+    if judge is not None and (
+        not generation["generation_completed"]
+        or judge["logical_id"] != generation["logical_id"]
+        or judge["identity_sha256"] != identity_sha
+        or judge["generation_record_sha256"] != generation["record_sha256"]
+        or judge["domain"] != normalized["domain"]
+        or judge["run_mode"] != generation["run_mode"]
+    ):
+        raise RecordSchemaError("judge record does not match generation provenance")
+    judge_eligible = judge is not None
+    parsed = judge is not None and judge["judge_label_parsed"]
+    fake = generation["fake_backend"] or (judge is not None and judge["fake_backend"])
+    if normalized["block"] == "harmful_clean":
+        if dose_evidence is not None:
+            raise RecordSchemaError("clean response builder rejects dose evidence")
+        _terminal_producer_dose(generation, steered=False)
+        if parsed:
+            code = None
+        elif not generation["generation_completed"]:
+            code = {
+                "TERMINAL_TECHNICAL_FAILURE": "TERMINAL_GENERATION_TECHNICAL_FAILURE",
+                "TERMINAL_FAILURE": "TERMINAL_GENERATION_DETERMINISTIC_FAILURE",
+                "TERMINAL_INDETERMINATE_FAILURE": "TERMINAL_GENERATION_INDETERMINATE_FAILURE",
+            }[generation["terminal_status"]]
+        elif judge is None:
+            code = "TERMINAL_PREJUDGE_FAILURE"
+        elif judge["terminal_status"] == "TERMINAL_INDETERMINATE_FAILURE":
+            code = "TERMINAL_JUDGE_INDETERMINATE_FAILURE"
+        else:
+            code = "TERMINAL_JUDGE_FAILURE"
+        if missingness_code is not None and missingness_code != code:
+            raise RecordSchemaError("caller missingness differs from derived harmful-clean terminal")
+        record = {
+            "schema_version": "paper1-stage3-response-record-v2",
+            "protocol_version": PROTOCOL_VERSION,
+            "run_mode": generation["run_mode"],
+            "paper_result_eligible": False,
+            "fake_backend": fake,
+            "generation_fake_backend": generation["fake_backend"],
+            "judge_fake_backend": None if judge is None else judge["fake_backend"],
+            "logical_id": generation["logical_id"],
+            "block": "harmful_clean",
+            "domain": "harmful",
+            "prompt_id": normalized["prompt_id"],
+            "vector_id": None,
+            "identity_sha256": identity_sha,
+            "generation_record_sha256": generation["record_sha256"],
+            "judge_record_sha256": None if judge is None else judge["record_sha256"],
+            "generation_completed": generation["generation_completed"],
+            "judge_eligible": judge_eligible,
+            "judge_label_parsed": parsed,
+            "label": None if judge is None else judge["label"],
+            "missingness_code": code,
+            "dose_evidence": None,
+        }
+        record["record_sha256"] = canonical_sha256(record)
+        return validate_response_record(record)
+    raise RecordSchemaError("use the block-specific response builder for steered or benign records")
+
+
+def _dose_flags_from_producer_evidence(evidence: Mapping[str, Any]) -> dict[str, bool]:
+    status = evidence.get("status")
+    failure_code = evidence.get("failure_code")
+    if status == "VALIDATED" and failure_code is None:
+        return {
+            "dose_denominator_valid": True,
+            "dose_geometry_finite": True,
+            "post_dtype_alpha_finite": True,
+        }
+    failure_flags = {
+        "INVALID_DOSE_DENOMINATOR": {
+            "dose_denominator_valid": False,
+            "dose_geometry_finite": True,
+            "post_dtype_alpha_finite": True,
+        },
+        "INVALID_DOSE_GEOMETRY": {
+            "dose_denominator_valid": True,
+            "dose_geometry_finite": False,
+            "post_dtype_alpha_finite": True,
+        },
+        "INVALID_POST_DTYPE_ALPHA": {
+            "dose_denominator_valid": True,
+            "dose_geometry_finite": True,
+            "post_dtype_alpha_finite": False,
+        },
+    }
+    if status != "INVALID" or failure_code not in failure_flags:
+        raise RecordSchemaError("producer dose evidence status/failure_code is not canonical")
+    return failure_flags[failure_code]
+
+
+def build_block_response_record(
+    *,
+    identity: Mapping[str, Any],
+    generation_record: Mapping[str, Any],
+    judge_record: Mapping[str, Any] | None,
+    dose_evidence: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Build one support, P2, or benign terminal record from validated sources."""
+    normalized = normalize_identity(identity)
+    if normalized["block"] == "harmful_clean":
+        return build_response_record(
+            identity=normalized,
+            generation_record=generation_record,
+            judge_record=judge_record,
+            missingness_code=None,
+            dose_evidence=dose_evidence,
+        )
+    generation = validate_generation_record(generation_record)
+    identity_sha256 = canonical_sha256(normalized)
+    if generation["identity_sha256"] != identity_sha256:
+        raise RecordSchemaError("generation record does not match response identity")
+    judge = validate_judge_record(judge_record) if judge_record is not None else None
+    if judge is not None and (
+        not generation["generation_completed"]
+        or judge["logical_id"] != generation["logical_id"]
+        or judge["identity_sha256"] != identity_sha256
+        or judge["generation_record_sha256"] != generation["record_sha256"]
+        or judge["domain"] != normalized["domain"]
+        or judge["run_mode"] != generation["run_mode"]
+    ):
+        raise RecordSchemaError("judge record does not match generation provenance")
+    steered = normalized["estimator"] != "clean"
+    if steered:
+        if not isinstance(dose_evidence, Mapping):
+            raise RecordSchemaError("steered response builder requires caller dose evidence")
+        producer_evidence = _terminal_producer_dose(generation, steered=True)
+        if canonical_sha256(dose_evidence) != canonical_sha256(producer_evidence):
+            raise RecordSchemaError(
+                "caller dose evidence differs from terminal generation producer evidence"
+            )
+        dose_flags = _dose_flags_from_producer_evidence(producer_evidence)
+        dose_valid = all(dose_flags.values())
+    else:
+        if dose_evidence is not None:
+            raise RecordSchemaError("clean response may not contain dose evidence")
+        _terminal_producer_dose(generation, steered=False)
+        producer_evidence = None
+        dose_flags = {
+            "dose_denominator_valid": True,
+            "dose_geometry_finite": True,
+            "post_dtype_alpha_finite": True,
+        }
+        dose_valid = True
+    parsed = judge is not None and judge["judge_label_parsed"]
+    flags = {
+        "scheduled_identity_match": True,
+        "generation_completed": generation["generation_completed"],
+        "judge_eligible": judge is not None,
+        "judge_label_parsed": parsed,
+        "identity_complete": True,
+        "identity_collision": False,
+        **dose_flags,
+    }
+    if not dose_valid:
+        terminal = "NON_ESTIMABLE_DOSE"
+    elif not generation["generation_completed"]:
+        terminal = _generation_terminal(generation["terminal_status"])
+    elif judge is None:
+        terminal = "TERMINAL_PREJUDGE_FAILURE"
+    elif not parsed:
+        terminal = (
+            "TERMINAL_JUDGE_INDETERMINATE_FAILURE"
+            if judge["terminal_status"] == "TERMINAL_INDETERMINATE_FAILURE"
+            else "TERMINAL_JUDGE_FAILURE"
+        )
+    else:
+        terminal = "COMPLETED_PARSED"
+    common = {
+        "protocol_version": PROTOCOL_VERSION,
+        "run_mode": generation["run_mode"],
+        "paper_result_eligible": False,
+        "fake_backend": generation["fake_backend"] or (judge is not None and judge["fake_backend"]),
+        "logical_id": generation["logical_id"],
+        "identity_sha256": identity_sha256,
+        "generation_record_sha256": generation["record_sha256"],
+        "judge_record_sha256": None if judge is None else judge["record_sha256"],
+        "prompt_id": normalized["prompt_id"],
+        "vector_id": normalized["vector_id"],
+        **flags,
+        "generation_terminal_status": generation["terminal_status"],
+        "judge_terminal_status": None if judge is None else judge["terminal_status"],
+        "dose_evidence": producer_evidence,
+        "label": None if judge is None else judge["label"],
+        "terminal_status": terminal,
+        "missingness_code": None if terminal == "COMPLETED_PARSED" else terminal,
+        "retained": terminal == "COMPLETED_PARSED",
+    }
+    block = normalized["block"]
+    if block == "support":
+        record = {
+            "schema_version": "paper1-stage3-support-response-record-v1",
+            **common,
+            "anchor": normalized["anchor"],
+            "estimator": normalized["estimator"],
+        }
+        validator = validate_support_record
+    elif block.startswith("P2_"):
+        arm = "all-token" if block.endswith("_all") else "content-token"
+        record = {
+            "schema_version": "paper1-stage3-p2-response-record-v2",
+            **common,
+            "cell": block,
+            "pair_id": f"{normalized['anchor']}|{normalized['prompt_id']}|{normalized['vector_id']}",
+            "arm": arm,
+            "anchor": normalized["anchor"],
+            "estimator": normalized["estimator"],
+        }
+        validator = validate_p2_record
+    elif block in {"benign_T", "benign_clean"}:
+        record = {
+            "schema_version": "paper1-stage3-benign-response-record-v2",
+            **common,
+            "cell": block,
+            "anchor": normalized["anchor"],
+            "estimator": normalized["estimator"],
+        }
+        validator = validate_benign_record
+    else:
+        raise RecordSchemaError(f"unsupported block-specific response builder: {block}")
+    record["record_sha256"] = canonical_sha256(record)
+    return validator(record)
+
+
+def build_k1_reuse_record(source_p2_record: Mapping[str, Any]) -> dict[str, Any]:
+    """Materialize K1 metadata without adding a generation or judge identity."""
+    source = validate_p2_record(source_p2_record)
+    if not source["retained"]:
+        raise RecordSchemaError("K1 can reuse only a retained P2 response")
+    record = {
+        "schema_version": "paper1-stage3-k1-reuse-record-v2",
+        "protocol_version": PROTOCOL_VERSION,
+        "run_mode": source["run_mode"],
+        "paper_result_eligible": False,
+        "fake_backend": source["fake_backend"],
+        "logical_id": source["logical_id"],
+        "identity_sha256": source["identity_sha256"],
+        "source_p2_logical_id": source["logical_id"],
+        "source_p2_record_sha256": source["record_sha256"],
+        "cell": source["cell"],
+        "prompt_id": source["prompt_id"],
+        "vector_id": source["vector_id"],
+        "pair_id": source["pair_id"],
+        "arm": source["arm"],
+        "anchor": source["anchor"],
+        "estimator": source["estimator"],
+        "label": source["label"],
+        "retained": True,
+        "generation_calls_added": 0,
+        "judge_calls_added": 0,
+    }
+    record["record_sha256"] = canonical_sha256(record)
+    return validate_k1_record(record)
+
+
+VALIDATORS: dict[str, Callable[[Mapping[str, Any]], dict[str, Any]]] = {
     "generation": validate_generation_record,
     "judge": validate_judge_record,
+    "response": validate_response_record,
     "p1": validate_p1_record,
+    "p2": validate_p2_record,
+    "k1": validate_k1_record,
+    "benign": validate_benign_record,
+    "support": validate_support_record,
 }
 
 
 def validate_record(record_type: str, record: Mapping[str, Any]) -> dict[str, Any]:
-    if record_type in {"p2", "k1", "benign"}:
-        raise RecordSchemaError(
-            f"{record_type} requires its source-aware materialization validator"
-        )
     try:
         validator = VALIDATORS[record_type]
     except KeyError as exc:

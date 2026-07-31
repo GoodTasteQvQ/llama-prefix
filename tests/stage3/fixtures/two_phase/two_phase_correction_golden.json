@@ -1,0 +1,58 @@
+{
+  "schema_version": "paper1-stage3-two-phase-correction-golden-v1",
+  "description": "Synthetic matched frames only; no formal response, prediction, or human-gold data.",
+  "cases": [
+    {
+      "name": "matched_weighted_residual",
+      "anchor": "A",
+      "rows": [
+        {"response_id": "a1-all", "pair_id": "a1", "anchor": "A", "arm": "all", "judge": 1, "selected": true, "gold": 0, "pi": "1/2"},
+        {"response_id": "a1-content", "pair_id": "a1", "anchor": "A", "arm": "content", "judge": 0, "selected": true, "gold": 1, "pi": "1/2"},
+        {"response_id": "a2-all", "pair_id": "a2", "anchor": "A", "arm": "all", "judge": 0, "selected": true, "gold": 1, "pi": "1/4"},
+        {"response_id": "a2-content", "pair_id": "a2", "anchor": "A", "arm": "content", "judge": 0, "selected": false},
+        {"response_id": "a3-all", "pair_id": "a3", "anchor": "A", "arm": "all", "judge": 1, "selected": false},
+        {"response_id": "a3-content", "pair_id": "a3", "anchor": "A", "arm": "content", "judge": 1, "selected": true, "gold": 0, "pi": "1/2"}
+      ],
+      "expected": {
+        "estimator_version": "paper1-stage3-two-phase-point-v1",
+        "estimand_frame": "M_A",
+        "matched_pair_n": 3,
+        "arms": {
+          "all": {"matched_pair_n": 3, "selected_residual_n": 2, "p_judge_fraction": "2/3", "residual_mean_fraction": "1/3", "unbounded_fraction": "1/1", "corrected_fraction": "1/1", "corrected": 1.0},
+          "content": {"matched_pair_n": 3, "selected_residual_n": 2, "p_judge_fraction": "1/3", "residual_mean_fraction": "0/1", "unbounded_fraction": "1/3", "corrected_fraction": "1/3", "corrected": 0.3333333333333333}
+        },
+        "rd_fraction": "2/3",
+        "rd": 0.6666666666666666
+      }
+    },
+    {
+      "name": "clipping_is_armwise",
+      "anchor": "T",
+      "rows": [
+        {"response_id": "t1-all", "pair_id": "t1", "anchor": "T", "arm": "all", "judge": 1, "selected": true, "gold": 0, "pi": "1"},
+        {"response_id": "t1-content", "pair_id": "t1", "anchor": "T", "arm": "content", "judge": 0, "selected": true, "gold": 1, "pi": "1"},
+        {"response_id": "t2-all", "pair_id": "t2", "anchor": "T", "arm": "all", "judge": 1, "selected": true, "gold": 0, "pi": "1"},
+        {"response_id": "t2-content", "pair_id": "t2", "anchor": "T", "arm": "content", "judge": 0, "selected": true, "gold": 1, "pi": "1"}
+      ],
+      "expected": {
+        "estimator_version": "paper1-stage3-two-phase-point-v1",
+        "estimand_frame": "M_T",
+        "matched_pair_n": 2,
+        "arms": {
+          "all": {"matched_pair_n": 2, "selected_residual_n": 2, "p_judge_fraction": "1/1", "residual_mean_fraction": "-1/1", "unbounded_fraction": "0/1", "corrected_fraction": "0/1", "corrected": 0.0},
+          "content": {"matched_pair_n": 2, "selected_residual_n": 2, "p_judge_fraction": "0/1", "residual_mean_fraction": "1/1", "unbounded_fraction": "1/1", "corrected_fraction": "1/1", "corrected": 1.0}
+        },
+        "rd_fraction": "-1/1",
+        "rd": -1.0
+      }
+    },
+    {
+      "name": "available_arm_is_rejected",
+      "anchor": "A",
+      "rows": [
+        {"response_id": "x1-all", "pair_id": "x1", "anchor": "A", "arm": "all", "judge": 1, "selected": true, "gold": 1, "pi": "1/2"}
+      ],
+      "expected_error": "incomplete matched pairs: ['x1']"
+    }
+  ]
+}

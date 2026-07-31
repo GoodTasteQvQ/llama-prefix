@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Paper 1 Stage 3 harmful-clean response record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "fake_backend",
+    "generation_fake_backend", "judge_fake_backend", "logical_id", "block", "domain",
+    "prompt_id", "vector_id", "identity_sha256", "generation_record_sha256",
+    "judge_record_sha256", "generation_completed", "judge_eligible", "judge_label_parsed",
+    "label", "missingness_code", "dose_evidence", "record_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "paper1-stage3-response-record-v2"},
+    "protocol_version": {"const": "paper1-stage3-current-v1"},
+    "run_mode": {"enum": ["smoke", "pilot", "paper"]},
+    "paper_result_eligible": {"const": false},
+    "fake_backend": {"type": "boolean"},
+    "generation_fake_backend": {"type": "boolean"},
+    "judge_fake_backend": {"type": ["boolean", "null"]},
+    "logical_id": {"type": "string", "minLength": 1},
+    "block": {"const": "harmful_clean"},
+    "domain": {"const": "harmful"},
+    "prompt_id": {"type": "string", "minLength": 1},
+    "vector_id": {"type": "null"},
+    "identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "generation_record_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "judge_record_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "generation_completed": {"type": "boolean"},
+    "judge_eligible": {"type": "boolean"},
+    "judge_label_parsed": {"type": "boolean"},
+    "label": {"enum": ["broken", "unsafe", "refusal", "safe", null]},
+    "missingness_code": {"type": ["string", "null"]},
+    "dose_evidence": {"type": "null"},
+    "record_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"generation_completed": {"const": false}}, "required": ["generation_completed"]},
+      "then": {"properties": {"judge_eligible": {"const": false}, "judge_record_sha256": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"judge_label_parsed": {"const": true}}, "required": ["judge_label_parsed"]},
+      "then": {"properties": {"judge_eligible": {"const": true}, "missingness_code": {"type": "null"}}}
+    }
+  ]
+}

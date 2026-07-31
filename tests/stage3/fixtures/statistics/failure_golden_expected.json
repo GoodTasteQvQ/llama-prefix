@@ -1,0 +1,10 @@
+{
+  "fixture_schema": "paper1-stage3-statistical-failure-v1",
+  "results": [
+    {"case_id": "p1_one_prompt_per_stratum", "reason": "p1_each_complete_case_stratum_requires_at_least_two_prompts", "status": "NON_ESTIMABLE"},
+    {"case_id": "p1_zero_bootstrap_se", "reason": "p1_bootstrap_se_below_1e-8:delta_select_tw", "status": "NON_ESTIMABLE"},
+    {"case_id": "p2_duplicate_pair", "reason": "p2_duplicate_pair:P2-U(A)", "status": "NON_ESTIMABLE"},
+    {"case_id": "p2_member_order", "reason": "p2_member_order_must_be_P2-U(A)_then_P2-B(T)", "status": "NON_ESTIMABLE"},
+    {"case_id": "p2_nonpositive_cr1_variance", "reason": "p2_two_way_cr1_variance_nonpositive_or_nonfinite", "status": "NON_ESTIMABLE"}
+  ]
+}

@@ -1,32 +1,43 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Paper 1 Stage 3 P1 measurement record",
+  "type": "object",
   "additionalProperties": false,
+  "required": [
+    "schema_version", "protocol_version", "run_mode", "paper_result_eligible", "logical_id",
+    "identity_sha256", "prompt_id", "domain", "identity_complete", "render_complete",
+    "valid_mask_complete", "forward_complete", "identity_collision", "valid_token_count",
+    "content_token_count", "unresolved_valid_token_count", "required_norms_finite",
+    "all_norm_sum", "content_norm_sum", "complete_case", "terminal_status",
+    "exclusion_reason", "record_sha256"
+  ],
   "properties": {
-    "c_sum": {"minimum": 0, "type": ["number", "null"]},
-    "content_token_count": {"minimum": 0, "type": "integer"},
-    "exclusion_reason": {"type": ["string", "null"]},
+    "schema_version": {"const": "paper1-stage3-p1-measurement-record-v3"},
+    "protocol_version": {"const": "paper1-stage3-current-v1"},
+    "run_mode": {"enum": ["smoke", "pilot", "paper"]},
+    "paper_result_eligible": {"const": false},
+    "logical_id": {"type": "string", "minLength": 1},
+    "identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "prompt_id": {"type": "string", "minLength": 1},
+    "domain": {"enum": ["harmful", "benign"]},
+    "identity_complete": {"type": "boolean"},
+    "render_complete": {"type": "boolean"},
+    "valid_mask_complete": {"type": "boolean"},
     "forward_complete": {"type": "boolean"},
     "identity_collision": {"type": "boolean"},
-    "identity_complete": {"type": "boolean"},
-    "logical_id": {"minLength": 1, "type": "string"},
-    "prompt_id": {"minLength": 1, "type": "string"},
-    "protocol_version": {"const": "v3.5-rc2"},
-    "render_complete": {"type": "boolean"},
+    "valid_token_count": {"type": "integer", "minimum": 0},
+    "content_token_count": {"type": "integer", "minimum": 0},
+    "unresolved_valid_token_count": {"type": "integer", "minimum": 0},
     "required_norms_finite": {"type": "boolean"},
-    "schema_version": {"const": "paper1-stage3-p1-measurement-record-v1"},
-    "stratum": {"enum": ["harmful", "benign"]},
-    "synthetic": {"type": "boolean"},
-    "terminal_status": {"enum": ["COMPLETE_CASE", "EXCLUDED_IDENTITY", "EXCLUDED_RENDER", "EXCLUDED_VALID_MASK", "EXCLUDED_FORWARD", "EXCLUDED_UNRESOLVED", "EXCLUDED_NONFINITE", "EXCLUDED_ZERO_DENOMINATOR"]},
-    "unresolved_valid_token_count": {"minimum": 0, "type": "integer"},
-    "v_sum": {"minimum": 0, "type": ["number", "null"]},
-    "valid_mask_complete": {"type": "boolean"},
-    "valid_token_count": {"minimum": 0, "type": "integer"}
-  },
-  "required": [
-    "schema_version", "protocol_version", "synthetic", "logical_id", "prompt_id", "stratum",
-    "identity_complete", "render_complete", "valid_mask_complete", "forward_complete",
-    "identity_collision", "valid_token_count", "content_token_count", "unresolved_valid_token_count",
-    "required_norms_finite", "v_sum", "c_sum", "terminal_status", "exclusion_reason"
-  ],
-  "title": "Paper 1 Stage 3 P1 measurement record",
-  "type": "object"
+    "all_norm_sum": {"type": ["number", "null"], "minimum": 0},
+    "content_norm_sum": {"type": ["number", "null"], "minimum": 0},
+    "complete_case": {"type": "boolean"},
+    "terminal_status": {"enum": [
+      "COMPLETE_CASE", "EXCLUDED_IDENTITY", "EXCLUDED_RENDER", "EXCLUDED_VALID_MASK",
+      "EXCLUDED_FORWARD", "EXCLUDED_UNRESOLVED", "EXCLUDED_NONFINITE",
+      "EXCLUDED_ZERO_DENOMINATOR"
+    ]},
+    "exclusion_reason": {"type": ["string", "null"]},
+    "record_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
 }
