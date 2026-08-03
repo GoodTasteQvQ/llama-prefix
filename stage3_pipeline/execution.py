@@ -537,30 +537,76 @@ def _unique_records(
     return result
 
 
-def _response_terminal(
+def response_terminal_disposition(
     identity: Mapping[str, Any],
     response: Mapping[str, Any],
     generation: Mapping[str, Any],
     judge: Mapping[str, Any] | None,
 ) -> str:
-    if identity["block"] != "harmful_clean":
-        terminal = response.get("terminal_status")
+    try:
+        block = identity["block"]
+    except (KeyError, TypeError) as exc:
+        raise PipelineError("response terminal mapping lacks identity block") from exc
+    if block != "harmful_clean":
+        try:
+            terminal = response["terminal_status"]
+        except (KeyError, TypeError) as exc:
+            raise PipelineError("response terminal mapping lacks canonical terminal_status") from exc
         if terminal not in TERMINAL_DISPOSITIONS:
             raise PipelineError("response terminal disposition is not registered")
         return terminal
-    if not generation["generation_completed"]:
-        return {
-            "TERMINAL_TECHNICAL_FAILURE": "TERMINAL_GENERATION_TECHNICAL_FAILURE",
-            "TERMINAL_FAILURE": "TERMINAL_GENERATION_DETERMINISTIC_FAILURE",
-            "TERMINAL_INDETERMINATE_FAILURE": "TERMINAL_GENERATION_INDETERMINATE_FAILURE",
-        }[generation["terminal_status"]]
-    if judge is None:
-        return "TERMINAL_PREJUDGE_FAILURE"
-    if judge["terminal_status"] == "PARSED":
-        return "COMPLETED_PARSED"
-    if judge["terminal_status"] == "TERMINAL_INDETERMINATE_FAILURE":
-        return "TERMINAL_JUDGE_INDETERMINATE_FAILURE"
-    return "TERMINAL_JUDGE_FAILURE"
+    try:
+        generation_completed = generation["generation_completed"]
+        generation_status = generation["terminal_status"]
+        response_generation_completed = response["generation_completed"]
+        response_judge_eligible = response["judge_eligible"]
+        response_judge_label_parsed = response["judge_label_parsed"]
+        response_missingness = response["missingness_code"]
+    except (KeyError, TypeError) as exc:
+        raise PipelineError("harmful-clean response terminal mapping lacks canonical fields") from exc
+    if not isinstance(generation_completed, bool) or response_generation_completed is not generation_completed:
+        raise PipelineError("harmful-clean generation completion lineage differs")
+    if not generation_completed:
+        if judge is not None or response_judge_eligible is not False or response_judge_label_parsed is not False:
+            raise PipelineError("incomplete generation may not claim judge provenance")
+        try:
+            terminal = {
+                "TERMINAL_TECHNICAL_FAILURE": "TERMINAL_GENERATION_TECHNICAL_FAILURE",
+                "TERMINAL_FAILURE": "TERMINAL_GENERATION_DETERMINISTIC_FAILURE",
+                "TERMINAL_INDETERMINATE_FAILURE": "TERMINAL_GENERATION_INDETERMINATE_FAILURE",
+            }[generation_status]
+        except (KeyError, TypeError) as exc:
+            raise PipelineError("generation terminal status is not canonical") from exc
+    elif judge is None:
+        if response_judge_eligible is not False or response_judge_label_parsed is not False:
+            raise PipelineError("prejudge response claims judge provenance")
+        terminal = "TERMINAL_PREJUDGE_FAILURE"
+    else:
+        try:
+            judge_status = judge["terminal_status"]
+            judge_parsed = judge["judge_label_parsed"]
+        except (KeyError, TypeError) as exc:
+            raise PipelineError("judge terminal mapping lacks canonical fields") from exc
+        if response_judge_eligible is not True or response_judge_label_parsed is not judge_parsed:
+            raise PipelineError("harmful-clean judge provenance differs")
+        if judge_status == "PARSED":
+            if judge_parsed is not True:
+                raise PipelineError("parsed judge status disagrees with parsed flag")
+            terminal = "COMPLETED_PARSED"
+        elif judge_status == "TERMINAL_INDETERMINATE_FAILURE":
+            if judge_parsed is not False:
+                raise PipelineError("indeterminate judge status disagrees with parsed flag")
+            terminal = "TERMINAL_JUDGE_INDETERMINATE_FAILURE"
+        elif judge_status == "TERMINAL_PARSE_OR_INFRASTRUCTURE_FAILURE":
+            if judge_parsed is not False:
+                raise PipelineError("failed judge status disagrees with parsed flag")
+            terminal = "TERMINAL_JUDGE_FAILURE"
+        else:
+            raise PipelineError("judge terminal status is not canonical")
+    expected_missingness = None if terminal == "COMPLETED_PARSED" else terminal
+    if response_missingness != expected_missingness:
+        raise PipelineError("response missingness does not match terminal disposition")
+    return terminal
 
 
 def _validate_materialized_response(
@@ -705,7 +751,7 @@ def reconcile_execution(
             judge=judge, dose_binding=dose_binding,
         )
         materialized_response_by_id[logical_id] = response
-        terminal = _response_terminal(identity, response, generation, judge)
+        terminal = response_terminal_disposition(identity, response, generation, judge)
         if (
             disposition["terminal_disposition"] != terminal
             or disposition["generation_record_sha256"] != generation["record_sha256"]

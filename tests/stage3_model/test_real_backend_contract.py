@@ -48,6 +48,7 @@ from stage3_pipeline.run_manifest import (
     build_run_manifest,
     validate_manifest_for_paper_loader,
 )
+from scripts.stage3_production.real_smoke import _disposition
 from tests.stage3.helpers import P1_INPUT, block_identity, completed_chain, test_dose_binding
 
 
@@ -166,6 +167,17 @@ class RealBackendContractTests(unittest.TestCase):
         (path / "tokenizer.json").write_text("{}", encoding="utf-8")
         (path / "tokenizer_config.json").write_text("{}", encoding="utf-8")
         return temp, path
+
+    def test_real_smoke_first_disposition_uses_canonical_clean_response_contract(self):
+        chain = completed_chain("harmful_clean", prompt_id="real-smoke-disposition")
+        self.assertNotIn("terminal_status", chain["response"])
+        disposition = _disposition(
+            chain["identity"], chain["generation"], chain["judge"], chain["response"]
+        )
+        self.assertEqual(disposition["terminal_disposition"], "COMPLETED_PARSED")
+        self.assertEqual(
+            disposition["response_record_sha256"], chain["response"]["record_sha256"]
+        )
 
     def _backend(self, *, fail=False):
         tokenizer = TinyTokenizer()

@@ -32,7 +32,10 @@ from stage3_pipeline.core import (  # noqa: E402
     utc_now,
 )
 from stage3_pipeline.dose import build_test_dose_binding, validate_dose_binding  # noqa: E402
-from stage3_pipeline.execution import reconcile_execution  # noqa: E402
+from stage3_pipeline.execution import (  # noqa: E402
+    reconcile_execution,
+    response_terminal_disposition,
+)
 from stage3_pipeline.offline_assets import load_p1_harmful_active_entry  # noqa: E402
 from stage3_pipeline.real_backend import (  # noqa: E402
     RealBehaviorBackend,
@@ -430,7 +433,7 @@ def _disposition(
         "schema_version": "paper1-stage3-execution-disposition-v2",
         "logical_id": generation["logical_id"],
         "identity_sha256": canonical_sha256(identity),
-        "terminal_disposition": response["terminal_status"],
+        "terminal_disposition": response_terminal_disposition(identity, response, generation, judge),
         "generation_record_sha256": generation["record_sha256"],
         "judge_record_sha256": None if judge is None else judge["record_sha256"],
         "response_record_sha256": response["record_sha256"],

@@ -19,7 +19,7 @@ from stage3_pipeline.dose import (
     build_test_dose_binding,
     validate_dose_binding,
 )
-from stage3_pipeline.execution import reconcile_execution
+from stage3_pipeline.execution import reconcile_execution, response_terminal_disposition
 from stage3_pipeline.records import build_block_response_record
 
 
@@ -165,7 +165,9 @@ def completed_chain(
         "schema_version": "paper1-stage3-execution-disposition-v2",
         "logical_id": logical_id,
         "identity_sha256": canonical_sha256(item_identity),
-        "terminal_disposition": response.get("terminal_status", "COMPLETED_PARSED"),
+        "terminal_disposition": response_terminal_disposition(
+            item_identity, response, generation, judge
+        ),
         "generation_record_sha256": generation["record_sha256"],
         "judge_record_sha256": judge["record_sha256"],
         "response_record_sha256": response["record_sha256"],
