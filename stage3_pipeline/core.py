@@ -108,6 +108,159 @@ class JudgeParseError(PipelineError):
     """A judge completion violated the exact JSON contract."""
 
 
+_CAPABILITY_TOKEN = object()
+
+
+def _lineage_identity(identity: Mapping[str, Any]) -> dict[str, Any]:
+    fields = (
+        "model_revision",
+        "template_sha256",
+        "vector_id",
+        "layer",
+        "hook_site",
+        "phase",
+        "use_cache",
+        "generation_config_sha256",
+    )
+    missing = [field for field in fields if field not in identity]
+    if missing:
+        raise IdentityError(f"lineage identity is missing fields: {missing}")
+    return json.loads(canonical_json({field: identity[field] for field in fields}))
+
+
+class VerifiedBackendCapability:
+    """Non-serializable, builder-issued proof of a loaded real backend."""
+
+    __slots__ = (
+        "_role",
+        "_identity_digest",
+        "_issuance_source",
+        "_loader_path",
+        "_binding",
+        "_backend",
+        "_token",
+    )
+
+    def __init__(
+        self,
+        *,
+        role: str,
+        binding: Mapping[str, Any],
+        issuance_source: str,
+        loader_path: str,
+        backend: Any,
+        _token: object,
+    ) -> None:
+        if _token is not _CAPABILITY_TOKEN:
+            raise TypeError("verified backend capabilities are runtime-issued only")
+        if role not in {"behavior", "judge"}:
+            raise ValueError("verified backend capability role is invalid")
+        if not isinstance(issuance_source, str) or not issuance_source:
+            raise ValueError("capability issuance_source must be nonempty")
+        if not isinstance(loader_path, str) or not loader_path:
+            raise ValueError("capability loader_path must be nonempty")
+        normalized = json.loads(canonical_json(dict(binding)))
+        self._role = role
+        self._identity_digest = canonical_sha256(normalized)
+        self._issuance_source = issuance_source
+        self._loader_path = loader_path
+        self._binding = normalized
+        self._backend = backend
+        self._token = _CAPABILITY_TOKEN
+
+    @property
+    def role(self) -> str:
+        return self._role
+
+    @property
+    def identity_digest(self) -> str:
+        return self._identity_digest
+
+    @property
+    def issuance_source(self) -> str:
+        return self._issuance_source
+
+    @property
+    def loader_path(self) -> str:
+        return self._loader_path
+
+    def matches_behavior_identity(self, identity: Mapping[str, Any]) -> bool:
+        if self._role != "behavior":
+            return False
+        expected = self._binding.get("lineage_identity")
+        try:
+            actual = _lineage_identity(identity)
+            if actual["vector_id"] is None:
+                actual["vector_id"] = expected.get("vector_id")
+            return expected == actual
+        except (IdentityError, TypeError, ValueError):
+            return False
+
+    def matches_judge_identity(self, identity: Mapping[str, Any]) -> bool:
+        if self._role != "judge":
+            return False
+        return self._binding.get("producer_identity") == dict(identity)
+
+    def matches_backend_instance(self, backend: Any) -> bool:
+        return self._backend is backend
+
+    def matches_backend_identity(
+        self,
+        *,
+        behavior_identity: Mapping[str, Any],
+        vector_identity: Mapping[str, Any],
+        hook_identity: Mapping[str, Any],
+        judge_identity: Mapping[str, Any],
+    ) -> bool:
+        if self._role == "behavior":
+            hook = {
+                field: hook_identity.get(field)
+                for field in ("layer", "hook_site", "phase", "use_cache")
+            }
+            return self._binding.get("backend_identity") == {
+                "behavior_identity": dict(behavior_identity),
+                "vector_identity": dict(vector_identity),
+                "hook_identity": hook,
+            }
+        return self._binding.get("judge_identity") == dict(judge_identity)
+
+    def manifest_record(self) -> dict[str, str]:
+        return {
+            "schema_version": "paper1-stage3-runtime-capability-provenance-v1",
+            "role": self._role,
+            "identity_digest": self._identity_digest,
+            "issuance_source": self._issuance_source,
+            "loader_path": self._loader_path,
+        }
+
+    def __reduce__(self) -> Any:
+        raise TypeError("verified backend capabilities cannot be serialized")
+
+    def __reduce_ex__(self, _protocol: int) -> Any:
+        raise TypeError("verified backend capabilities cannot be serialized")
+
+    def __getstate__(self) -> Any:
+        raise TypeError("verified backend capabilities cannot be serialized")
+
+
+def _issue_verified_backend_capability(
+    *,
+    role: str,
+    binding: Mapping[str, Any],
+    issuance_source: str,
+    loader_path: str,
+    backend: Any,
+) -> VerifiedBackendCapability:
+    return VerifiedBackendCapability(
+        role=role,
+        binding=binding,
+        issuance_source=issuance_source,
+        loader_path=loader_path,
+        backend=backend,
+        _token=_CAPABILITY_TOKEN,
+    )
+
+
 class OfflineNetworkError(RuntimeError):
     """A Stage 3 runtime attempted a network operation."""
 
@@ -622,7 +775,8 @@ class GenerationProducer:
         *,
         run_mode: str,
         generation_config: Mapping[str, Any] | None = None,
-        fake_backend: bool = False,
+        fake_backend: bool | None = None,
+        capability: VerifiedBackendCapability | None = None,
         item_budget: int | None = None,
     ) -> None:
         if not callable(backend):
@@ -634,7 +788,20 @@ class GenerationProducer:
             DECODE_CONFIG if generation_config is None else generation_config,
             run_mode=self.run_mode,
         )
-        self.fake_backend = bool(fake_backend)
+        if fake_backend is not None and not isinstance(fake_backend, bool):
+            raise PipelineError("fake_backend must be boolean or omitted")
+        if capability is not None and not isinstance(capability, VerifiedBackendCapability):
+            raise PipelineError("backend capability must be builder-issued")
+        if capability is not None and capability.role != "behavior":
+            raise PipelineError("generation producer requires a behavior capability")
+        if capability is not None and not capability.matches_backend_instance(backend):
+            raise PipelineError("behavior capability is not bound to the supplied backend")
+        if fake_backend is False and capability is None:
+            raise PipelineError("fake_backend=False requires a verified behavior capability")
+        self.capability = capability
+        self.fake_backend = capability is None
+        if fake_backend is not None and bool(fake_backend) is not self.fake_backend:
+            raise PipelineError("fake_backend declaration disagrees with behavior capability")
         limit = RUN_MODE_ITEM_LIMITS[self.run_mode]
         self.item_budget = limit if item_budget is None else item_budget
         if isinstance(self.item_budget, bool) or not isinstance(self.item_budget, int):
@@ -659,6 +826,8 @@ class GenerationProducer:
             raise IdentityError("generation request logical_id mismatch")
         if request.get("generation_config") != self.generation_config:
             raise IdentityError("generation request differs from the producer's actual configuration")
+        if self.capability is not None and not self.capability.matches_behavior_identity(identity):
+            raise IdentityError("behavior capability does not match logical identity")
         frozen_identity = json.loads(canonical_json(identity))
         frozen_request = json.loads(canonical_json(dict(request)))
         request_hash = canonical_sha256(frozen_request)
@@ -781,13 +950,25 @@ def parse_judge_with_retry(
     run_mode: str,
     judge_identity: Mapping[str, Any],
     judge_config: Mapping[str, Any] | None = None,
-    fake_backend: bool = False,
+    fake_backend: bool | None = None,
+    capability: VerifiedBackendCapability | None = None,
 ) -> dict[str, Any]:
     from .records import validate_generation_record
 
     mode = validate_run_mode(run_mode)
+    if fake_backend is not None and not isinstance(fake_backend, bool):
+        raise PipelineError("fake_backend must be boolean or omitted")
+    if capability is not None and not isinstance(capability, VerifiedBackendCapability):
+        raise PipelineError("judge capability must be builder-issued")
+    if capability is not None and capability.role != "judge":
+        raise PipelineError("judge parsing requires a judge capability")
+    if fake_backend is False and capability is None:
+        raise PipelineError("fake_backend=False requires a verified judge capability")
+    derived_fake_backend = capability is None
     if not callable(call):
         raise PipelineError("an explicit callable judge backend is required")
+    if capability is not None and not capability.matches_backend_instance(call):
+        raise PipelineError("judge capability is not bound to the supplied backend")
     if not isinstance(request, Mapping):
         raise PipelineError("judge request must be an object")
     actual_config = validate_judge_config(
@@ -800,6 +981,8 @@ def parse_judge_with_retry(
     _require_text(judge_identity["model_path_or_id"], "model_path_or_id")
     _require_text(judge_identity["tokenizer_path_or_id"], "tokenizer_path_or_id")
     _require_sha256(judge_identity["rubric_sha256"], "rubric_sha256")
+    if capability is not None and not capability.matches_judge_identity(judge_identity):
+        raise IdentityError("judge capability does not match judge identity")
     if request.get("logical_id") != logical_id or request.get("judge_config") != actual_config:
         raise IdentityError("judge request differs from the actual judge configuration")
     identity = registry.require(logical_id)
@@ -811,7 +994,11 @@ def parse_judge_with_retry(
         or generation["generation_completed"] is not True
     ):
         raise PipelineError("judge requires the matching completed generation")
-    lineage_fake_backend = bool(fake_backend or generation["fake_backend"])
+    if derived_fake_backend is False and generation["fake_backend"] is not False:
+        raise PipelineError("real judge capability requires a real completed generation")
+    if fake_backend is not None and bool(fake_backend) is not derived_fake_backend:
+        raise PipelineError("fake_backend declaration disagrees with judge capability")
+    lineage_fake_backend = derived_fake_backend or generation["fake_backend"]
     require_strict_offline_runtime()
     normalized_request = json.loads(canonical_json({
         "logical_id": logical_id,
@@ -819,6 +1006,7 @@ def parse_judge_with_retry(
         "judge_identity": dict(judge_identity),
         "generation_record_sha256": generation["record_sha256"],
         "domain": identity["domain"],
+        "backend_request": request.get("backend_request"),
     }))
     request_hash = canonical_sha256(normalized_request)
     attempts: list[dict[str, Any]] = []

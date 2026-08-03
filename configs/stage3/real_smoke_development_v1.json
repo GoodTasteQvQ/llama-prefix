@@ -1,0 +1,74 @@
+{
+  "schema_version": "paper1-stage3-real-smoke-development-v1",
+  "run_mode": "smoke",
+  "paper_result_eligible": false,
+  "fake_backend": false,
+  "asset_status": "development_only",
+  "vector_status": "candidate_only",
+  "formal_experiment_run": false,
+  "identity_level": "development_candidate",
+  "device": "cuda:0",
+  "output_root": "/data/goodtaste_workspace/llama-prefix/.codex-temp/stage3_real_smoke_runs",
+  "logical_identities": [
+    "clean",
+    "steered"
+  ],
+  "input": {
+    "active_entry": "configs/stage3/p1_harmful_do_not_answer_v1.json",
+    "selected_path": "data/stage3/p1_harmful_do_not_answer_v1/selected_p1_harmful_100.json",
+    "source_ids": [
+      774
+    ]
+  },
+  "behavior": {
+    "model_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "tokenizer_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "dtype": "bfloat16",
+    "trust_remote_code": false,
+    "trust_remote_code_reason": null,
+    "layer": 9,
+    "hook_site": "resid_pre",
+    "system_prompt": "You are a helpful assistant."
+  },
+  "judge": {
+    "model_path": "/data/goodtaste_workspace/models/Qwen3-8B",
+    "tokenizer_path": "/data/goodtaste_workspace/models/Qwen3-8B",
+    "dtype": "float32",
+    "trust_remote_code": false,
+    "trust_remote_code_reason": null,
+    "thinking_enabled": true
+  },
+  "vector": {
+    "path": "/data/goodtaste_workspace/llama-prefix/results/stage1_phase_aware/random_vector_pools/qwen25_stage1_vectors.pt",
+    "index": 0,
+    "normalization": "none",
+    "anchor_label": "A",
+    "anchor_status": "development_structural_label_only_not_paper_rho_A"
+  },
+  "development_dose": {
+    "status": "structural_smoke_only_not_paper_anchor",
+    "mu_all_tw": 0.2,
+    "mu_content_tw": 0.1,
+    "median_content_norm": 2.0,
+    "rho_by_anchor": {
+      "A": 0.01,
+      "T": 0.02,
+      "H": 0.03
+    }
+  },
+  "generation_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 512,
+    "use_cache": true,
+    "custom_stop_strings": null,
+    "decode_seed": 42
+  },
+  "judge_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 1296,
+    "torch_dtype": "float32",
+    "enable_thinking": true
+  }
+}

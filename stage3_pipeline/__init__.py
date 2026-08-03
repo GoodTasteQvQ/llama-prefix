@@ -9,6 +9,7 @@ from .core import (
     OfflineExecutionGuard,
     PipelineError,
     TechnicalGenerationError,
+    VerifiedBackendCapability,
     classify_support,
     offline_execution_guard,
     parse_judge_payload,
@@ -18,7 +19,12 @@ from .core import (
 )
 from .execution import reconcile_execution, reconcile_support_mapping
 from .offline_assets import load_p1_harmful_active_entry
-from .run_manifest import build_run_manifest, validate_run_manifest, write_run_manifest
+from .run_manifest import (
+    build_run_manifest,
+    validate_manifest_for_paper_loader,
+    validate_run_manifest,
+    write_run_manifest,
+)
 from .records import build_block_response_record, build_k1_reuse_record, build_response_record
 
 __all__ = [
@@ -30,6 +36,7 @@ __all__ = [
     "OfflineExecutionGuard",
     "PipelineError",
     "TechnicalGenerationError",
+    "VerifiedBackendCapability",
     "build_run_manifest",
     "build_block_response_record",
     "build_k1_reuse_record",
@@ -43,6 +50,7 @@ __all__ = [
     "reconcile_support_mapping",
     "validate_dose",
     "validate_judge_config",
+    "validate_manifest_for_paper_loader",
     "validate_run_manifest",
     "write_run_manifest",
 ]

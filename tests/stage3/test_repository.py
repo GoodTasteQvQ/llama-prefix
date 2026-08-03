@@ -104,7 +104,6 @@ class RepositoryTests(unittest.TestCase):
             "verification_receipts",
             "stage3_artifacts_final_round",
             "v3_5_rc2_binding_amendment",
-            "formal_experiment",
             "formal_lifecycle_event",
             "RUN-BLOCKED",
             "DATA_IDENTITY_BLOCKED",
