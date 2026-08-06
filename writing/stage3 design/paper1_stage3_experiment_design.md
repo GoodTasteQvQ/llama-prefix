@@ -260,16 +260,43 @@ selection only and do not authorize execution or claim run readiness.
 
 ### 2.3 Base anchors and random vectors
 
-The anchor input supplies one exact decimal/binary64 triple:
+The Qwen anchor input is `configs/stage3/qwen25_base_anchors_v1.json`. Its three reference points are the
+consecutive Stage 1 Track B grid points fixed by the design rule
 
 ```text
-0 < rho_A < rho_T < rho_H
+c_T_ref = 1.00
+grid_step = 0.25
+c_A_ref = c_T_ref - grid_step = 0.75
+c_H_ref = c_T_ref + grid_step = 1.25
 ```
 
-The values are adopted exactly. There is no conversion, search, optimization, nearest-grid mapping,
-midpoint construction, or default substitution. `A`, `T`, and `H` mean only lower, middle, and higher
-tested-point identifiers; they are not empirically discovered optima, transitions, or collapse
-thresholds. A/T enter P2, A/T/H enter the support screen, and T enters benign integrity.
+They were not selected or moved using ASR, broken rate, ARR, repetition rate, or any Stage 3 outcome.
+The existing decode-only full1000 evidence only establishes that the three fixed reference points span
+the already-observed low-perturbation, moderate-perturbation, and higher-integrity-pressure range. That
+evidence is limited to one harmful prompt and is not used as an optimization surface.
+
+From `qwen25_mu_trackB_rogue_v1.json`, flatten `records[].norms` and retain all 298 finite values. Their
+pooled binary64 arithmetic mean is `mu_stage1 = 59.49580536912752`, and their pooled median is
+`median_stage1_norm = 59.5`. For each `k in {A,T,H}`, binary64 evaluation uses the exact operation order
+
+```text
+tmp = c_k_ref * mu_stage1
+rho_k = tmp / median_stage1_norm
+```
+
+The resulting exact decimal/binary64 pairs are:
+
+| anchor | `c_k_ref` | `rho_k` JSON decimal | Python `float.hex()` |
+|---|---:|---:|---|
+| A | 0.75 | 0.7499471265016073 | `0x1.7ff911dc1b6eap-1` |
+| T | 1.00 | 0.9999295020021431 | `0x1.fff6c27acf3e3p-1` |
+| H | 1.25 | 1.249911877502679 | `0x1.3ffa398cc186ep+0` |
+
+Thus `0 < rho_A < rho_T < rho_H`. The values are adopted exactly. There is no runtime recomputation,
+search, optimization, nearest-grid mapping, midpoint construction, movement, or default substitution.
+`A`, `T`, and `H` mean only lower, middle, and higher tested-point identifiers; they are not empirically
+discovered optima, transitions, or collapse thresholds. A/T enter P2, A/T/H enter the support screen,
+and T enters benign integrity.
 
 Qwen vectors are created with Torch 2.7.1 CPU `torch.Generator().manual_seed(42)`, float32
 `torch.randn`, and row L2 normalization. A zero or nonfinite row fails the pool and is not redrawn. The
@@ -1160,3 +1187,4 @@ and output recovery do not create design changes.
 | 2026-07-30 | descriptive-reporting migration | Behavior-cell ARR and mean 3-gram repetition descriptive reporting explicitly migrated from existing Paper 1 writing plans. This adds no generation or judge call and changes no N, estimand, primary metric, inference family, multiplicity, budget, or claim boundary. No formal experiment has run; this is an explicit migration of existing scientific writing content, not a claim that the current design text had completely zero scientific-content changes. | behavior-cell descriptive reporting only | no |
 | 2026-08-03 | JBB behavior-frame source concretization | Adopted the deterministic JBB 5/3/2 per-category split in section 2.2.2 for `D_behavior_confirm`, `D_behavior_screen`, and `unused`. Membership uses only source `Category`, source `Index`, master seed 42, and the fixed namespace; no formal experiment, generation, judge, smoke, or pilot has run. This is a `design_selected` source decision, not a freeze, binding, promotion, or run-readiness claim. | behavior prompt provenance and frame membership only | no |
 | 2026-08-06 | benign prompt-frame source concretization | Adopted the deterministic Dolly source, versioned instruction taxonomy, Qwen rendered-length matching, exact P1 100 type-by-decile quota, JBB-confirm-derived largest-remainder benign 30 quota, and P1-first joint allocation in section 2.2.3. No formal experiment, model generation, judge, P1 measurement, smoke, or pilot has run. This is an approved `design_selected` source and membership decision only. | P1 benign and benign-confirm prompt provenance and frame membership only | no |
+| 2026-08-06 | Qwen A/T/H anchor design concretization | Adopted the three consecutive Stage 1 Track B grid references centered at `c_T_ref=1.00` and the exact binary64-derived rho values in section 2.3. The rule was fixed without Stage 3 smoke, pilot, or paper results and changes no N, budget, estimand, or statistical method. This is not a freeze. Runtime bitwise-copies these anchors and neither recomputes nor moves them. | Qwen base-anchor identity only | no |

@@ -1,0 +1,47 @@
+{
+  "schema_version": "paper1-stage3-qwen25-base-anchors-v1",
+  "status": "design_selected",
+  "formal_experiment_run": false,
+  "model": "Qwen/Qwen2.5-7B-Instruct",
+  "layer": 9,
+  "hook_site": "resid_pre",
+  "phase_mode": "decode_only",
+  "reference_c_by_anchor": {
+    "A": 0.75,
+    "T": 1.0,
+    "H": 1.25
+  },
+  "grid_step": 0.25,
+  "mu_stage1": 59.49580536912752,
+  "median_stage1_norm": 59.5,
+  "retained_norm_count": 298,
+  "rho_by_anchor": {
+    "A": 0.7499471265016073,
+    "T": 0.9999295020021431,
+    "H": 1.249911877502679
+  },
+  "rho_binary64_hex": {
+    "A": "0x1.7ff911dc1b6eap-1",
+    "T": "0x1.fff6c27acf3e3p-1",
+    "H": "0x1.3ffa398cc186ep+0"
+  },
+  "calculation_rule": {
+    "pooled_statistics": "Flatten records[].norms, retain every finite numeric value, compute mu_stage1 as the pooled arithmetic mean, and compute median_stage1_norm as the pooled median.",
+    "reference_points": "c_T_ref = 1.00; c_A_ref = c_T_ref - grid_step; c_H_ref = c_T_ref + grid_step.",
+    "binary64_operation_order": [
+      "tmp = reference_c_by_anchor[k] * mu_stage1",
+      "rho_by_anchor[k] = tmp / median_stage1_norm"
+    ],
+    "stage3_runtime_formula": "c_k = rho_k * median_content_norm_Qwen / mu_all_tw_Qwen",
+    "runtime_anchor_handling": "Bitwise-copy rho_by_anchor; do not recompute or move anchors at runtime."
+  },
+  "evidence_paths": [
+    "writing/stage3 design/paper1_stage3_experiment_design.md",
+    "results/stage1_phase_aware/QWEN_RESULTS_README.md",
+    "results/stage1_phase_aware/validation/qwen25_mu_trackB_rogue_v1.json",
+    "results/stage1_phase_aware/formal/qwen25/judge_summaries/qwen25_stage1_qwen3_v2_full1000_judge_summary.json",
+    "results/stage1_phase_aware/formal/qwen25/trackB/stage1_trackB_qwen25_decode_only_formal_v0000_0999.json"
+  ],
+  "single_prompt_limitation": "The Stage 1 decode-only full1000 evidence uses 1000 random vectors on one harmful prompt; it only contextualizes the fixed reference points and does not support outcome optimization or broader behavioral generalization.",
+  "not_outcome_optimized": true
+}
