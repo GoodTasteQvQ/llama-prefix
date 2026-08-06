@@ -9,8 +9,16 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+try:
+    import torch
+except ModuleNotFoundError as exc:
+    if exc.name != "torch":
+        raise
+    torch = None
+else:
+    from stage3_pipeline.vector_pool import VectorPoolError, load_stage3_vector_pool
+
 from stage3_pipeline.core import PipelineError
-from stage3_pipeline.vector_pool import VectorPoolError, load_stage3_vector_pool
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,6 +29,11 @@ MANIFEST_RELATIVE_PATH = Path(
 TENSOR_RELATIVE_PATH = Path(
     "data/stage3/qwen25_vector_pool_v1/qwen25_stage3_vectors.pt"
 )
+
+
+def setUpModule() -> None:
+    if torch is None:
+        raise unittest.SkipTest("Torch is not installed in the current Python environment")
 
 
 def validator_module() -> Any:
