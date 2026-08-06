@@ -3,12 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import sys
 import unittest
-import warnings
 from pathlib import Path
 from typing import Any
 
+try:
+    import torch
+except ModuleNotFoundError:
+    torch = None
 
 ROOT = Path(__file__).resolve().parents[2]
 POOL_DIRECTORY = ROOT / "data/stage3/qwen25_vector_pool_v1"
@@ -18,28 +20,6 @@ TENSOR_RELATIVE_PATH = "data/stage3/qwen25_vector_pool_v1/qwen25_stage3_vectors.
 EXPECTED_SHAPE = (30, 3584)
 MAX_UNIT_NORM_ERROR = 1e-6
 HASH_DEFINITION = "SHA-256 of CPU contiguous float32 raw bytes in row-major order"
-
-
-def load_torch() -> tuple[Any, bool]:
-    try:
-        import torch
-
-        return torch, False
-    except ModuleNotFoundError as original_error:
-        fallback = (
-            ROOT.parent
-            / "envs/stage3-vector-torch271-py31210/lib/python3.12/site-packages"
-        )
-        if not fallback.is_dir():
-            raise original_error
-        sys.path.insert(0, str(fallback))
-        warnings.filterwarnings("ignore", message="Failed to initialize NumPy")
-        import torch
-
-        return torch, True
-
-
-torch, TORCH_IMPORTED_FROM_FALLBACK = load_torch()
 
 
 def reject_nonstandard_constant(value: str) -> None:
@@ -81,6 +61,7 @@ def tensor_sha256(tensor: Any) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+@unittest.skipUnless(torch is not None, "Torch is not installed in the current Python environment")
 class Qwen25Stage3VectorPoolTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -177,7 +158,7 @@ class Qwen25Stage3VectorPoolTests(unittest.TestCase):
         self.assertEqual(len(set(expected_rows)), 30)
 
     def test_torch_271_regeneration_is_bitwise_equal(self) -> None:
-        if TORCH_IMPORTED_FROM_FALLBACK or torch.__version__.split("+", 1)[0] != "2.7.1":
+        if torch.__version__.split("+", 1)[0] != "2.7.1":
             self.skipTest("current interpreter does not provide Torch 2.7.1")
 
         generator = torch.Generator(device="cpu")
