@@ -1,0 +1,412 @@
+{
+  "schema_version": "paper1-stage3-jbb-behavior-frames-v1",
+  "artifact_type": "jbb_behavior_split_manifest",
+  "status": "design_selected",
+  "formal_experiment_run": false,
+  "source_provenance": {
+    "official_dataset_id": "JailbreakBench/JBB-Behaviors",
+    "official_code_repository": "JailbreakBench/jailbreakbench",
+    "dataset_revision": "886acc352a31533ffbcf4ef22c744658688086fc",
+    "config": "behaviors",
+    "split": "harmful",
+    "source_path": "data/harmful-behaviors.csv",
+    "source_file_git_oid": "5a7549cd9de9bb327914de0800606a1af1ec8849",
+    "source_csv_raw_byte_length": 23116,
+    "source_csv_raw_sha256": "4a8ec6832056b631eb092dccc60d37a61c3d441268268888b3d006288afeffa1",
+    "local_json_relative_path": "data/jbb_behaviors_harmful.json",
+    "local_json_raw_byte_length": 34556,
+    "local_json_raw_sha256": "9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77",
+    "format_independent_record_frame_sha256": "ffd1760322b378c27496ea8f188b5b1e0fa463b2e3f0b6c6b90db24ec9358a0e",
+    "local_to_official_relation": "100 records in source order, all six source fields equal; zero field mismatches",
+    "license": "MIT",
+    "license_file_raw_sha256": "7e1ae8f3676f39ff6e62af1743385c176a9476b1157f35bb9d05b4e6c65b7d94"
+  },
+  "selection": {
+    "namespace": "paper1-stage3-jbb-split-v1",
+    "master_seed": 42,
+    "canonical_rank_payload_fields": [
+      "category",
+      "index",
+      "master_seed",
+      "namespace"
+    ],
+    "canonical_json": "UTF-8, Unicode-code-point key order, no whitespace, ASCII escapes",
+    "rank": "SHA256(canonical JSON)",
+    "within_category_order": "selection rank ascending, source Index tie-break",
+    "quota_per_category": {
+      "confirm": 5,
+      "screen": 3,
+      "unused": 2
+    },
+    "final_output_order": "source Index ascending",
+    "membership_inputs": [
+      "Category",
+      "Index",
+      "master_seed",
+      "namespace"
+    ],
+    "source_goal_role": "runtime prompt only after membership is fixed",
+    "source_response_prefix_role": "excluded from selection, sorting, matching, and runtime input"
+  },
+  "category_memberships_in_rank_order": {
+    "Disinformation": {
+      "confirm": [
+        56,
+        55,
+        51,
+        50,
+        54
+      ],
+      "screen": [
+        59,
+        57,
+        53
+      ],
+      "unused": [
+        52,
+        58
+      ]
+    },
+    "Economic harm": {
+      "confirm": [
+        39,
+        38,
+        30,
+        35,
+        31
+      ],
+      "screen": [
+        34,
+        36,
+        37
+      ],
+      "unused": [
+        33,
+        32
+      ]
+    },
+    "Expert advice": {
+      "confirm": [
+        80,
+        89,
+        84,
+        86,
+        83
+      ],
+      "screen": [
+        87,
+        82,
+        81
+      ],
+      "unused": [
+        85,
+        88
+      ]
+    },
+    "Fraud/Deception": {
+      "confirm": [
+        42,
+        45,
+        44,
+        46,
+        43
+      ],
+      "screen": [
+        49,
+        47,
+        41
+      ],
+      "unused": [
+        40,
+        48
+      ]
+    },
+    "Government decision-making": {
+      "confirm": [
+        92,
+        98,
+        96,
+        99,
+        91
+      ],
+      "screen": [
+        95,
+        93,
+        94
+      ],
+      "unused": [
+        90,
+        97
+      ]
+    },
+    "Harassment/Discrimination": {
+      "confirm": [
+        0,
+        3,
+        8,
+        7,
+        2
+      ],
+      "screen": [
+        9,
+        1,
+        5
+      ],
+      "unused": [
+        4,
+        6
+      ]
+    },
+    "Malware/Hacking": {
+      "confirm": [
+        10,
+        11,
+        15,
+        19,
+        12
+      ],
+      "screen": [
+        14,
+        17,
+        13
+      ],
+      "unused": [
+        16,
+        18
+      ]
+    },
+    "Physical harm": {
+      "confirm": [
+        20,
+        23,
+        29,
+        26,
+        21
+      ],
+      "screen": [
+        24,
+        27,
+        22
+      ],
+      "unused": [
+        25,
+        28
+      ]
+    },
+    "Privacy": {
+      "confirm": [
+        73,
+        75,
+        79,
+        72,
+        74
+      ],
+      "screen": [
+        76,
+        77,
+        78
+      ],
+      "unused": [
+        70,
+        71
+      ]
+    },
+    "Sexual/Adult content": {
+      "confirm": [
+        66,
+        65,
+        61,
+        62,
+        60
+      ],
+      "screen": [
+        64,
+        68,
+        69
+      ],
+      "unused": [
+        67,
+        63
+      ]
+    }
+  },
+  "final_membership_ids_in_source_index_order": {
+    "confirm": [
+      0,
+      2,
+      3,
+      7,
+      8,
+      10,
+      11,
+      12,
+      15,
+      19,
+      20,
+      21,
+      23,
+      26,
+      29,
+      30,
+      31,
+      35,
+      38,
+      39,
+      42,
+      43,
+      44,
+      45,
+      46,
+      50,
+      51,
+      54,
+      55,
+      56,
+      60,
+      61,
+      62,
+      65,
+      66,
+      72,
+      73,
+      74,
+      75,
+      79,
+      80,
+      83,
+      84,
+      86,
+      89,
+      91,
+      92,
+      96,
+      98,
+      99
+    ],
+    "screen": [
+      1,
+      5,
+      9,
+      13,
+      14,
+      17,
+      22,
+      24,
+      27,
+      34,
+      36,
+      37,
+      41,
+      47,
+      49,
+      53,
+      57,
+      59,
+      64,
+      68,
+      69,
+      76,
+      77,
+      78,
+      81,
+      82,
+      87,
+      93,
+      94,
+      95
+    ],
+    "unused": [
+      4,
+      6,
+      16,
+      18,
+      25,
+      28,
+      32,
+      33,
+      40,
+      48,
+      52,
+      58,
+      63,
+      67,
+      70,
+      71,
+      85,
+      88,
+      90,
+      97
+    ]
+  },
+  "counts": {
+    "confirm": 50,
+    "screen": 30,
+    "unused": 20,
+    "union": 100
+  },
+  "pairwise_disjoint": true,
+  "complete_source_coverage": true,
+  "duplicate_leakage": {
+    "exact_normalization": [
+      "Unicode_NFKC",
+      "trim",
+      "collapse_consecutive_whitespace_to_ASCII_space",
+      "lowercase"
+    ],
+    "jbb_internal_normalized_exact_duplicate_count": 0,
+    "p1_harmful_to_jbb_normalized_exact_overlap_count": 0,
+    "jbb_internal_lexical_candidate_threshold": "word>=0.35 OR char5>=0.35",
+    "jbb_internal_lexical_candidates": [
+      {
+        "source_indices": [
+          10,
+          13
+        ],
+        "word_token_jaccard": 0.357142857143,
+        "character_5gram_jaccard": 0.185840707965,
+        "manual_review_disposition": "KEEP_DISTINCT",
+        "manual_review_rationale": "disable_antivirus_vs_password_cracking"
+      },
+      {
+        "source_indices": [
+          25,
+          29
+        ],
+        "word_token_jaccard": 0.357142857143,
+        "character_5gram_jaccard": 0.237288135593,
+        "manual_review_disposition": "KEEP_DISTINCT",
+        "manual_review_rationale": "eating_disorder_promotion_vs_predatory_stalking"
+      },
+      {
+        "source_indices": [
+          51,
+          53
+        ],
+        "word_token_jaccard": 0.363636363636,
+        "character_5gram_jaccard": 0.333333333333,
+        "manual_review_disposition": "KEEP_DISTINCT",
+        "manual_review_rationale": "september_11_conspiracy_vs_holocaust_denial"
+      }
+    ],
+    "p1_to_jbb_lexical_candidate_threshold": "word>=0.30 OR char5>=0.30",
+    "p1_to_jbb_lexical_candidates": [],
+    "lexical_candidates_change_membership": false,
+    "existing_p1_review_relative_path": "data/stage3/p1_harmful_do_not_answer_v1/duplicate_leakage_review.json",
+    "existing_p1_review_conclusion": {
+      "normalized_exact_overlap_with_jbb_count": 0,
+      "jbb_threshold_candidates": 0
+    }
+  },
+  "selected_artifacts": {
+    "screen": {
+      "relative_path": "data/stage3/jbb_behavior_frames_v1/selected_jbb_screen_30.json",
+      "raw_sha256": "2d9273fd38623c8ddc79ef04d05a56bb37ef9adca37653b0161244862d424635",
+      "row_count": 30
+    },
+    "confirm": {
+      "relative_path": "data/stage3/jbb_behavior_frames_v1/selected_jbb_confirm_50.json",
+      "raw_sha256": "e435b314c3d50341219f940a137f09d3926777d9689e4bad5ab45d3eec7958ec",
+      "row_count": 50
+    }
+  }
+}

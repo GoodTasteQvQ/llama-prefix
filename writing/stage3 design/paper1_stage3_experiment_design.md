@@ -182,6 +182,82 @@ no P1 benign 100 prompts, and no benign-confirmation 30 prompts. The ordinary ac
 binding, receipt, promotion, lifecycle event, paper-result eligibility decision, execution
 authorization, `RUN-READY`, or `PAPER-RUN-READY` claim.
 
+#### 2.2.2 JBB harmful behavior prompt frames
+
+`D_behavior_screen` and `D_behavior_confirm` come only from `JailbreakBench/JBB-Behaviors` at immutable
+dataset revision `886acc352a31533ffbcf4ef22c744658688086fc`, config `behaviors`, split `harmful`, and
+source path `data/harmful-behaviors.csv`. The official source CSV has SHA256
+`4a8ec6832056b631eb092dccc60d37a61c3d441268268888b3d006288afeffa1`; the local 100-record JSON
+transform has SHA256 `9ee1cb2aab52550f0817f036e4423e9f3cc05a6bb5a0084da404f1817d535e77`. All six fields of all 100
+local records equal the pinned official rows in source order. The dataset license is MIT; redistribution
+must retain the copyright and permission notice in all copies or substantial portions.
+
+Within each of the ten source `Category` values, five records are assigned to `D_behavior_confirm`,
+three to `D_behavior_screen`, and two to `unused`. These three memberships are pairwise disjoint and
+together cover the complete 100-record source. There is no cross-category refill and no manual or
+outcome-dependent selection. For each record, rank is SHA256 of the UTF-8 canonical JSON object
+`{"category":Category,"index":Index,"master_seed":42,"namespace":"paper1-stage3-jbb-split-v1"}`,
+where keys are ordered by Unicode code point, whitespace is absent, and non-ASCII characters use ASCII
+escapes. Records are ranked ascending within category with `Index` as the theoretical tie-break;
+positions 0-4 are confirmation, 5-7 are screen, and 8-9 are unused. The two selected runtime frames are
+then stored in ascending source `Index` order.
+
+Source `Goal` becomes the runtime prompt only after membership is fixed. Source `Target` is excluded
+from selection, ranking, matching, selected runtime JSON, and runtime input; its only permitted use in
+this source audit is binding the complete original record identity. The two active entries have
+`status=design_selected` and `formal_experiment_run=false`. This selection is not a freeze, binding,
+receipt, promotion, execution authorization, `RUN-READY`, or `PAPER-RUN-READY` declaration.
+
+#### 2.2.3 Benign prompt source, taxonomy, and matching
+
+`D_norm_confirm.benign` and `D_benign_confirm` come only from
+`databricks/databricks-dolly-15k` at immutable revision
+`bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a`, config `default`, split `train`, source path
+`databricks-dolly-15k.jsonl`, and prompt field `instruction`. The pinned 15,011-line source has SHA256
+`2df9083338b4abd6bceb5635764dab5d833b393b55759dffb0959b6fcbf794ec`. Its license is CC BY-SA 3.0;
+the selected Dolly-derived data content carries Databricks attribution, a normalization and subset
+modification notice, and the corresponding ShareAlike terms without relicensing selector code,
+configuration mechanics, independently authored metadata, or unrelated repository content.
+
+Eligibility requires the exact source schema, a nonblank English `instruction`, and an empty normalized
+`context`. Source `response` content is not used for eligibility, taxonomy, matching, ranking, runtime
+input, or published prompt text. Prompts undergo Unicode NFKC, trim, and consecutive-whitespace collapse;
+the exact-duplicate key additionally applies casefold. Obvious unsafe lexical matches and reserved Qwen
+special-token surfaces are excluded. Within a normalized exact group, the lowest zero-based source row
+index is the representative. These fixed rules exclude 4,467 context-dependent rows, 125 obvious unsafe
+lexical rows, and 180 duplicate extras, leaving 10,239 eligible records. Stable source identity includes
+dataset, immutable revision, source path, config/split, and zero-based row index.
+
+The versioned domain-neutral instruction taxonomy is `ACTION_GUIDANCE`, `ARTIFACT_CREATION`,
+`ADVICE_OR_IDEATION`, `INFORMATION_LOOKUP`, `EXPLANATION_OR_DESCRIPTION`, and
+`TRANSFORMATION_OR_CLASSIFICATION`. The deterministic mapping priority is transformation surface,
+explicit procedure, artifact, direct action, advice, information, explanation, then source-native
+fallback. P1 harmful and JBB-confirm targets use the approved explicit source-ID registry; all semantic
+decisions are in `instruction_type_registry.json`, and the selector makes no LLM call.
+
+Rendered length uses `Qwen/Qwen2.5-7B-Instruct` tokenizer revision
+`a09a35458c702b33eeacc393d103063234e8bc28` and chat-template SHA256
+`cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f`. T0 input contains exactly one
+user message. The default system content is introduced only by the pinned template's no-tools branch;
+`add_generation_prompt=true`, with no additional BOS or EOS. No model weights are loaded.
+
+For each target role, records are ordered by rendered-token length and the SHA256 length tie-break over
+role and source ID, then divided into ten integer rank deciles. A benign candidate uses its insertion
+rank under the same ordering. P1 benign uses inclusive rendered-length support 35-50 and exactly matches
+the P1 harmful 100 type-by-decile cells. Benign confirm uses support 34-57 and scales the JBB confirm 50
+cells to 30 by floor allocation plus largest remainder, with taxonomy order then decile ascending as the
+tie-break. The resulting type totals are 13 action guidance, 14 artifact creation, and 3 advice/ideation.
+
+Joint allocation selects P1 benign first, removes its source, record, and normalized-prompt identities,
+and then selects benign confirm. Within a stratum, rank is SHA256 of canonical JSON containing stable
+source ID, split, stratum, master seed 42, and namespace `paper1-stage3-benign-joint-v1`; the tie-break
+and final frame order use stable source ID ascending. Any capacity shortage fails immediately without
+cross-stratum refill, reduced N, or source change. The selected raw SHA256 values are
+`1cd38171c65f208bec51edc93ce924c15547ae96fccd0f681e5c98062a071214` for P1 benign 100 and
+`767f991522b1fdbf14f14e0fc54d5a03f005e9788ffc58675f89466a11a97d3d` for benign confirm 30. The active
+entries use `status=design_selected` and `formal_experiment_run=false`; they record an approved design
+selection only and do not authorize execution or claim run readiness.
+
 ### 2.3 Base anchors and random vectors
 
 The anchor input supplies one exact decimal/binary64 triple:
@@ -1082,3 +1158,5 @@ and output recovery do not create design changes.
 | 2026-07-30 | governance migration | Consolidated the existing scientific plan into one active-development baseline; no scientific parameter changed. | none | no |
 | 2026-07-30 | P1 harmful source concretization | P1 harmful prompt-source concretization after pre-outcome source/selection audit. Adopted the fixed 100-record Do-Not-Answer subset described in section 2.2.1 for `D_norm_confirm.harmful` only. This does not change the research question, N, estimand, statistical method, budget, or claim boundary; no formal experiment has run, so this is not a new freeze cycle. | P1 input provenance only | no |
 | 2026-07-30 | descriptive-reporting migration | Behavior-cell ARR and mean 3-gram repetition descriptive reporting explicitly migrated from existing Paper 1 writing plans. This adds no generation or judge call and changes no N, estimand, primary metric, inference family, multiplicity, budget, or claim boundary. No formal experiment has run; this is an explicit migration of existing scientific writing content, not a claim that the current design text had completely zero scientific-content changes. | behavior-cell descriptive reporting only | no |
+| 2026-08-03 | JBB behavior-frame source concretization | Adopted the deterministic JBB 5/3/2 per-category split in section 2.2.2 for `D_behavior_confirm`, `D_behavior_screen`, and `unused`. Membership uses only source `Category`, source `Index`, master seed 42, and the fixed namespace; no formal experiment, generation, judge, smoke, or pilot has run. This is a `design_selected` source decision, not a freeze, binding, promotion, or run-readiness claim. | behavior prompt provenance and frame membership only | no |
+| 2026-08-06 | benign prompt-frame source concretization | Adopted the deterministic Dolly source, versioned instruction taxonomy, Qwen rendered-length matching, exact P1 100 type-by-decile quota, JBB-confirm-derived largest-remainder benign 30 quota, and P1-first joint allocation in section 2.2.3. No formal experiment, model generation, judge, P1 measurement, smoke, or pilot has run. This is an approved `design_selected` source and membership decision only. | P1 benign and benign-confirm prompt provenance and frame membership only | no |

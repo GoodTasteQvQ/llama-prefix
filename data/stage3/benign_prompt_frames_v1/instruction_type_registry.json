@@ -1,0 +1,152 @@
+{
+  "schema_version": "paper1-stage3-instruction-type-registry-v1",
+  "status": "approved_design_selection",
+  "taxonomy_is_domain_neutral": true,
+  "type_order": [
+    "ACTION_GUIDANCE",
+    "ARTIFACT_CREATION",
+    "ADVICE_OR_IDEATION",
+    "INFORMATION_LOOKUP",
+    "EXPLANATION_OR_DESCRIPTION",
+    "TRANSFORMATION_OR_CLASSIFICATION"
+  ],
+  "types": {
+    "ACTION_GUIDANCE": {
+      "positive_definition": "requests steps, methods, procedures, or direct operational action",
+      "exclusion_boundary": "exclude requests whose primary deliverable is a completed artifact"
+    },
+    "ARTIFACT_CREATION": {
+      "positive_definition": "requests a completed code, prose, message, plan, or other artifact",
+      "exclusion_boundary": "exclude requests that ask only how to create or operate something"
+    },
+    "ADVICE_OR_IDEATION": {
+      "positive_definition": "requests recommendations, choices, strategies, or ideas",
+      "exclusion_boundary": "exclude fact lookup and explicit procedural instructions"
+    },
+    "INFORMATION_LOOKUP": {
+      "positive_definition": "requests a fact, entity, list, location, or short direct answer",
+      "exclusion_boundary": "exclude explanation of causes, mechanisms, or comparisons"
+    },
+    "EXPLANATION_OR_DESCRIPTION": {
+      "positive_definition": "requests explanation, description, comparison, reason, or mechanism",
+      "exclusion_boundary": "exclude direct fact lookup and transformations of supplied input"
+    },
+    "TRANSFORMATION_OR_CLASSIFICATION": {
+      "positive_definition": "requests classification, extraction, summary, translation, or rewriting",
+      "exclusion_boundary": "requires an existing input or an explicit transformation form"
+    }
+  },
+  "candidate_mapping": {
+    "priority": [
+      "transformation_surface_rule",
+      "explicit_procedure_surface_rule",
+      "artifact_surface_rule",
+      "direct_action_surface_rule",
+      "advice_surface_rule",
+      "information_surface_rule",
+      "explanation_surface_rule",
+      "source_native_fallback"
+    ],
+    "patterns": {
+      "transformation": "\\b(classif(?:y|ication)|categorize|extract|summari[sz]e|translate|rewrite|rephrase|convert)\\b",
+      "explicit_procedure": "(?:\\bhow\\s+(?:can|could|do|does|should|would|to)\\b|\\b(?:step[- ]by[- ]step|instructions?|tutorial|guide|procedure|techniques?)\\b|\\bsteps\\s+(?:necessary|required|needed)\\b)",
+      "artifact_command": "^(?:please\\s+)?(?:can you\\s+(?:help me\\s+)?|could you\\s+(?:help me\\s+)?|help me\\s+|(?:can you\\s+)?assist(?: me)?\\s+in\\s+)?(?:write|draft|create|generate|develop|design|compose|craft|produce|make|plan)\\b",
+      "artifact_deliverable": "^(?:please\\s+)?(?:can you\\s+)?(?:give|provide|show|offer)(?: me)?\\s+(?:an?\\s+)?(?:template|draft|script|story|poem|article|letter|message|email|post|plan)\\b",
+      "direct_action": "^(?:please\\s+)?(?:can you\\s+(?:help me\\s+)?|could you\\s+(?:help me\\s+)?|help me\\s+|assist me\\s+|can you assist me\\s+|can you help me\\s+)?(?:send|spread|reveal|release|open|post|hide|access|share|publish|distribute)\\b",
+      "advice": "\\b(?:advice|recommend|suggest|brainstorm|ideas?|options?|strateg(?:y|ies)|tactics|best ways?|quickest way|ways to|convince|encourage|pressure|provoke)\\b",
+      "information": "^(?:please\\s+)?(?:can you\\s+(?:help me\\s+)?|could you\\s+)?(?:what|where|who|when|which|list|name|identify|find|give me a list|tell me)\\b",
+      "explanation": "\\b(?:explain|describe|why|analy[sz]e|compare|discuss)\\b"
+    },
+    "dolly_native_crosswalk": {
+      "creative_writing": "ARTIFACT_CREATION",
+      "brainstorming": "ADVICE_OR_IDEATION",
+      "classification": "TRANSFORMATION_OR_CLASSIFICATION",
+      "open_qa": "surface rule, otherwise EXPLANATION_OR_DESCRIPTION",
+      "general_qa": "surface rule, otherwise EXPLANATION_OR_DESCRIPTION",
+      "closed_qa": "not eligible under empty-context rule; fallback EXPLANATION_OR_DESCRIPTION",
+      "information_extraction": "not eligible under empty-context rule",
+      "summarization": "not eligible under empty-context rule"
+    },
+    "ambiguous_case_rule": "apply the ordered surface rules once; then the native fallback; otherwise EXPLANATION_OR_DESCRIPTION; no LLM call"
+  },
+  "target_mapping": {
+    "p1_harmful": {
+      "ARTIFACT_CREATION": [
+        638,
+        647,
+        736,
+        758,
+        761,
+        763,
+        764
+      ],
+      "ADVICE_OR_IDEATION": [
+        554,
+        633,
+        656,
+        660,
+        663,
+        675,
+        689,
+        696,
+        724,
+        726
+      ],
+      "INFORMATION_LOOKUP": [
+        574,
+        580,
+        585,
+        590,
+        621,
+        636
+      ],
+      "all_remaining_selected_source_ids": "ACTION_GUIDANCE"
+    },
+    "jbb_confirm": {
+      "ARTIFACT_CREATION": [
+        0,
+        2,
+        3,
+        8,
+        10,
+        12,
+        15,
+        23,
+        29,
+        30,
+        44,
+        50,
+        51,
+        54,
+        56,
+        60,
+        61,
+        62,
+        65,
+        66,
+        72,
+        73,
+        75
+      ],
+      "ADVICE_OR_IDEATION": [
+        43,
+        80,
+        89,
+        96
+      ],
+      "EXPLANATION_OR_DESCRIPTION": [
+        55
+      ],
+      "all_remaining_selected_source_indices": "ACTION_GUIDANCE"
+    },
+    "mapping_is_versioned_and_complete": true
+  },
+  "unsafe_filter": {
+    "purpose": "exclude obvious harmful or unsafe benign-source requests before matching",
+    "regex": "\\b(?:abduct|abuse|arson|assault|attack|blackmail|bomb|bully|bypass|cheat|cocaine|counterfeit|dangerous|deepfake|disinformation|dox|drugs?|embezz|evade|exploit|explosive|extort|fentanyl|firearm|fraud|gambl|guns?|hack|harass|hate speech|heroin|illegal|illicit|kidnap|kill|knives?|launder|lockpick|lsd|malware|methamphetamine|misinformation|murder|nudity|phish|pirat|poach|poison|porn|propaganda|racis|rape|ransom|ransomware|robbery|sabotage|scam|self[- ]harm|sexual|silencer|smuggl|stalk|starv|steal|suicide|terroris|theft|threaten|torture|violence|violent|virus|weapons?|xenophob)\\w*\\b",
+    "flags": [
+      "IGNORECASE"
+    ],
+    "outcome_inputs_used": false
+  }
+}

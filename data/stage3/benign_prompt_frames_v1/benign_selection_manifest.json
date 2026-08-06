@@ -1,0 +1,750 @@
+{
+  "schema_version": "paper1-stage3-benign-prompt-frames-v1",
+  "artifact_type": "benign_joint_selection_manifest",
+  "status": "design_selected",
+  "formal_experiment_run": false,
+  "source_provenance": {
+    "official_dataset_id": "databricks/databricks-dolly-15k",
+    "immutable_revision": "bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a",
+    "config": "default",
+    "split": "train",
+    "source_path": "databricks-dolly-15k.jsonl",
+    "source_raw_byte_length": 13085339,
+    "source_raw_sha256": "2df9083338b4abd6bceb5635764dab5d833b393b55759dffb0959b6fcbf794ec",
+    "source_row_count": 15011,
+    "source_card_sha256": "db06c60090a11b20e79d1933b2f316f781605f07761ff2ae2795d6523e3e960b",
+    "prompt_field": "instruction",
+    "context_rule": "normalized context must be empty",
+    "response_role": "not used for eligibility, taxonomy, matching, ranking, runtime input, or published text",
+    "raw_row_sha256_role": "provenance-only whole-line misread detection; excluded from all membership inputs",
+    "stable_source_id_format": "dataset@revision:path:config/split:row=<zero-padded zero-based row index>",
+    "license": "CC-BY-SA-3.0",
+    "license_notice_relative_path": "data/stage3/benign_prompt_frames_v1/provenance_license_notice.md",
+    "license_notice_raw_sha256": "08a2fb04aa239bee24889964ebd5bf15324b869e8dc586238c9ec518d5cf1497"
+  },
+  "eligibility": {
+    "ordered_rules": [
+      "exact four-field source schema and string instruction/context/category",
+      "nonblank normalized instruction",
+      "empty normalized context",
+      "at least 90 percent Latin among alphabetic characters",
+      "no reserved special-token surface",
+      "no obvious unsafe lexical match",
+      "one lowest-index representative per normalized exact prompt identity"
+    ],
+    "normalization": [
+      "Unicode NFKC",
+      "trim",
+      "collapse consecutive whitespace to ASCII space"
+    ],
+    "normalized_exact_identity_addition": "Unicode casefold",
+    "counts": {
+      "context_dependent": 4467,
+      "eligible": 10239,
+      "normalized_exact_duplicate": 180,
+      "obvious_unsafe_lexical": 125
+    },
+    "normalized_duplicate_representatives": {
+      "representative_rule": "lowest zero-based source row index, then stable source ID",
+      "group_count": 121,
+      "extra_record_count": 180,
+      "groups_canonical_sha256": "df912e677657f66ee2def002350aca697e29bb18776378f2f4618dbe2e46598f"
+    }
+  },
+  "instruction_taxonomy": {
+    "registry_relative_path": "data/stage3/benign_prompt_frames_v1/instruction_type_registry.json",
+    "registry_raw_sha256": "c48865cb2b9ce8b6d199aff652ce249d399ab9710e727a3ba827169b886678da",
+    "complete_target_mapping": true,
+    "complete_selected_mapping": true,
+    "llm_mapping_calls": 0
+  },
+  "tokenizer_and_rendering": {
+    "source": "Qwen/Qwen2.5-7B-Instruct",
+    "immutable_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "file_sha256": {
+      "merges.txt": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+      "tokenizer.json": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "tokenizer_config.json": "5b5d4f65d0acd3b2d56a35b56d374a36cbc1c8fa5cf3b3febbbfabf22f359583",
+      "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+    },
+    "chat_template_text": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- messages[0]['content'] }}\n    {%- else %}\n        {{- 'You are Qwen, created by Alibaba Cloud. You are a helpful assistant.' }}\n    {%- endif %}\n    {{- \"\\n\\n# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0]['content'] + '<|im_end|>\\n' }}\n    {%- else %}\n        {{- '<|im_start|>system\\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) or (message.role == \"assistant\" and not message.tool_calls) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {{- '<|im_start|>' + message.role }}\n        {%- if message.content %}\n            {{- '\\n' + message.content }}\n        {%- endif %}\n        {%- for tool_call in message.tool_calls %}\n            {%- if tool_call.function is defined %}\n                {%- set tool_call = tool_call.function %}\n            {%- endif %}\n            {{- '\\n<tool_call>\\n{\"name\": \"' }}\n            {{- tool_call.name }}\n            {{- '\", \"arguments\": ' }}\n            {{- tool_call.arguments | tojson }}\n            {{- '}\\n</tool_call>' }}\n        {%- endfor %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n{%- endif %}\n",
+    "chat_template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+    "rendering_package": "T0_native_user_only",
+    "messages_input": [
+      {
+        "role": "user",
+        "content": "<canonical prompt>"
+      }
+    ],
+    "tools": null,
+    "add_generation_prompt": true,
+    "additional_bos_or_eos": false,
+    "default_system_origin": "pinned chat template branch, not an input message",
+    "rendered_token_count_algorithm": "token count of the pinned template's no-tools single-user generation-prompt rendering under the pinned Qwen ByteLevel-BPE",
+    "sanity_hello_world_token_ids": [
+      9707,
+      1879
+    ],
+    "model_weights_loaded": false
+  },
+  "targets": {
+    "p1_harmful": {
+      "relative_path": "data/stage3/p1_harmful_do_not_answer_v1/selected_p1_harmful_100.json",
+      "raw_sha256": "700c2c391c86273fca01ec9823feb66a3b1927ac39cc81d1de7567c71bebfd36",
+      "row_count": 100,
+      "type_by_decile": {
+        "ACTION_GUIDANCE": [
+          9,
+          8,
+          9,
+          7,
+          7,
+          9,
+          7,
+          7,
+          8,
+          6
+        ],
+        "ARTIFACT_CREATION": [
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1,
+          2,
+          1,
+          2
+        ],
+        "ADVICE_OR_IDEATION": [
+          0,
+          1,
+          1,
+          2,
+          0,
+          0,
+          2,
+          1,
+          1,
+          2
+        ],
+        "INFORMATION_LOOKUP": [
+          1,
+          1,
+          0,
+          0,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "EXPLANATION_OR_DESCRIPTION": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "TRANSFORMATION_OR_CLASSIFICATION": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "jbb_confirm": {
+      "relative_path": "data/stage3/jbb_behavior_frames_v1/selected_jbb_confirm_50.json",
+      "raw_sha256": "e435b314c3d50341219f940a137f09d3926777d9689e4bad5ab45d3eec7958ec",
+      "row_count": 50,
+      "source_revision": "886acc352a31533ffbcf4ef22c744658688086fc",
+      "prompt_field": "prompt",
+      "Target_excluded": true,
+      "type_by_decile": {
+        "ACTION_GUIDANCE": [
+          1,
+          4,
+          2,
+          2,
+          2,
+          3,
+          2,
+          1,
+          2,
+          3
+        ],
+        "ARTIFACT_CREATION": [
+          4,
+          1,
+          1,
+          2,
+          3,
+          2,
+          3,
+          3,
+          2,
+          2
+        ],
+        "ADVICE_OR_IDEATION": [
+          0,
+          0,
+          2,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        "INFORMATION_LOOKUP": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "EXPLANATION_OR_DESCRIPTION": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "TRANSFORMATION_OR_CLASSIFICATION": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  },
+  "selection": {
+    "namespace": "paper1-stage3-benign-joint-v1",
+    "length_namespace": "paper1-stage3-benign-length-v1",
+    "master_seed": 42,
+    "target_decile_rule": "sort by rendered token count then role/source-ID length tie hash; decile is 1 + floor(10*zero-based rank/N)",
+    "candidate_decile_rule": "bisect-right insertion rank under the same role/source-ID tie hash; rank N is clamped to N-1",
+    "role_length_support_inclusive": {
+      "p1_benign": [
+        35,
+        50
+      ],
+      "benign_confirm": [
+        34,
+        57
+      ]
+    },
+    "p1_quota": {
+      "ACTION_GUIDANCE": [
+        9,
+        8,
+        9,
+        7,
+        7,
+        9,
+        7,
+        7,
+        8,
+        6
+      ],
+      "ARTIFACT_CREATION": [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        2,
+        1,
+        2
+      ],
+      "ADVICE_OR_IDEATION": [
+        0,
+        1,
+        1,
+        2,
+        0,
+        0,
+        2,
+        1,
+        1,
+        2
+      ],
+      "INFORMATION_LOOKUP": [
+        1,
+        1,
+        0,
+        0,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "EXPLANATION_OR_DESCRIPTION": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "TRANSFORMATION_OR_CLASSIFICATION": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "benign_confirm_quota": {
+      "ACTION_GUIDANCE": [
+        1,
+        2,
+        1,
+        1,
+        1,
+        2,
+        1,
+        1,
+        1,
+        2
+      ],
+      "ARTIFACT_CREATION": [
+        2,
+        1,
+        1,
+        1,
+        2,
+        1,
+        2,
+        2,
+        1,
+        1
+      ],
+      "ADVICE_OR_IDEATION": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "INFORMATION_LOOKUP": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "EXPLANATION_OR_DESCRIPTION": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "TRANSFORMATION_OR_CLASSIFICATION": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "benign_confirm_quota_rule": "floor(30*n/50), then largest remainder; type order then decile ascending tie-break",
+    "allocation_priority": [
+      "p1_benign",
+      "benign_confirm"
+    ],
+    "identity_removal_before_confirm": [
+      "source_id",
+      "source_record_identity_sha256",
+      "prompt_identity_sha256"
+    ],
+    "rank_payload_fields": [
+      "master_seed",
+      "namespace",
+      "source_id",
+      "split",
+      "stratum"
+    ],
+    "rank": "SHA256 of canonical UTF-8 JSON",
+    "within_stratum_order": "rank ascending, stable source ID tie-break",
+    "final_output_order": "stable source ID ascending",
+    "capacity_failure": "fail immediately; no refill, reduced N, or source change",
+    "capacity": {
+      "allocation_priority": [
+        "p1_benign",
+        "benign_confirm"
+      ],
+      "p1_capacity": {
+        "ACTION_GUIDANCE|D1": {
+          "available": 123,
+          "required": 9,
+          "margin": 114
+        },
+        "ACTION_GUIDANCE|D2": {
+          "available": 79,
+          "required": 8,
+          "margin": 71
+        },
+        "ACTION_GUIDANCE|D3": {
+          "available": 48,
+          "required": 9,
+          "margin": 39
+        },
+        "ACTION_GUIDANCE|D4": {
+          "available": 47,
+          "required": 7,
+          "margin": 40
+        },
+        "ACTION_GUIDANCE|D5": {
+          "available": 46,
+          "required": 7,
+          "margin": 39
+        },
+        "ACTION_GUIDANCE|D6": {
+          "available": 30,
+          "required": 9,
+          "margin": 21
+        },
+        "ACTION_GUIDANCE|D7": {
+          "available": 39,
+          "required": 7,
+          "margin": 32
+        },
+        "ACTION_GUIDANCE|D8": {
+          "available": 32,
+          "required": 7,
+          "margin": 25
+        },
+        "ACTION_GUIDANCE|D9": {
+          "available": 13,
+          "required": 8,
+          "margin": 5
+        },
+        "ACTION_GUIDANCE|D10": {
+          "available": 36,
+          "required": 6,
+          "margin": 30
+        },
+        "ARTIFACT_CREATION|D4": {
+          "available": 15,
+          "required": 1,
+          "margin": 14
+        },
+        "ARTIFACT_CREATION|D7": {
+          "available": 25,
+          "required": 1,
+          "margin": 24
+        },
+        "ARTIFACT_CREATION|D8": {
+          "available": 31,
+          "required": 2,
+          "margin": 29
+        },
+        "ARTIFACT_CREATION|D9": {
+          "available": 17,
+          "required": 1,
+          "margin": 16
+        },
+        "ARTIFACT_CREATION|D10": {
+          "available": 95,
+          "required": 2,
+          "margin": 93
+        },
+        "ADVICE_OR_IDEATION|D2": {
+          "available": 43,
+          "required": 1,
+          "margin": 42
+        },
+        "ADVICE_OR_IDEATION|D3": {
+          "available": 38,
+          "required": 1,
+          "margin": 37
+        },
+        "ADVICE_OR_IDEATION|D4": {
+          "available": 46,
+          "required": 2,
+          "margin": 44
+        },
+        "ADVICE_OR_IDEATION|D7": {
+          "available": 59,
+          "required": 2,
+          "margin": 57
+        },
+        "ADVICE_OR_IDEATION|D8": {
+          "available": 97,
+          "required": 1,
+          "margin": 96
+        },
+        "ADVICE_OR_IDEATION|D9": {
+          "available": 50,
+          "required": 1,
+          "margin": 49
+        },
+        "ADVICE_OR_IDEATION|D10": {
+          "available": 115,
+          "required": 2,
+          "margin": 113
+        },
+        "INFORMATION_LOOKUP|D1": {
+          "available": 929,
+          "required": 1,
+          "margin": 928
+        },
+        "INFORMATION_LOOKUP|D2": {
+          "available": 437,
+          "required": 1,
+          "margin": 436
+        },
+        "INFORMATION_LOOKUP|D5": {
+          "available": 401,
+          "required": 3,
+          "margin": 398
+        },
+        "INFORMATION_LOOKUP|D6": {
+          "available": 361,
+          "required": 1,
+          "margin": 360
+        }
+      },
+      "confirm_capacity_after_p1_identity_removal": {
+        "ACTION_GUIDANCE|D1": {
+          "available": 200,
+          "required": 1,
+          "margin": 199
+        },
+        "ACTION_GUIDANCE|D2": {
+          "available": 144,
+          "required": 2,
+          "margin": 142
+        },
+        "ACTION_GUIDANCE|D3": {
+          "available": 34,
+          "required": 1,
+          "margin": 33
+        },
+        "ACTION_GUIDANCE|D4": {
+          "available": 4,
+          "required": 1,
+          "margin": 3
+        },
+        "ACTION_GUIDANCE|D5": {
+          "available": 8,
+          "required": 1,
+          "margin": 7
+        },
+        "ACTION_GUIDANCE|D6": {
+          "available": 12,
+          "required": 2,
+          "margin": 10
+        },
+        "ACTION_GUIDANCE|D7": {
+          "available": 1,
+          "required": 1,
+          "margin": 0
+        },
+        "ACTION_GUIDANCE|D8": {
+          "available": 19,
+          "required": 1,
+          "margin": 18
+        },
+        "ACTION_GUIDANCE|D9": {
+          "available": 6,
+          "required": 1,
+          "margin": 5
+        },
+        "ACTION_GUIDANCE|D10": {
+          "available": 17,
+          "required": 2,
+          "margin": 15
+        },
+        "ARTIFACT_CREATION|D1": {
+          "available": 53,
+          "required": 2,
+          "margin": 51
+        },
+        "ARTIFACT_CREATION|D2": {
+          "available": 59,
+          "required": 1,
+          "margin": 58
+        },
+        "ARTIFACT_CREATION|D3": {
+          "available": 23,
+          "required": 1,
+          "margin": 22
+        },
+        "ARTIFACT_CREATION|D4": {
+          "available": 10,
+          "required": 1,
+          "margin": 9
+        },
+        "ARTIFACT_CREATION|D5": {
+          "available": 6,
+          "required": 2,
+          "margin": 4
+        },
+        "ARTIFACT_CREATION|D6": {
+          "available": 20,
+          "required": 1,
+          "margin": 19
+        },
+        "ARTIFACT_CREATION|D7": {
+          "available": 6,
+          "required": 2,
+          "margin": 4
+        },
+        "ARTIFACT_CREATION|D8": {
+          "available": 46,
+          "required": 2,
+          "margin": 44
+        },
+        "ARTIFACT_CREATION|D9": {
+          "available": 31,
+          "required": 1,
+          "margin": 30
+        },
+        "ARTIFACT_CREATION|D10": {
+          "available": 72,
+          "required": 1,
+          "margin": 71
+        },
+        "ADVICE_OR_IDEATION|D3": {
+          "available": 83,
+          "required": 1,
+          "margin": 82
+        },
+        "ADVICE_OR_IDEATION|D4": {
+          "available": 18,
+          "required": 1,
+          "margin": 17
+        },
+        "ADVICE_OR_IDEATION|D8": {
+          "available": 61,
+          "required": 1,
+          "margin": 60
+        }
+      },
+      "source_ids_disjoint": true,
+      "record_identities_disjoint": true,
+      "normalized_prompt_identities_disjoint": true
+    }
+  },
+  "duplicate_and_overlap": {
+    "normalized_exact_overlap": {
+      "normalization": [
+        "Unicode NFKC",
+        "trim",
+        "collapse whitespace to ASCII space",
+        "casefold"
+      ],
+      "counts": {
+        "p1_benign_to_p1_harmful": 0,
+        "p1_benign_to_jbb_confirm": 0,
+        "p1_benign_to_jbb_screen": 0,
+        "benign_confirm_to_p1_harmful": 0,
+        "benign_confirm_to_jbb_confirm": 0,
+        "benign_confirm_to_jbb_screen": 0,
+        "between_selected_frames": 0
+      },
+      "all_zero": true
+    },
+    "near_duplicate_thresholds": {
+      "word_token_jaccard": 0.7,
+      "character_5gram_jaccard": 0.75
+    },
+    "bounded_review_rounds": 1,
+    "near_duplicate_candidates": [],
+    "near_duplicate_review_complete": true,
+    "membership_changed_by_near_duplicate_review": false
+  },
+  "selected_artifacts": {
+    "p1_benign": {
+      "relative_path": "data/stage3/benign_prompt_frames_v1/selected_p1_benign_100.json",
+      "raw_sha256": "1cd38171c65f208bec51edc93ce924c15547ae96fccd0f681e5c98062a071214",
+      "row_count": 100,
+      "source_ids_sha256": "1f800102687a72e89bba2896beca4d630260d30e408c43fd456133bb4e5ef5f0"
+    },
+    "benign_confirm": {
+      "relative_path": "data/stage3/benign_prompt_frames_v1/selected_benign_confirm_30.json",
+      "raw_sha256": "767f991522b1fdbf14f14e0fc54d5a03f005e9788ffc58675f89466a11a97d3d",
+      "row_count": 30,
+      "source_ids_sha256": "2a6a4db09849a0d4d3b896e048f5cf1dc09226398ca1779e8f2423de2e47bf9e"
+    }
+  },
+  "status_boundary": {
+    "formal_experiment_run": false,
+    "model_weights_loaded": false,
+    "generation_run": false,
+    "judge_run": false,
+    "p1_run": false,
+    "smoke_run": false,
+    "pilot_run": false,
+    "run_ready": false,
+    "paper_run_ready": false
+  }
+}
