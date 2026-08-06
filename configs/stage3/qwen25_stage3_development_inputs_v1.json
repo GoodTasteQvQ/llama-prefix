@@ -1,0 +1,73 @@
+{
+  "schema_version": "paper1-stage3-qwen25-development-inputs-v1",
+  "status": "development_input_validation_only",
+  "development_input_validation_only": true,
+  "paper_result_eligible": false,
+  "formal_experiment_run": false,
+  "generation_run": false,
+  "judge_run": false,
+  "p1_run": false,
+  "datasets": [
+    {
+      "active_entry_relative_path": "configs/stage3/p1_harmful_do_not_answer_v1.json",
+      "role": "D_norm_confirm.harmful",
+      "row_count": 100
+    },
+    {
+      "active_entry_relative_path": "configs/stage3/p1_benign_v1.json",
+      "role": "D_norm_confirm.benign",
+      "row_count": 100
+    },
+    {
+      "active_entry_relative_path": "configs/stage3/jbb_behavior_screen_v1.json",
+      "role": "D_behavior_screen",
+      "row_count": 30
+    },
+    {
+      "active_entry_relative_path": "configs/stage3/jbb_behavior_confirm_v1.json",
+      "role": "D_behavior_confirm",
+      "row_count": 50
+    },
+    {
+      "active_entry_relative_path": "configs/stage3/benign_confirm_v1.json",
+      "role": "D_benign_confirm",
+      "row_count": 30
+    }
+  ],
+  "anchors": {
+    "config_relative_path": "configs/stage3/qwen25_base_anchors_v1.json"
+  },
+  "vector_pool": {
+    "manifest_relative_path": "data/stage3/qwen25_vector_pool_v1/qwen25_stage3_vectors.manifest.json",
+    "tensor_relative_path": "data/stage3/qwen25_vector_pool_v1/qwen25_stage3_vectors.pt"
+  },
+  "behavior": {
+    "checkpoint_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "tokenizer_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "dtype": "bfloat16",
+    "device": "cuda:0",
+    "trust_remote_code": false,
+    "trust_remote_code_reason": null,
+    "layer": 9,
+    "hook_site": "resid_pre",
+    "phase_mode": "decode_only"
+  },
+  "judge": {
+    "checkpoint_path": "/data/goodtaste_workspace/models/Qwen3-8B",
+    "tokenizer_path": "/data/goodtaste_workspace/models/Qwen3-8B",
+    "dtype": "float32",
+    "device": "cuda:0",
+    "trust_remote_code": false,
+    "trust_remote_code_reason": null
+  },
+  "p1_measurement_and_dose": {
+    "mu_all_tw_Qwen": null,
+    "mu_content_tw_Qwen": null,
+    "median_content_norm_Qwen": null,
+    "c_A": null,
+    "c_T": null,
+    "c_H": null,
+    "measurement_result_dose_manifest": null,
+    "dose_binding": null
+  }
+}
