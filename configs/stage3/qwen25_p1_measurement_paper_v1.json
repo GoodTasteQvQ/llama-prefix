@@ -1,0 +1,30 @@
+{
+  "schema_version": "paper1-stage3-p1-measurement-paper-v1",
+  "status": "paper_runner_ready",
+  "run_mode": "paper",
+  "development_input_config_relative_path": "configs/stage3/qwen25_stage3_development_inputs_v1.json",
+  "paper_result_eligible": false,
+  "formal_experiment_run": false,
+  "behavior": {
+    "checkpoint_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "tokenizer_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "dtype": "bfloat16",
+    "device": "cuda:0",
+    "trust_remote_code": false,
+    "trust_remote_code_reason": null,
+    "layer": 9,
+    "hook_site": "resid_pre",
+    "batch_size": 1
+  },
+  "frames": [
+    {
+      "domain": "harmful",
+      "active_entry_relative_path": "configs/stage3/p1_harmful_do_not_answer_v1.json"
+    },
+    {
+      "domain": "benign",
+      "active_entry_relative_path": "configs/stage3/p1_benign_v1.json"
+    }
+  ],
+  "output_root": "/data/goodtaste_workspace/paper1_stage3_runs"
+}

@@ -1,4 +1,4 @@
-"""Minimal P1 development smoke rendering and resid-pre measurement core."""
+"""P1 smoke core and fixed-frame paper measurement runner."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import gc
 import hashlib
 import json
 import math
+import re
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Mapping
 
@@ -20,12 +21,14 @@ from scripts.stage3_production.validate_stage3_development_inputs import (
 )
 
 from .core import PROTOCOL_VERSION, PipelineError, canonical_sha256
+from . import p1_results
 from .real_backend import AutoModelForCausalLM, inspect_local_model_assets
 from .records import validate_p1_record
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "configs/stage3/qwen25_p1_measurement_development_v1.json"
+DEFAULT_PAPER_CONFIG = ROOT / "configs/stage3/qwen25_p1_measurement_paper_v1.json"
 DEFAULT_SYSTEM_CONTENT = (
     "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."
 )
@@ -33,6 +36,17 @@ EXPECTED_DEVELOPMENT_INPUT = (
     "configs/stage3/qwen25_stage3_development_inputs_v1.json"
 )
 EXPECTED_OUTPUT_ROOT = ".codex-temp/stage3_p1_smoke_runs"
+EXPECTED_PAPER_OUTPUT_ROOT = "/data/goodtaste_workspace/paper1_stage3_runs"
+EXPECTED_PAPER_FRAMES = (
+    {
+        "domain": "harmful",
+        "active_entry_relative_path": "configs/stage3/p1_harmful_do_not_answer_v1.json",
+    },
+    {
+        "domain": "benign",
+        "active_entry_relative_path": "configs/stage3/p1_benign_v1.json",
+    },
+)
 EXPECTED_PROMPTS = (
     {
         "domain": "harmful",
@@ -89,10 +103,23 @@ _PROMPT_FIELDS = (
     "source_id",
     "identity_sha256",
 )
+_PAPER_CONFIG_FIELDS = (
+    "schema_version",
+    "status",
+    "run_mode",
+    "development_input_config_relative_path",
+    "paper_result_eligible",
+    "formal_experiment_run",
+    "behavior",
+    "frames",
+    "output_root",
+)
+_PAPER_FRAME_FIELDS = ("domain", "active_entry_relative_path")
+_SAFE_RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 
 
 class P1SmokeCoreError(PipelineError):
-    """A smoke-core input or execution contract failed closed."""
+    """A P1 measurement input or execution contract failed closed."""
 
 
 def _exact_ordered_fields(
@@ -166,6 +193,62 @@ def validate_smoke_config(config: Mapping[str, Any]) -> dict[str, Any]:
 
 def load_smoke_config(path: Path = DEFAULT_CONFIG) -> dict[str, Any]:
     return validate_smoke_config(_strict_json_object(path.resolve(), "P1 smoke config"))
+
+
+def validate_paper_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate the fixed 100 harmful + 100 benign paper-runner configuration."""
+    actual = dict(
+        _exact_ordered_fields(config, _PAPER_CONFIG_FIELDS, "P1 paper config")
+    )
+    expected_scalars = {
+        "schema_version": "paper1-stage3-p1-measurement-paper-v1",
+        "status": "paper_runner_ready",
+        "run_mode": "paper",
+        "development_input_config_relative_path": EXPECTED_DEVELOPMENT_INPUT,
+        "paper_result_eligible": False,
+        "formal_experiment_run": False,
+        "output_root": EXPECTED_PAPER_OUTPUT_ROOT,
+    }
+    for field, expected in expected_scalars.items():
+        value = actual[field]
+        if (value is not expected) if isinstance(expected, bool) else (value != expected):
+            raise P1SmokeCoreError(f"P1 paper config {field} mismatch")
+
+    behavior = dict(
+        _exact_ordered_fields(actual["behavior"], _BEHAVIOR_FIELDS, "behavior")
+    )
+    expected_behavior = {
+        "checkpoint_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+        "tokenizer_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+        "dtype": "bfloat16",
+        "device": "cuda:0",
+        "trust_remote_code": False,
+        "trust_remote_code_reason": None,
+        "layer": 9,
+        "hook_site": "resid_pre",
+        "batch_size": 1,
+    }
+    if behavior != expected_behavior:
+        raise P1SmokeCoreError("P1 paper behavior metadata mismatch")
+
+    frames = actual["frames"]
+    if not isinstance(frames, list) or len(frames) != 2:
+        raise P1SmokeCoreError("paper config requires harmful then benign frames")
+    normalized_frames = []
+    for index, expected in enumerate(EXPECTED_PAPER_FRAMES):
+        frame = dict(
+            _exact_ordered_fields(frames[index], _PAPER_FRAME_FIELDS, f"frames[{index}]")
+        )
+        if frame != expected:
+            raise P1SmokeCoreError(f"frames[{index}] approved frame mismatch")
+        normalized_frames.append(frame)
+    actual["behavior"] = behavior
+    actual["frames"] = normalized_frames
+    return actual
+
+
+def load_paper_config(path: Path = DEFAULT_PAPER_CONFIG) -> dict[str, Any]:
+    return validate_paper_config(_strict_json_object(path.resolve(), "P1 paper config"))
 
 
 def _development_config(config: Mapping[str, Any], repo_root: Path) -> dict[str, Any]:
@@ -260,6 +343,202 @@ def _selected_prompt_records(
             }
         )
     return selected_records, pinned_template_sha256
+
+
+def paper_logical_id(domain: str, source_id: str | int) -> str:
+    """Return the stable logical identity used by paper P1 terminal records."""
+    if domain not in {"harmful", "benign"}:
+        raise P1SmokeCoreError("paper logical ID domain is invalid")
+    if isinstance(source_id, bool) or not isinstance(source_id, (str, int)):
+        raise P1SmokeCoreError("paper logical ID source ID is invalid")
+    source_text = str(source_id)
+    if not source_text:
+        raise P1SmokeCoreError("paper logical ID source ID is empty")
+    return f"p1-paper:{domain}:{source_text}"
+
+
+def _paper_field_declarations(
+    active: Mapping[str, Any], domain: str
+) -> tuple[str, str, str, str | None]:
+    if domain == "harmful":
+        declared = (
+            active.get("selected_source_id_field"),
+            active.get("source_prompt_field"),
+            active.get("selected_identity_field"),
+            None,
+        )
+        expected = ("source_id", "question", "record_identity_sha256", None)
+    elif domain == "benign":
+        declared = (
+            active.get("source_id_field"),
+            active.get("prompt_field"),
+            active.get("prompt_identity_field"),
+            active.get("messages_field"),
+        )
+        expected = ("source_id", "prompt", "prompt_identity_sha256", "messages")
+    else:
+        raise P1SmokeCoreError("paper frame domain is invalid")
+    if declared != expected:
+        raise P1SmokeCoreError(f"{domain} active entry field declarations mismatch")
+    return expected
+
+
+def _paper_domain_records(
+    *,
+    domain: str,
+    dataset: Mapping[str, Any],
+    validated_entry: Mapping[str, Any],
+    repo_root: Path,
+) -> tuple[list[dict[str, Any]], str]:
+    active_path = _resolve_repo_file(
+        repo_root,
+        dataset["active_entry_relative_path"],
+        f"{domain} active entry",
+    )
+    active = _strict_json_object(active_path, f"{domain} active entry")
+    selected_path = _resolve_repo_file(
+        repo_root,
+        validated_entry["selected_relative_path"],
+        f"{domain} selected dataset",
+    )
+    selected = _strict_json_object(selected_path, f"{domain} selected dataset")
+    records = selected.get("records")
+    if not isinstance(records, list) or len(records) != 100:
+        raise P1SmokeCoreError(f"{domain} paper frame must contain exactly 100 records")
+
+    source_field, prompt_field, identity_field, messages_field = (
+        _paper_field_declarations(active, domain)
+    )
+    declared_record_fields = active.get("selected_record_ordered_fields")
+    prompts: list[dict[str, Any]] = []
+    for index, raw_record in enumerate(records):
+        if not isinstance(raw_record, Mapping):
+            raise P1SmokeCoreError(f"{domain} records[{index}] must be an object")
+        if declared_record_fields is not None and (
+            not isinstance(declared_record_fields, list)
+            or any(not isinstance(field, str) or not field for field in declared_record_fields)
+            or tuple(raw_record) != tuple(declared_record_fields)
+        ):
+            raise P1SmokeCoreError(
+                f"{domain} records[{index}] declared ordered fields mismatch"
+            )
+        source_id = raw_record.get(source_field)
+        content = raw_record.get(prompt_field)
+        identity = raw_record.get(identity_field)
+        if (
+            isinstance(source_id, bool)
+            or not isinstance(source_id, (str, int))
+            or not str(source_id)
+        ):
+            raise P1SmokeCoreError(f"{domain} records[{index}] source ID is invalid")
+        if not isinstance(content, str) or not content:
+            raise P1SmokeCoreError(f"{domain} records[{index}] prompt is invalid")
+        if not _valid_sha256(identity):
+            raise P1SmokeCoreError(f"{domain} records[{index}] identity is invalid")
+        content_hash_field = f"{prompt_field}_sha256"
+        if (
+            raw_record.get(content_hash_field)
+            != hashlib.sha256(content.encode("utf-8")).hexdigest()
+        ):
+            raise P1SmokeCoreError(
+                f"{domain} records[{index}] prompt content identity mismatch"
+            )
+        messages = (
+            [{"role": "user", "content": content}]
+            if messages_field is None
+            else raw_record.get(messages_field)
+        )
+        if messages != [{"role": "user", "content": content}]:
+            raise P1SmokeCoreError(f"{domain} records[{index}] messages mismatch")
+        prompts.append(
+            {
+                "domain": domain,
+                "source_id": source_id,
+                "identity_sha256": identity,
+                "logical_id": paper_logical_id(domain, source_id),
+                "content": content,
+                "messages": messages,
+                "active_entry_relative_path": dataset["active_entry_relative_path"],
+                "selected_relative_path": validated_entry["selected_relative_path"],
+            }
+        )
+
+    pinned_template_sha256 = (
+        active.get("chat_template_sha256", "") if domain == "benign" else ""
+    )
+    if domain == "benign" and not _valid_sha256(pinned_template_sha256):
+        raise P1SmokeCoreError("benign active entry lacks pinned chat template identity")
+    return prompts, pinned_template_sha256
+
+
+def _validate_paper_prompt_frame(prompts: list[dict[str, Any]]) -> None:
+    if len(prompts) != 200:
+        raise P1SmokeCoreError("paper frame must contain exactly 200 prompts")
+    domains = [prompt.get("domain") for prompt in prompts]
+    if domains != ["harmful"] * 100 + ["benign"] * 100:
+        raise P1SmokeCoreError("paper frame must preserve harmful 100 then benign 100")
+
+    identities: list[str] = []
+    domain_source_ids: list[tuple[str, str]] = []
+    logical_ids: list[str] = []
+    for index, prompt in enumerate(prompts):
+        identity = prompt.get("identity_sha256")
+        source_id = prompt.get("source_id")
+        if not _valid_sha256(identity):
+            raise P1SmokeCoreError(f"paper prompts[{index}] identity is invalid")
+        expected_logical_id = paper_logical_id(prompt["domain"], source_id)
+        if prompt.get("logical_id") != expected_logical_id:
+            raise P1SmokeCoreError(f"paper prompts[{index}] logical ID mismatch")
+        identities.append(identity)
+        domain_source_ids.append((prompt["domain"], str(source_id)))
+        logical_ids.append(expected_logical_id)
+    if len(set(identities)) != 200:
+        raise P1SmokeCoreError("paper prompt identities must be unique")
+    if len(set(domain_source_ids)) != 200:
+        raise P1SmokeCoreError("paper domain/source IDs must be unique")
+    if len(set(logical_ids)) != 200:
+        raise P1SmokeCoreError("paper logical IDs must be unique")
+
+
+def load_paper_frame(
+    config: Mapping[str, Any], development: Mapping[str, Any], repo_root: Path
+) -> tuple[list[dict[str, Any]], str]:
+    """Load the two approved selected JSON frames without changing their order."""
+    datasets_by_path = {
+        item["active_entry_relative_path"]: item for item in development["datasets"]
+    }
+    requested: list[Mapping[str, Any]] = []
+    for frame in config["frames"]:
+        try:
+            dataset = datasets_by_path[frame["active_entry_relative_path"]]
+        except KeyError as exc:
+            raise P1SmokeCoreError(
+                "paper active entry is absent from the development input config"
+            ) from exc
+        requested.append(dataset)
+    if [item["role"] for item in requested] != [
+        "D_norm_confirm.harmful",
+        "D_norm_confirm.benign",
+    ] or [item["row_count"] for item in requested] != [100, 100]:
+        raise P1SmokeCoreError("paper development dataset declarations mismatch")
+
+    validated = validate_dataset_entries(repo_root, list(requested))
+    prompts: list[dict[str, Any]] = []
+    pinned_template_sha256 = ""
+    for frame, dataset, validated_entry in zip(
+        config["frames"], requested, validated, strict=True
+    ):
+        domain_prompts, domain_template_sha256 = _paper_domain_records(
+            domain=frame["domain"],
+            dataset=dataset,
+            validated_entry=validated_entry,
+            repo_root=repo_root,
+        )
+        prompts.extend(domain_prompts)
+        if domain_template_sha256:
+            pinned_template_sha256 = domain_template_sha256
+    _validate_paper_prompt_frame(prompts)
+    return prompts, pinned_template_sha256
 
 
 def _unique_span(text: str, content: str, label: str) -> tuple[int, int]:
@@ -576,10 +855,13 @@ def build_p1_terminal_record(
     extraction: Mapping[str, Any],
     measurement: Mapping[str, Any],
     *,
+    run_mode: str = "smoke",
     identity_complete: bool = True,
     identity_collision: bool = False,
 ) -> dict[str, Any]:
     """Build and validate the existing v3 P1 record with its failure precedence."""
+    if run_mode not in {"smoke", "paper"}:
+        raise P1SmokeCoreError("P1 terminal record run_mode must be smoke or paper")
     valid_count = int(extraction["valid_token_count"])
     content_count = int(extraction["content_token_count"])
     unresolved = int(extraction["unresolved_valid_token_count"])
@@ -626,9 +908,13 @@ def build_p1_terminal_record(
     record = {
         "schema_version": "paper1-stage3-p1-measurement-record-v3",
         "protocol_version": PROTOCOL_VERSION,
-        "run_mode": "smoke",
+        "run_mode": run_mode,
         "paper_result_eligible": False,
-        "logical_id": f"p1-smoke:{prompt['domain']}:{prompt['source_id']}",
+        "logical_id": (
+            f"p1-smoke:{prompt['domain']}:{prompt['source_id']}"
+            if run_mode == "smoke"
+            else paper_logical_id(prompt["domain"], prompt["source_id"])
+        ),
         "identity_sha256": prompt["identity_sha256"],
         "prompt_id": str(prompt["source_id"]),
         "domain": prompt["domain"],
@@ -719,7 +1005,93 @@ def _prepare_smoke(
     }
 
 
-def validate_only(
+def _prepare_paper(
+    config_path: Path,
+    *,
+    repo_root: Path,
+    model_asset_inspector: Callable[..., tuple[dict[str, Any], Any]],
+    frame_loader: Callable[
+        [Mapping[str, Any], Mapping[str, Any], Path],
+        tuple[list[dict[str, Any]], str],
+    ] = load_paper_frame,
+) -> dict[str, Any]:
+    config = load_paper_config(config_path)
+    development = _development_config(config, repo_root)
+    prompts, pinned_template_sha256 = frame_loader(config, development, repo_root)
+    _validate_paper_prompt_frame(prompts)
+
+    behavior = config["behavior"]
+    development_behavior = development["behavior"]
+    if any(
+        behavior[field] != development_behavior[field]
+        for field in (
+            "checkpoint_path",
+            "tokenizer_path",
+            "dtype",
+            "device",
+            "trust_remote_code",
+            "trust_remote_code_reason",
+            "layer",
+            "hook_site",
+        )
+    ):
+        raise P1SmokeCoreError("P1 paper behavior differs from development input config")
+    identity, tokenizer = model_asset_inspector(
+        model_path=behavior["checkpoint_path"],
+        tokenizer_path=behavior["tokenizer_path"],
+        model_role="behavior",
+        dtype=behavior["dtype"],
+        device=behavior["device"],
+        trust_remote_code=behavior["trust_remote_code"],
+        trust_remote_code_reason=behavior["trust_remote_code_reason"],
+    )
+    expected_identity = {
+        "model_role": "behavior",
+        "resolved_model_path": Path(behavior["checkpoint_path"]).resolve(),
+        "resolved_tokenizer_path": Path(behavior["tokenizer_path"]).resolve(),
+        "local_files_only": True,
+        "hidden_size": 3584,
+        "dtype": behavior["dtype"],
+        "device": behavior["device"],
+        "trust_remote_code": behavior["trust_remote_code"],
+        "trust_remote_code_reason": behavior["trust_remote_code_reason"],
+    }
+    for field, expected in expected_identity.items():
+        observed = identity.get(field) if isinstance(identity, Mapping) else None
+        if field in {"resolved_model_path", "resolved_tokenizer_path"}:
+            try:
+                observed = Path(str(observed)).resolve()
+            except (OSError, TypeError, ValueError):
+                observed = None
+        if observed != expected:
+            raise P1SmokeCoreError(f"paper behavior identity {field} mismatch")
+    layer_count = identity.get("layer_count")
+    if type(layer_count) is not int or not 0 <= behavior["layer"] < layer_count:
+        raise P1SmokeCoreError("P1 paper layer is outside the behavior model metadata")
+    template = getattr(tokenizer, "chat_template", None)
+    if not isinstance(template, str) or not template:
+        raise P1SmokeCoreError("paper behavior tokenizer lacks a chat template")
+    actual_template_sha256 = hashlib.sha256(template.encode("utf-8")).hexdigest()
+    if (
+        actual_template_sha256 != pinned_template_sha256
+        or identity.get("chat_template_sha256") != pinned_template_sha256
+    ):
+        raise P1SmokeCoreError("behavior tokenizer differs from the pinned P1 template")
+
+    extractions = [
+        render_and_extract_t0(tokenizer, prompt["content"]) for prompt in prompts
+    ]
+    return {
+        "config": config,
+        "development": development,
+        "behavior_identity": dict(identity),
+        "tokenizer": tokenizer,
+        "prompts": prompts,
+        "extractions": extractions,
+    }
+
+
+def _validate_smoke_only(
     config_path: Path = DEFAULT_CONFIG,
     *,
     repo_root: Path = ROOT,
@@ -748,6 +1120,76 @@ def validate_only(
         "formal_experiment_run": False,
         "paper_result_eligible": False,
     }
+
+
+def validate_paper_only(
+    config_path: Path = DEFAULT_PAPER_CONFIG,
+    *,
+    repo_root: Path = ROOT,
+    model_asset_inspector: Callable[..., tuple[dict[str, Any], Any]] = inspect_local_model_assets,
+    frame_loader: Callable[
+        [Mapping[str, Any], Mapping[str, Any], Path],
+        tuple[list[dict[str, Any]], str],
+    ] = load_paper_frame,
+) -> dict[str, Any]:
+    """Validate the full paper frame and T0 extraction without loading weights."""
+    prepared = _prepare_paper(
+        config_path,
+        repo_root=repo_root.resolve(),
+        model_asset_inspector=model_asset_inspector,
+        frame_loader=frame_loader,
+    )
+    domains = [prompt["domain"] for prompt in prepared["prompts"]]
+    return {
+        "status": "P1_PAPER_RUNNER_VALIDATE_ONLY_PASS",
+        "paper_frame_count": len(domains),
+        "harmful": domains.count("harmful"),
+        "benign": domains.count("benign"),
+        "identities_unique": len(
+            {prompt["identity_sha256"] for prompt in prepared["prompts"]}
+        )
+        == 200,
+        "extractions_complete": all(
+            extraction["render_complete"] and extraction["valid_mask_complete"]
+            for extraction in prepared["extractions"]
+        ),
+        "model_weights_loaded": False,
+        "forward_executed": False,
+        "generation_run": False,
+        "judge_run": False,
+        "full_p1_run": False,
+        "p1_run": False,
+        "formal_experiment_run": False,
+        "paper_result_eligible": False,
+    }
+
+
+def validate_only(
+    config_path: Path = DEFAULT_CONFIG,
+    *,
+    repo_root: Path = ROOT,
+    model_asset_inspector: Callable[..., tuple[dict[str, Any], Any]] = inspect_local_model_assets,
+    development_validator: Callable[..., dict[str, Any]] = validate_development_inputs,
+    frame_loader: Callable[
+        [Mapping[str, Any], Mapping[str, Any], Path],
+        tuple[list[dict[str, Any]], str],
+    ] = load_paper_frame,
+) -> dict[str, Any]:
+    """Dispatch metadata-only validation based on the configured run mode."""
+    raw = _strict_json_object(config_path.resolve(), "P1 measurement config")
+    if raw.get("run_mode") == "paper":
+        return validate_paper_only(
+            config_path,
+            repo_root=repo_root,
+            model_asset_inspector=model_asset_inspector,
+            frame_loader=frame_loader,
+        )
+    return _validate_smoke_only(
+        config_path,
+        repo_root=repo_root,
+        model_asset_inspector=model_asset_inspector,
+        development_validator=development_validator,
+    )
 
 
 def _output_directory(config: Mapping[str, Any], repo_root: Path) -> Path:
@@ -885,3 +1327,221 @@ def run_smoke(
         encoding="utf-8",
     )
     return payload
+
+
+def _validate_run_id(run_id: str) -> str:
+    if not isinstance(run_id, str) or not _SAFE_RUN_ID.fullmatch(run_id):
+        raise P1SmokeCoreError("run ID must be a safe single-level directory name")
+    if run_id in {".", ".."}:
+        raise P1SmokeCoreError("run ID must be a safe single-level directory name")
+    return run_id
+
+
+def _paper_run_directory(config: Mapping[str, Any], run_id: str) -> Path:
+    safe_run_id = _validate_run_id(run_id)
+    output_root = Path(config["output_root"])
+    if (
+        not output_root.is_absolute()
+        or str(output_root) != EXPECTED_PAPER_OUTPUT_ROOT
+        or not output_root.is_dir()
+        or output_root.is_symlink()
+    ):
+        raise P1SmokeCoreError("paper output root is unavailable or unsafe")
+    return output_root / safe_run_id
+
+
+def _build_model_inputs(
+    extraction: Mapping[str, Any], *, device: Any, torch_module: Any
+) -> dict[str, Any]:
+    return {
+        "input_ids": torch_module.tensor(
+            [extraction["input_ids"]], dtype=torch_module.long, device=device
+        ),
+        "attention_mask": torch_module.tensor(
+            [extraction["attention_mask"]], dtype=torch_module.long, device=device
+        ),
+    }
+
+
+def _write_json_exclusive(path: Path, value: Mapping[str, Any]) -> None:
+    try:
+        serialized = json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+            allow_nan=False,
+        )
+    except (TypeError, ValueError) as exc:
+        raise P1SmokeCoreError(f"unable to serialize finite JSON output: {path.name}") from exc
+    try:
+        with path.open("x", encoding="utf-8") as handle:
+            handle.write(serialized)
+            handle.write("\n")
+    except FileExistsError as exc:
+        raise P1SmokeCoreError(f"refusing to overwrite output file: {path}") from exc
+
+
+def run_paper(
+    config_path: Path = DEFAULT_PAPER_CONFIG,
+    *,
+    run_id: str,
+    repo_root: Path = ROOT,
+    model_asset_inspector: Callable[..., tuple[dict[str, Any], Any]] = inspect_local_model_assets,
+    frame_loader: Callable[
+        [Mapping[str, Any], Mapping[str, Any], Path],
+        tuple[list[dict[str, Any]], str],
+    ] = load_paper_frame,
+    weight_loader: Callable[[Mapping[str, Any]], Any] = load_behavior_model,
+    measurement_runner: Callable[..., dict[str, Any]] = measure_resid_pre,
+    input_builder: Callable[..., Mapping[str, Any]] = _build_model_inputs,
+    resource_releaser: Callable[..., dict[str, Any]] = release_model_resources,
+    materializer: Callable[[Mapping[str, Any]], dict[str, Any]] | None = None,
+    output_directory_resolver: Callable[[Mapping[str, Any], str], Path] = _paper_run_directory,
+    torch_module: Any = torch,
+) -> dict[str, Any]:
+    """Run the fixed 200-prompt paper measurement and materialize after release."""
+    safe_run_id = _validate_run_id(run_id)
+    root = repo_root.resolve()
+    config = load_paper_config(config_path)
+    output_directory = output_directory_resolver(config, safe_run_id)
+    if output_directory.exists() or output_directory.is_symlink():
+        raise P1SmokeCoreError(
+            f"refusing to overwrite output directory: {output_directory}"
+        )
+
+    prepared = _prepare_paper(
+        config_path,
+        repo_root=root,
+        model_asset_inspector=model_asset_inspector,
+        frame_loader=frame_loader,
+    )
+    _validate_paper_prompt_frame(prepared["prompts"])
+    try:
+        output_directory.mkdir(parents=False, exist_ok=False)
+    except FileExistsError as exc:
+        raise P1SmokeCoreError(
+            f"refusing to overwrite output directory: {output_directory}"
+        ) from exc
+
+    model: Any = None
+    details: list[dict[str, Any]] = []
+    terminal_records: list[dict[str, Any]] = []
+    lifecycle: dict[str, Any] | None = None
+    try:
+        model = weight_loader(prepared["config"]["behavior"])
+        device = getattr(model, "device", prepared["config"]["behavior"]["device"])
+        for prompt, extraction in zip(
+            prepared["prompts"], prepared["extractions"], strict=True
+        ):
+            paper_extraction = {
+                **extraction,
+                "domain": prompt["domain"],
+                "prompt_identity_sha256": prompt["identity_sha256"],
+                "prompt_id": str(prompt["source_id"]),
+            }
+            inputs = input_builder(
+                paper_extraction, device=device, torch_module=torch_module
+            )
+            measurement = measurement_runner(
+                model,
+                inputs,
+                paper_extraction,
+                layer=prepared["config"]["behavior"]["layer"],
+                hook_site=prepared["config"]["behavior"]["hook_site"],
+                batch_size=prepared["config"]["behavior"]["batch_size"],
+                torch_module=torch_module,
+            )
+            terminal = build_p1_terminal_record(
+                prompt, paper_extraction, measurement, run_mode="paper"
+            )
+            details.append(
+                {
+                    "prompt": prompt,
+                    "extraction": paper_extraction,
+                    "measurement": measurement,
+                }
+            )
+            terminal_records.append(terminal)
+    finally:
+        model = None
+        lifecycle = resource_releaser(
+            device=prepared["config"]["behavior"]["device"],
+            torch_module=torch_module,
+        )
+
+    if len(details) != 200 or len(terminal_records) != 200:
+        raise P1SmokeCoreError("paper measurement did not form exactly 200 terminal records")
+    if [record["domain"] for record in terminal_records] != (
+        ["harmful"] * 100 + ["benign"] * 100
+    ):
+        raise P1SmokeCoreError("paper terminal record order changed")
+    terminal_records = [validate_p1_record(record) for record in terminal_records]
+
+    raw_payload = {
+        "schema_version": "paper1-stage3-p1-measurement-raw-v1",
+        "status": "P1_PAPER_MEASUREMENT_RUN_PASS",
+        "run_id": safe_run_id,
+        "run_mode": "paper",
+        "paper_result_eligible": False,
+        "formal_experiment_run": True,
+        "generation_run": False,
+        "judge_run": False,
+        "p1_run": True,
+        "full_p1_run": True,
+        "prompt_measurements": details,
+        "p1_terminal_records": terminal_records,
+        "model_released": lifecycle,
+    }
+
+    selected_materializer = (
+        p1_results.materialize_p1_results if materializer is None else materializer
+    )
+    result_payload = selected_materializer(raw_payload)
+    if not isinstance(result_payload, Mapping):
+        raise P1SmokeCoreError("P1 result materializer returned no JSON object")
+
+    # Serialization is proven finite for both documents before either final file exists.
+    for filename, payload in (
+        ("p1_measurement_raw.json", raw_payload),
+        ("p1_measurement_result.json", result_payload),
+    ):
+        try:
+            json.dumps(payload, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise P1SmokeCoreError(
+                f"unable to serialize finite JSON output: {filename}"
+            ) from exc
+
+    raw_path = output_directory / "p1_measurement_raw.json"
+    result_path = output_directory / "p1_measurement_result.json"
+    _write_json_exclusive(raw_path, raw_payload)
+    _write_json_exclusive(result_path, dict(result_payload))
+
+    reloaded_raw = p1_results.load_raw_measurement(raw_path)
+    frame = p1_results.build_complete_case_frame(reloaded_raw)
+    p1_results.load_raw_measurement(result_path)
+    if frame["terminal_record_count"] != 200 or frame["scheduled_counts"] != {
+        "harmful": 100,
+        "benign": 100,
+        "total": 200,
+    }:
+        raise P1SmokeCoreError("written paper measurement failed strict reload validation")
+
+    return {
+        "status": "P1_PAPER_RUNNER_PASS",
+        "run_mode": "paper",
+        "run_id": safe_run_id,
+        "output_directory": str(output_directory),
+        "raw_output": str(raw_path),
+        "result_output": str(result_path),
+        "prompt_measurement_count": len(details),
+        "terminal_record_count": len(terminal_records),
+        "harmful": 100,
+        "benign": 100,
+        "model_weights_loaded": True,
+        "model_released": lifecycle,
+        "generation_run": False,
+        "judge_run": False,
+        "full_p1_run": True,
+    }

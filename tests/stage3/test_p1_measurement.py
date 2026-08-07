@@ -403,7 +403,7 @@ class P1MeasurementSmokeCoreTests(unittest.TestCase):
         with mock.patch("sys.stdout", stdout):
             status = run_p1_measurement.main(["--run-mode", "paper"])
         self.assertEqual(status, 1)
-        self.assertIn("only --validate-only or --run-mode smoke", stdout.getvalue())
+        self.assertIn("paper mode requires an explicit --run-id", stdout.getvalue())
 
 
 if __name__ == "__main__":

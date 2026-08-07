@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate or run the bounded Stage 3 P1 development forward smoke."""
+"""Validate or run Stage 3 P1 smoke and fixed-frame paper measurement modes."""
 
 from __future__ import annotations
 
@@ -24,9 +24,11 @@ if str(ROOT) not in sys.path:
 from stage3_pipeline.p1_measurement import (  # noqa: E402
     DEFAULT_CONFIG,
     P1SmokeCoreError,
+    run_paper,
     run_smoke,
     validate_only,
 )
+from stage3_pipeline.core import PipelineError  # noqa: E402
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -35,6 +37,7 @@ def _parser() -> argparse.ArgumentParser:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--validate-only", action="store_true")
     mode.add_argument("--run-mode")
+    parser.add_argument("--run-id")
     return parser
 
 
@@ -42,14 +45,23 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.validate_only:
+            if args.run_id is not None:
+                raise P1SmokeCoreError("--run-id is valid only with --run-mode paper")
             result = validate_only(args.config)
         else:
-            if args.run_mode != "smoke":
+            if args.run_mode == "smoke":
+                if args.run_id is not None:
+                    raise P1SmokeCoreError("smoke mode does not accept --run-id")
+                result = run_smoke(args.config)
+            elif args.run_mode == "paper":
+                if args.run_id is None:
+                    raise P1SmokeCoreError("paper mode requires an explicit --run-id")
+                result = run_paper(args.config, run_id=args.run_id)
+            else:
                 raise P1SmokeCoreError(
-                    "unsupported P1 mode; only --validate-only or --run-mode smoke is available"
+                    "unsupported P1 mode; use --validate-only, --run-mode smoke, or --run-mode paper"
                 )
-            result = run_smoke(args.config)
-    except (OSError, P1SmokeCoreError) as exc:
+    except (OSError, PipelineError) as exc:
         print(
             json.dumps(
                 {
@@ -67,6 +79,20 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         return 1
+    if result.get("status") == "P1_PAPER_RUNNER_VALIDATE_ONLY_PASS":
+        print(f"paper frame count = {result['paper_frame_count']}")
+        print(f"harmful = {result['harmful']}")
+        print(f"benign = {result['benign']}")
+        print(f"identities unique = {str(result['identities_unique']).lower()}")
+        for field in (
+            "model_weights_loaded",
+            "forward_executed",
+            "generation_run",
+            "judge_run",
+            "full_p1_run",
+        ):
+            print(f"{field} = {str(result[field]).lower()}")
+        print("P1_PAPER_RUNNER_VALIDATE_ONLY_PASS")
     print(json.dumps(result, sort_keys=True))
     return 0
 
