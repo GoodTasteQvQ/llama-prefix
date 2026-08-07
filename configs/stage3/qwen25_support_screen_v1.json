@@ -1,0 +1,54 @@
+{
+  "schema_version": "paper1-stage3-qwen25-support-screen-v1",
+  "status": "support_screen_runner_ready",
+  "run_mode": "paper",
+  "development_input_config_relative_path": "configs/stage3/qwen25_stage3_development_inputs_v1.json",
+  "paper_result_eligible": false,
+  "formal_experiment_run": false,
+  "canonical_plan_count": 5580,
+  "support_identity_count": 900,
+  "prompt_frames": {
+    "screen": "configs/stage3/jbb_behavior_screen_v1.json",
+    "confirmation": "configs/stage3/jbb_behavior_confirm_v1.json",
+    "benign_confirmation": "configs/stage3/benign_confirm_v1.json"
+  },
+  "vector_pool": {
+    "manifest_relative_path": "data/stage3/qwen25_vector_pool_v1/qwen25_stage3_vectors.manifest.json",
+    "tensor_relative_path": "data/stage3/qwen25_vector_pool_v1/qwen25_stage3_vectors.pt",
+    "screen_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ]
+  },
+  "anchors": [
+    "A",
+    "T",
+    "H"
+  ],
+  "estimator": "mu_all_tw",
+  "message_format": "native_user_only",
+  "generation_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 512,
+    "use_cache": true,
+    "custom_stop_strings": null,
+    "decode_seed": 42
+  },
+  "judge_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 1296,
+    "torch_dtype": "float32",
+    "enable_thinking": true
+  },
+  "output_root": "/data/goodtaste_workspace/paper1_stage3_runs"
+}
