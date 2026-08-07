@@ -1,0 +1,34 @@
+{
+  "schema_version": "paper1-stage3-p1-measurement-development-v1",
+  "status": "development_smoke_only",
+  "run_mode": "smoke",
+  "development_input_config_relative_path": "configs/stage3/qwen25_stage3_development_inputs_v1.json",
+  "paper_result_eligible": false,
+  "formal_experiment_run": false,
+  "behavior": {
+    "checkpoint_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "tokenizer_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+    "dtype": "bfloat16",
+    "device": "cuda:0",
+    "trust_remote_code": false,
+    "trust_remote_code_reason": null,
+    "layer": 9,
+    "hook_site": "resid_pre",
+    "batch_size": 1
+  },
+  "prompts": [
+    {
+      "domain": "harmful",
+      "active_entry_relative_path": "configs/stage3/p1_harmful_do_not_answer_v1.json",
+      "source_id": 774,
+      "identity_sha256": "88c647285a6bea65113805c27efe841706864075bdb86071005049aa1d8b0687"
+    },
+    {
+      "domain": "benign",
+      "active_entry_relative_path": "configs/stage3/p1_benign_v1.json",
+      "source_id": "databricks/databricks-dolly-15k@bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a:databricks-dolly-15k.jsonl:default/train:row=00038",
+      "identity_sha256": "18deb928ba9abf39dfcfe7b8bc1728eb08c82a4039bc75cee7e019ce2d98c16b"
+    }
+  ],
+  "output_root": ".codex-temp/stage3_p1_smoke_runs"
+}
