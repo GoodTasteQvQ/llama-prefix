@@ -25,7 +25,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from stage3_pipeline.core import PipelineError, offline_execution_guard  # noqa: E402
+from stage3_pipeline.dose import validate_dose_binding  # noqa: E402
 from stage3_pipeline.offline_assets import strict_json_loads  # noqa: E402
+from stage3_pipeline.p1_results import build_complete_case_frame  # noqa: E402
 from stage3_pipeline.real_backend import inspect_local_model_assets  # noqa: E402
 from stage3_pipeline.vector_pool import (  # noqa: E402
     EXPECTED_SHAPE,
@@ -36,6 +38,11 @@ from stage3_pipeline.vector_pool import (  # noqa: E402
 
 
 DEFAULT_CONFIG = ROOT / "configs/stage3/qwen25_stage3_development_inputs_v1.json"
+P1_RUNS_ROOT = Path("/data/goodtaste_workspace/paper1_stage3_runs")
+P1_RUN_ID = "p1-qwen25-paper-20260807T044847Z"
+P1_RAW_NAME = "p1_measurement_raw.json"
+P1_EXPECTED_COUNTS = {"harmful": 100, "benign": 100, "total": 200}
+P1_EXPECTED_EXCLUDED_COUNTS = {"harmful": 0, "benign": 0, "total": 0}
 EXPECTED_DATASETS = (
     (
         "configs/stage3/p1_harmful_do_not_answer_v1.json",
@@ -147,6 +154,84 @@ def _valid_sha256(value: Any) -> bool:
         and len(value) == 64
         and all(character in "0123456789abcdef" for character in value)
     )
+
+
+def _positive_float(value: Any, field: str) -> float:
+    if type(value) is not float or not math.isfinite(value) or value <= 0.0:
+        raise PipelineError(f"{field} must be a finite positive float")
+    return value
+
+
+def _exact_count_map(value: Any, expected: Mapping[str, int], field: str) -> None:
+    if not isinstance(value, Mapping) or set(value) != set(expected):
+        raise PipelineError(f"{field} fields mismatch")
+    for key, expected_count in expected.items():
+        if type(value[key]) is not int or value[key] != expected_count:
+            raise PipelineError(f"{field}.{key} mismatch")
+
+
+def _formal_p1_file(path_value: Any, field: str) -> Path:
+    if (
+        not isinstance(path_value, str)
+        or not path_value
+        or "://" in path_value
+        or not Path(path_value).is_absolute()
+    ):
+        raise PipelineError(f"{field} must be a non-empty absolute local path")
+    path = Path(path_value)
+    try:
+        resolved_path = path.resolve()
+        resolved_root = P1_RUNS_ROOT.resolve()
+        resolved_path.relative_to(resolved_root)
+    except (OSError, ValueError) as exc:
+        raise PipelineError(f"{field} must remain below {P1_RUNS_ROOT}") from exc
+    if path.is_symlink() or not path.is_file():
+        raise PipelineError(f"{field} must name an existing regular non-symlink file")
+    return resolved_path
+
+
+def _result_handoff_values(result: Mapping[str, Any]) -> dict[str, float]:
+    pooled = result.get("pooled_statistics")
+    if not isinstance(pooled, Mapping):
+        raise PipelineError("formal P1 result pooled_statistics must be an object")
+    dose = result.get("dose_binding")
+    if not isinstance(dose, Mapping) or not dose:
+        raise PipelineError("formal P1 result dose_binding must be a non-empty object")
+    validate_dose_binding(dose)
+
+    values = {
+        "mu_all_tw_Qwen": _positive_float(
+            pooled.get("mu_all_tw_Qwen"),
+            "formal P1 result pooled_statistics.mu_all_tw_Qwen",
+        ),
+        "mu_content_tw_Qwen": _positive_float(
+            pooled.get("mu_content_tw_Qwen"),
+            "formal P1 result pooled_statistics.mu_content_tw_Qwen",
+        ),
+        "median_content_norm_Qwen": _positive_float(
+            result.get("median_content_norm_Qwen"),
+            "formal P1 result median_content_norm_Qwen",
+        ),
+    }
+    anchors = dose["anchors"]
+    for index, anchor in enumerate(("A", "T", "H")):
+        entry = anchors[index]
+        values[f"c_{anchor}"] = _positive_float(
+            entry["c"]["value"], f"formal P1 result dose_binding.c_{anchor}"
+        )
+
+    dose_scalar_fields = {
+        "mu_all_tw_Qwen": "mu_all_tw",
+        "mu_content_tw_Qwen": "mu_content_tw",
+        "median_content_norm_Qwen": "median_content_norm",
+    }
+    for result_field, dose_field in dose_scalar_fields.items():
+        dose_value = _positive_float(
+            dose[dose_field]["value"], f"formal P1 result dose_binding.{dose_field}.value"
+        )
+        if dose_value.hex() != values[result_field].hex():
+            raise PipelineError(f"formal P1 result {result_field} differs from dose binding")
+    return values
 
 
 def _check_environment(repo_root: Path) -> None:
@@ -276,9 +361,124 @@ def validate_static_config(config: Mapping[str, Any]) -> dict[str, Any]:
         MEASUREMENT_FIELDS,
         "p1_measurement_and_dose",
     )
-    if any(measurement[field] is not None for field in MEASUREMENT_FIELDS):
-        raise PipelineError("P1 measurements and dose binding must remain null before P1")
+    if any(measurement[field] is None for field in MEASUREMENT_FIELDS):
+        raise PipelineError("P1 measurement/dose handoff must be complete")
+    for field in (
+        "mu_all_tw_Qwen",
+        "mu_content_tw_Qwen",
+        "median_content_norm_Qwen",
+        "c_A",
+        "c_T",
+        "c_H",
+    ):
+        _positive_float(measurement[field], f"p1_measurement_and_dose.{field}")
+    if not (
+        measurement["c_A"] < measurement["c_T"] < measurement["c_H"]
+    ):
+        raise PipelineError("P1 dose values must satisfy 0 < c_A < c_T < c_H")
+    manifest = measurement["measurement_result_dose_manifest"]
+    if (
+        not isinstance(manifest, str)
+        or not manifest
+        or "://" in manifest
+        or not Path(manifest).is_absolute()
+    ):
+        raise PipelineError(
+            "p1_measurement_and_dose.measurement_result_dose_manifest must be an absolute local path"
+        )
+    dose_binding = measurement["dose_binding"]
+    if not isinstance(dose_binding, Mapping) or not dose_binding:
+        raise PipelineError("p1_measurement_and_dose.dose_binding must be a non-empty object")
+    validate_dose_binding(dose_binding)
     return actual
+
+
+def validate_p1_dose_handoff(measurement: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate the fixed formal result/raw lineage and exact configured handoff."""
+    result_path = _formal_p1_file(
+        measurement["measurement_result_dose_manifest"],
+        "p1_measurement_and_dose.measurement_result_dose_manifest",
+    )
+    result = _strict_json_object(result_path, "formal P1 result")
+    if result.get("status") != "ESTIMABLE":
+        raise PipelineError("formal P1 result status must be ESTIMABLE")
+    if result.get("run_mode") != "paper":
+        raise PipelineError("formal P1 result run_mode must be paper")
+    _exact_count_map(result.get("scheduled_counts"), P1_EXPECTED_COUNTS, "scheduled_counts")
+    _exact_count_map(result.get("complete_counts"), P1_EXPECTED_COUNTS, "complete_counts")
+    _exact_count_map(
+        result.get("excluded_counts"),
+        P1_EXPECTED_EXCLUDED_COUNTS,
+        "excluded_counts",
+    )
+    bootstrap = result.get("bootstrap_summary")
+    if not isinstance(bootstrap, Mapping):
+        raise PipelineError("formal P1 result bootstrap_summary must be an object")
+    for field in ("replicates_requested", "replicates_successful"):
+        if type(bootstrap.get(field)) is not int or bootstrap[field] != 10_000:
+            raise PipelineError(f"formal P1 result bootstrap_summary.{field} mismatch")
+    if bootstrap.get("gate_delta_gt_0_10") is not True:
+        raise PipelineError("formal P1 result primary gate must be true")
+    pooled = result.get("pooled_statistics")
+    if not isinstance(pooled, Mapping):
+        raise PipelineError("formal P1 result pooled_statistics must be an object")
+    delta = pooled.get("delta_select_tw")
+    if type(delta) is not float or not math.isfinite(delta) or delta <= 0.10:
+        raise PipelineError("formal P1 result delta_select_tw must exceed 0.10")
+    result_values = _result_handoff_values(result)
+    result_dose = result["dose_binding"]
+
+    raw_path = result_path.with_name(P1_RAW_NAME)
+    if raw_path.is_symlink() or not raw_path.is_file():
+        raise PipelineError("formal P1 raw must be an existing regular non-symlink sibling")
+    raw = _strict_json_object(raw_path, "formal P1 raw")
+    if raw.get("run_id") != P1_RUN_ID or result_path.parent.name != P1_RUN_ID:
+        raise PipelineError("formal P1 raw run_id/run directory mismatch")
+    expected_raw_flags = {
+        "run_mode": "paper",
+        "formal_experiment_run": True,
+        "full_p1_run": True,
+        "generation_run": False,
+        "judge_run": False,
+    }
+    for field, expected in expected_raw_flags.items():
+        mismatch = (
+            raw.get(field) is not expected
+            if isinstance(expected, bool)
+            else raw.get(field) != expected
+        )
+        if mismatch:
+            raise PipelineError(f"formal P1 raw {field} mismatch")
+    prompt_measurements = raw.get("prompt_measurements")
+    terminal_records = raw.get("p1_terminal_records")
+    if not isinstance(prompt_measurements, list) or len(prompt_measurements) != 200:
+        raise PipelineError("formal P1 raw must contain 200 prompt measurements")
+    if not isinstance(terminal_records, list) or len(terminal_records) != 200:
+        raise PipelineError("formal P1 raw must contain 200 terminal records")
+    frame = build_complete_case_frame(raw)
+    if frame["terminal_record_count"] != 200:
+        raise PipelineError("formal P1 raw terminal frame count mismatch")
+    _exact_count_map(frame["scheduled_counts"], P1_EXPECTED_COUNTS, "raw scheduled_counts")
+    _exact_count_map(frame["complete_counts"], P1_EXPECTED_COUNTS, "raw complete_counts")
+    _exact_count_map(
+        frame["excluded_counts"], P1_EXPECTED_EXCLUDED_COUNTS, "raw excluded_counts"
+    )
+    if frame["prompt_identities_unique"] is not True:
+        raise PipelineError("formal P1 raw prompt identities must be unique")
+
+    for field, result_value in result_values.items():
+        configured_value = measurement[field]
+        if configured_value.hex() != result_value.hex():
+            raise PipelineError(f"configured P1 handoff {field} differs from formal result")
+    if measurement["dose_binding"] != result_dose:
+        raise PipelineError("configured P1 dose binding differs from formal result")
+    validate_dose_binding(measurement["dose_binding"])
+    return {
+        "p1_dose_handoff": "VALIDATED",
+        "p1_run_id": P1_RUN_ID,
+        "p1_result_status": result["status"],
+        "p1_primary_gate": True,
+    }
 
 
 def validate_dataset_entries(repo_root: Path, datasets: list[Any]) -> list[dict[str, Any]]:
@@ -404,6 +604,7 @@ def validate_development_inputs(
     root = repo_root.resolve()
     _check_environment(root)
     config = validate_static_config(_strict_json_object(config_path.resolve(), "development input config"))
+    p1_handoff = validate_p1_dose_handoff(config["p1_measurement_and_dose"])
     inspector = inspect_local_model_assets if model_asset_inspector is None else model_asset_inspector
 
     guard = offline_execution_guard()
@@ -463,6 +664,7 @@ def validate_development_inputs(
         "behavior_model_revision": behavior_identity["model_revision"],
         "judge_model_revision": model_results["judge"]["model_revision"],
         "offline_guard": guard_report,
+        **p1_handoff,
     }
 
 
