@@ -360,14 +360,24 @@ class RealBehaviorBackend:
         self.behavior_identity = dict(behavior_identity)
         self.vector = vector
         self.vector_identity = dict(vector_identity)
+        provided_doses = validate_dose_binding(dose_binding)
         expected_dose_binding = bind_dose_post_dtype(
             dose_binding, dtype=self.behavior_identity["dtype"], torch_module=torch_module
         )
-        if canonical_sha256(dose_binding) != canonical_sha256(expected_dose_binding):
-            raise PipelineError(
-                "dose binding alpha_post_dtype is not bound to the behavior dtype"
-            )
-        self.dose_binding = expected_dose_binding
+        expected_doses = validate_dose_binding(expected_dose_binding)
+        for anchor in ("A", "T", "H"):
+            for estimator in ("mu_all_tw", "mu_content_tw"):
+                for field in (
+                    "c_hex",
+                    "alpha_pre_dtype_hex",
+                    "alpha_post_dtype_hex",
+                    "rho_hex",
+                ):
+                    if provided_doses[anchor][estimator][field] != expected_doses[anchor][estimator][field]:
+                        raise PipelineError(
+                            "dose binding alpha_post_dtype is not bound to the behavior dtype"
+                        )
+        self.dose_binding = json.loads(json.dumps(dict(dose_binding), allow_nan=False))
         self.layer = layer
         self.hook_site = hook_site
         self.device = device

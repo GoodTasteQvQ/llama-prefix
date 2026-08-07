@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import os
 import tempfile
 import unittest
@@ -9,9 +10,9 @@ from pathlib import Path
 from unittest import mock
 
 from stage3_pipeline import support_screen
-from stage3_pipeline.core import GenerationProducer, IdentityError, PipelineError
+from stage3_pipeline.core import GenerationProducer, IdentityError, PipelineError, canonical_sha256
 from stage3_pipeline.dose import build_call_dose_evidence, validate_dose_binding
-from stage3_pipeline.real_backend import RealBehaviorBackend
+from stage3_pipeline.real_backend import RealBehaviorBackend, bind_dose_post_dtype
 from stage3_pipeline.real_judge import RealJudgeBackend
 
 
@@ -138,6 +139,79 @@ class SupportScreenRunnerTests(unittest.TestCase):
     @staticmethod
     def _records(path: Path) -> list[dict[str, object]]:
         return json.loads(path.read_text(encoding="utf-8"))["records"]
+
+    @staticmethod
+    def _real_behavior_backend(dose_binding: dict[str, object]) -> RealBehaviorBackend:
+        return RealBehaviorBackend(
+            model=object(),
+            tokenizer=object(),
+            behavior_identity={"dtype": "bfloat16"},
+            vector=object(),
+            vector_identity={},
+            dose_binding=dose_binding,
+            layer=0,
+            hook_site="resid_pre",
+            device="cpu",
+        )
+
+    def test_real_backend_accepts_formal_integer_dose_and_preserves_identity(self) -> None:
+        formal = copy.deepcopy(self.prepared.dose_binding)
+        formal_t = formal["anchors"][1]["alpha_by_estimator"]["mu_all_tw"]["post_dtype"]
+        self.assertEqual(formal_t["value"], 61)
+        self.assertIs(type(formal_t["value"]), int)
+
+        rebound = bind_dose_post_dtype(formal, dtype="bfloat16")
+        rebound_t = rebound["anchors"][1]["alpha_by_estimator"]["mu_all_tw"]["post_dtype"]
+        self.assertEqual(rebound_t["value"], 61.0)
+        self.assertIs(type(rebound_t["value"]), float)
+        self.assertEqual(float(formal_t["value"]).hex(), float(rebound_t["value"]).hex())
+
+        with (
+            mock.patch("stage3_pipeline.real_backend.AutoModelForCausalLM.from_pretrained") as model_loader,
+            mock.patch("stage3_pipeline.real_backend.AutoTokenizer.from_pretrained") as tokenizer_loader,
+        ):
+            backend = self._real_behavior_backend(formal)
+        model_loader.assert_not_called()
+        tokenizer_loader.assert_not_called()
+        self.assertEqual(canonical_sha256(backend.dose_binding), canonical_sha256(formal))
+        retained_t = backend.dose_binding["anchors"][1]["alpha_by_estimator"]["mu_all_tw"][
+            "post_dtype"
+        ]
+        self.assertIs(type(retained_t["value"]), int)
+
+        identity = next(
+            row["identity"]
+            for row in self.prepared.support_rows
+            if row["identity"]["anchor"] == "T"
+        )
+        evidence = build_call_dose_evidence(
+            identity=identity,
+            dose_binding=backend.dose_binding,
+            generation_status="COMPLETED",
+            pre_hook_l2=100.0,
+            post_hook_l2=101.0,
+            vector_alignment=1.0,
+            cosine_drift=0.01,
+        )
+        self.assertEqual(evidence["measurement_dose_sha256"], canonical_sha256(formal))
+
+    def test_real_backend_rejects_changed_post_dtype_dose(self) -> None:
+        different = copy.deepcopy(self.prepared.dose_binding)
+        post_dtype = different["anchors"][1]["alpha_by_estimator"]["mu_all_tw"]["post_dtype"]
+        changed = math.nextafter(float(post_dtype["value"]), math.inf)
+        post_dtype.update({"value": changed, "binary64_hex": changed.hex()})
+        validate_dose_binding(different)
+        with self.assertRaisesRegex(
+            PipelineError, "alpha_post_dtype is not bound to the behavior dtype"
+        ):
+            self._real_behavior_backend(different)
+
+        invalid_hex = copy.deepcopy(self.prepared.dose_binding)
+        invalid_hex["anchors"][1]["alpha_by_estimator"]["mu_all_tw"]["post_dtype"][
+            "binary64_hex"
+        ] = changed.hex()
+        with self.assertRaises(PipelineError):
+            self._real_behavior_backend(invalid_hex)
 
     def test_canonical_plan_and_support_subset_are_fixed(self) -> None:
         self.assertEqual(len(self.prepared.registry), 5_580)
