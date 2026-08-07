@@ -417,14 +417,35 @@ def validate_p1_dose_handoff(measurement: Mapping[str, Any]) -> dict[str, Any]:
     for field in ("replicates_requested", "replicates_successful"):
         if type(bootstrap.get(field)) is not int or bootstrap[field] != 10_000:
             raise PipelineError(f"formal P1 result bootstrap_summary.{field} mismatch")
-    if bootstrap.get("gate_delta_gt_0_10") is not True:
-        raise PipelineError("formal P1 result primary gate must be true")
+    stored_gate = bootstrap.get("gate_delta_gt_0_10")
+    if type(stored_gate) is not bool:
+        raise PipelineError(
+            "formal P1 result bootstrap_summary.gate_delta_gt_0_10 must be a boolean"
+        )
+    intervals = bootstrap.get("intervals")
+    if not isinstance(intervals, Mapping):
+        raise PipelineError("formal P1 result bootstrap_summary.intervals must be an object")
+    delta_interval = intervals.get("delta_select_tw")
+    if not isinstance(delta_interval, Mapping):
+        raise PipelineError(
+            "formal P1 result bootstrap_summary.intervals.delta_select_tw must be an object"
+        )
+    one_sided_lower = delta_interval.get("one_sided_95_lower")
+    if type(one_sided_lower) not in (int, float) or not math.isfinite(one_sided_lower):
+        raise PipelineError(
+            "formal P1 result delta_select_tw one-sided lower bound must be finite"
+        )
+    expected_gate = one_sided_lower > 0.10
+    if stored_gate is not expected_gate:
+        raise PipelineError(
+            "formal P1 result primary gate is inconsistent with its one-sided lower bound"
+        )
     pooled = result.get("pooled_statistics")
     if not isinstance(pooled, Mapping):
         raise PipelineError("formal P1 result pooled_statistics must be an object")
     delta = pooled.get("delta_select_tw")
-    if type(delta) is not float or not math.isfinite(delta) or delta <= 0.10:
-        raise PipelineError("formal P1 result delta_select_tw must exceed 0.10")
+    if type(delta) not in (int, float) or not math.isfinite(delta):
+        raise PipelineError("formal P1 result delta_select_tw must be finite")
     result_values = _result_handoff_values(result)
     result_dose = result["dose_binding"]
 
@@ -477,7 +498,7 @@ def validate_p1_dose_handoff(measurement: Mapping[str, Any]) -> dict[str, Any]:
         "p1_dose_handoff": "VALIDATED",
         "p1_run_id": P1_RUN_ID,
         "p1_result_status": result["status"],
-        "p1_primary_gate": True,
+        "p1_primary_gate": stored_gate,
     }
 
 

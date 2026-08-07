@@ -301,7 +301,13 @@ class Stage3DevelopmentInputTests(unittest.TestCase):
         with self.assertRaises(PipelineError):
             self._validate_handoff(candidate, formal_root)
 
-    def test_result_counts_bootstrap_and_primary_gate_tampering_is_rejected(self) -> None:
+    def test_current_formal_gate_true_handoff_passes(self) -> None:
+        formal_root, candidate, _, _ = self._formal_fixture()
+        handoff = self._validate_handoff(candidate, formal_root)
+        self.assertEqual(handoff["p1_dose_handoff"], "VALIDATED")
+        self.assertIs(handoff["p1_primary_gate"], True)
+
+    def test_result_counts_and_bootstrap_tampering_is_rejected(self) -> None:
         mutations = {
             "scheduled": lambda value: value["scheduled_counts"].__setitem__(
                 "harmful", 99
@@ -318,12 +324,6 @@ class Stage3DevelopmentInputTests(unittest.TestCase):
             "bootstrap_successful": lambda value: value[
                 "bootstrap_summary"
             ].__setitem__("replicates_successful", 9_999),
-            "primary_gate": lambda value: value["bootstrap_summary"].__setitem__(
-                "gate_delta_gt_0_10", False
-            ),
-            "delta": lambda value: value["pooled_statistics"].__setitem__(
-                "delta_select_tw", 0.10
-            ),
         }
         for label, mutation in mutations.items():
             with self.subTest(label=label):
@@ -333,6 +333,69 @@ class Stage3DevelopmentInputTests(unittest.TestCase):
                 self._write_json(result_path, result)
                 with self.assertRaises(PipelineError):
                     self._validate_handoff(candidate, formal_root)
+
+    def test_primary_gate_must_be_boolean_and_match_lower_bound(self) -> None:
+        for label, stored_gate in (
+            ("mismatched_false", False),
+            ("integer", 1),
+            ("string", "true"),
+        ):
+            with self.subTest(label=label):
+                formal_root, candidate, result_path, _ = self._formal_fixture()
+                result = json.loads(result_path.read_text(encoding="utf-8"))
+                result["bootstrap_summary"]["gate_delta_gt_0_10"] = stored_gate
+                self._write_json(result_path, result)
+                with self.assertRaises(PipelineError):
+                    self._validate_handoff(candidate, formal_root)
+
+    def test_consistent_gate_false_handoff_passes_and_is_returned(self) -> None:
+        for lower_bound in (0.10, 0.09):
+            with self.subTest(lower_bound=lower_bound):
+                formal_root, candidate, result_path, _ = self._formal_fixture()
+                result = json.loads(result_path.read_text(encoding="utf-8"))
+                result["bootstrap_summary"]["intervals"]["delta_select_tw"][
+                    "one_sided_95_lower"
+                ] = lower_bound
+                result["bootstrap_summary"]["gate_delta_gt_0_10"] = False
+                self._write_json(result_path, result)
+                handoff = self._validate_handoff(candidate, formal_root)
+                self.assertEqual(handoff["p1_dose_handoff"], "VALIDATED")
+                self.assertIs(handoff["p1_primary_gate"], False)
+
+    def test_invalid_gate_lower_bound_is_rejected(self) -> None:
+        def remove_lower_bound(value: dict[str, Any]) -> None:
+            value["bootstrap_summary"]["intervals"]["delta_select_tw"].pop(
+                "one_sided_95_lower"
+            )
+
+        mutations = {
+            "nonfinite": lambda value: value["bootstrap_summary"]["intervals"][
+                "delta_select_tw"
+            ].__setitem__("one_sided_95_lower", float("inf")),
+            "missing": remove_lower_bound,
+            "string": lambda value: value["bootstrap_summary"]["intervals"][
+                "delta_select_tw"
+            ].__setitem__("one_sided_95_lower", "0.20"),
+        }
+        for label, mutation in mutations.items():
+            with self.subTest(label=label):
+                formal_root, candidate, result_path, _ = self._formal_fixture()
+                result = json.loads(result_path.read_text(encoding="utf-8"))
+                mutation(result)
+                self._write_json(result_path, result)
+                with self.assertRaises(PipelineError):
+                    self._validate_handoff(candidate, formal_root)
+
+    def test_finite_point_delta_at_or_below_threshold_does_not_block_handoff(self) -> None:
+        for point_delta in (0.10, -0.25):
+            with self.subTest(point_delta=point_delta):
+                formal_root, candidate, result_path, _ = self._formal_fixture()
+                result = json.loads(result_path.read_text(encoding="utf-8"))
+                result["pooled_statistics"]["delta_select_tw"] = point_delta
+                self._write_json(result_path, result)
+                handoff = self._validate_handoff(candidate, formal_root)
+                self.assertEqual(handoff["p1_dose_handoff"], "VALIDATED")
+                self.assertIs(handoff["p1_primary_gate"], True)
 
     def test_any_measurement_or_c_change_is_rejected(self) -> None:
         formal_root, candidate, _, _ = self._formal_fixture()
