@@ -22,7 +22,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from stage3_pipeline.core import PipelineError  # noqa: E402
-from stage3_pipeline.p2_runner import DEFAULT_CONFIG, run_p2, validate_only  # noqa: E402
+from stage3_pipeline.p2_runner import (  # noqa: E402
+    DEFAULT_CONFIG,
+    run_p2,
+    run_p2_smoke,
+    validate_only,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -31,6 +36,11 @@ def _parser() -> argparse.ArgumentParser:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--validate-only", action="store_true")
     mode.add_argument("--run-mode")
+    mode.add_argument(
+        "--smoke",
+        action="store_true",
+        help="run the development-only four-identity real P2 smoke",
+    )
     parser.add_argument("--run-id")
     return parser
 
@@ -42,6 +52,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.run_id is not None:
                 raise PipelineError("--run-id is valid only with --run-mode paper")
             result = validate_only(args.config)
+        elif args.smoke:
+            if args.run_id is None:
+                raise PipelineError("--smoke requires an explicit --run-id")
+            result = run_p2_smoke(args.config, run_id=args.run_id)
         else:
             if args.run_mode != "paper":
                 raise PipelineError("P2 execution requires --run-mode paper")
@@ -57,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
             "forward_executed": False if args.validate_only else None,
             "generation_run": False,
             "judge_run": False,
+            "development_smoke": False,
             "support_run": False,
             "p2_run": False,
             "paper_result_eligible": False,

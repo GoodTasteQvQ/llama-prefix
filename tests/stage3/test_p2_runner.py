@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import importlib
 import json
 import os
 import tempfile
@@ -19,6 +20,7 @@ from stage3_pipeline.real_judge import RealJudgeBackend
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / "configs/stage3/qwen25_p2_v1.json"
 TEMP_ROOT = ROOT / ".codex-temp"
+RUN_P2_SCRIPT = importlib.import_module("scripts.stage3_production.run_p2")
 
 TEMP_ROOT.mkdir(parents=True, exist_ok=True)
 for _variable in ("TMPDIR", "TEMP", "TMP"):
@@ -144,6 +146,34 @@ class P2RunnerTests(unittest.TestCase):
         cls.responses = cls._records(cls.output / "response_records.json")
         cls.dispositions = cls._records(cls.output / "execution_dispositions.json")
 
+        cls.smoke_events: list[str] = []
+        cls.smoke_cells_by_vector: dict[int, list[str]] = {}
+
+        def smoke_behavior_factory(
+            prepared: p2_runner.PreparedP2Runner, vector_index: int
+        ) -> FakeBehaviorBackend:
+            return FakeBehaviorBackend(
+                prepared,
+                vector_index,
+                cls.smoke_events,
+                cls.smoke_cells_by_vector,
+            )
+
+        def smoke_judge_factory(
+            _prepared: p2_runner.PreparedP2Runner,
+            lifecycle: dict[str, object],
+        ) -> FakeJudgeBackend:
+            if lifecycle["behavior_session_count"] != 1:
+                raise AssertionError("smoke judge loaded before its one behavior release")
+            return FakeJudgeBackend(cls.smoke_events)
+
+        cls.fake_smoke = p2_runner.execute_p2_smoke(
+            cls.prepared,
+            behavior_backend_factory=smoke_behavior_factory,
+            judge_backend_factory=smoke_judge_factory,
+            require_real_backend=False,
+        )
+
     @classmethod
     def tearDownClass(cls) -> None:
         cls.temporary.cleanup()
@@ -202,6 +232,218 @@ class P2RunnerTests(unittest.TestCase):
         self.assertEqual(
             false_registry.manifest(), self.prepared.support.registry.manifest()
         )
+
+    def test_smoke_selects_exact_canonical_four_identity_matrix(self) -> None:
+        rows = p2_runner.select_p2_smoke_identities(self.prepared.support)
+        identities = [row["identity"] for row in rows]
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(
+            [identity["block"] for identity in identities],
+            [cell for cell, _anchor, _estimator in p2_runner.P2_CELLS],
+        )
+        self.assertEqual({identity["anchor"] for identity in identities}, {"A", "T"})
+        self.assertEqual(
+            {identity["estimator"] for identity in identities},
+            {"mu_all_tw", "mu_content_tw"},
+        )
+        self.assertEqual(
+            {(identity["prompt_id"], identity["vector_id"]) for identity in identities},
+            {(identities[0]["prompt_id"], identities[0]["vector_id"])},
+        )
+        self.assertEqual(
+            {identity["vector_id"] for identity in identities},
+            {self.prepared.support.vector_ids_by_index[10]},
+        )
+        self.assertEqual(
+            identities[0]["prompt_id"],
+            self.prepared.support.plan_inputs["confirm_prompt_ids"][0],
+        )
+        for anchor in ("A", "T"):
+            self.assertEqual(
+                len({
+                    identity["c_hex"]
+                    for identity in identities
+                    if identity["anchor"] == anchor
+                }),
+                1,
+            )
+        responses = self.fake_smoke.response_records
+        self.assertEqual(
+            {response["pair_id"] for response in responses if response["anchor"] == "A"},
+            {f"A|{identities[0]['prompt_id']}|{identities[0]['vector_id']}"},
+        )
+        self.assertEqual(
+            {response["pair_id"] for response in responses if response["anchor"] == "T"},
+            {f"T|{identities[0]['prompt_id']}|{identities[0]['vector_id']}"},
+        )
+
+    def test_p1_gate_does_not_change_smoke_identities(self) -> None:
+        true_rows = p2_runner.select_p2_smoke_identities(self.prepared.support)
+        false_registry = support_screen.construct_plan_from_inputs(
+            self.prepared.support.plan_inputs, p1_primary_gate=False
+        )
+        false_support = replace(
+            self.prepared.support, registry=false_registry, p1_primary_gate=False
+        )
+        false_rows = p2_runner.select_p2_smoke_identities(false_support)
+        self.assertEqual(false_rows, true_rows)
+
+    def test_smoke_releases_one_behavior_backend_before_one_judge_load(self) -> None:
+        self.assertEqual(set(self.smoke_cells_by_vector), {10})
+        self.assertEqual(
+            self.smoke_cells_by_vector[10],
+            [cell for cell, _anchor, _estimator in p2_runner.P2_CELLS],
+        )
+        self.assertEqual(self.smoke_events.count("behavior_load:10"), 1)
+        self.assertEqual(self.smoke_events.count("behavior_release:10"), 1)
+        self.assertEqual(self.smoke_events.count("judge_load"), 1)
+        self.assertLess(
+            self.smoke_events.index("behavior_release:10"),
+            self.smoke_events.index("judge_load"),
+        )
+        self.assertTrue(self.fake_smoke.behavior_lifecycle["behavior_released"])
+        self.assertTrue(
+            self.fake_smoke.behavior_lifecycle["judge_loaded_after_behavior_release"]
+        )
+
+    def test_shared_smoke_path_validates_all_four_p2_responses(self) -> None:
+        events: list[str] = []
+        cells_by_vector: dict[int, list[str]] = {}
+
+        def behavior_factory(
+            prepared: p2_runner.PreparedP2Runner, vector_index: int
+        ) -> FakeBehaviorBackend:
+            return FakeBehaviorBackend(prepared, vector_index, events, cells_by_vector)
+
+        def judge_factory(
+            _prepared: p2_runner.PreparedP2Runner,
+            _lifecycle: dict[str, object],
+        ) -> FakeJudgeBackend:
+            return FakeJudgeBackend(events)
+
+        with mock.patch.object(
+            p2_runner,
+            "validate_p2_materialization",
+            wraps=p2_runner.validate_p2_materialization,
+        ) as validator:
+            artifacts = p2_runner.execute_p2_smoke(
+                self.prepared,
+                behavior_backend_factory=behavior_factory,
+                judge_backend_factory=judge_factory,
+                require_real_backend=False,
+            )
+        self.assertEqual(len(artifacts.response_records), 4)
+        self.assertEqual(validator.call_count, 8)
+        validated_ids = [
+            call.args[0]["logical_id"] for call in validator.call_args_list
+        ]
+        self.assertEqual(
+            {logical_id: validated_ids.count(logical_id) for logical_id in set(validated_ids)},
+            {record["logical_id"]: 2 for record in artifacts.response_records},
+        )
+
+    def test_smoke_fake_harness_cannot_replace_public_real_entry(self) -> None:
+        with (
+            mock.patch.object(
+                p2_runner, "prepare_p2_runner", return_value=self.prepared
+            ) as prepare,
+            mock.patch.object(
+                p2_runner,
+                "run_prepared_p2_smoke",
+                return_value={"status": "sentinel"},
+            ) as run_prepared,
+        ):
+            result = p2_runner.run_p2_smoke(CONFIG, run_id="development-smoke")
+        self.assertEqual(result, {"status": "sentinel"})
+        prepare.assert_called_once_with(CONFIG)
+        kwargs = run_prepared.call_args.kwargs
+        self.assertIs(kwargs["behavior_backend_factory"], p2_runner.load_real_behavior_backend)
+        self.assertIs(kwargs["judge_backend_factory"], p2_runner.load_real_judge_backend)
+        self.assertIs(
+            kwargs["output_directory_resolver"],
+            p2_runner.default_p2_smoke_output_directory,
+        )
+        self.assertEqual(
+            p2_runner.default_p2_smoke_output_directory(
+                self.prepared, "development-smoke"
+            ),
+            (TEMP_ROOT / "stage3_p2_real_smoke_runs/development-smoke").resolve(),
+        )
+        events: list[str] = []
+        output = Path(self.temporary.name) / "rejected-fake-smoke"
+        judge_factory = mock.Mock()
+        with self.assertRaisesRegex(PipelineError, "RealBehaviorBackend capability"):
+            p2_runner.run_prepared_p2_smoke(
+                self.prepared,
+                run_id="rejected-fake-smoke",
+                behavior_backend_factory=lambda prepared, vector_index: FakeBehaviorBackend(
+                    prepared, vector_index, events, {}
+                ),
+                judge_backend_factory=judge_factory,
+                output_directory_resolver=lambda _prepared, _run_id: output,
+            )
+        self.assertEqual(events, ["behavior_load:10", "behavior_release:10"])
+        judge_factory.assert_not_called()
+
+    def test_smoke_cli_routes_only_to_development_entry(self) -> None:
+        expected = {
+            "status": "P2_REAL_DEVELOPMENT_SMOKE_PASS",
+            "fake_backend": False,
+            "formal_experiment_run": False,
+            "p2_run": False,
+            "paper_result_eligible": False,
+        }
+        with (
+            mock.patch.object(
+                RUN_P2_SCRIPT, "run_p2_smoke", return_value=expected
+            ) as smoke,
+            mock.patch("builtins.print") as output,
+        ):
+            return_code = RUN_P2_SCRIPT.main([
+                "--config", str(CONFIG), "--smoke", "--run-id", "cli-smoke",
+            ])
+        self.assertEqual(return_code, 0)
+        smoke.assert_called_once_with(CONFIG, run_id="cli-smoke")
+        printed = json.loads(output.call_args.args[0])
+        self.assertEqual(printed, expected)
+
+    def test_smoke_identity_pair_and_dose_tampering_fail_closed(self) -> None:
+        rows = copy.deepcopy(
+            p2_runner.select_p2_smoke_identities(self.prepared.support)
+        )
+        rows[0]["identity"]["prompt_id"] = "forged-prompt"
+        with self.assertRaises(IdentityError):
+            p2_runner.validate_p2_smoke_identities(self.prepared.support, rows)
+
+        forged_pair = copy.deepcopy(self.fake_smoke.response_records)
+        forged_pair[0]["pair_id"] = "forged|pair|id"
+        forged_pair[0]["record_sha256"] = canonical_sha256({
+            key: value for key, value in forged_pair[0].items()
+            if key != "record_sha256"
+        })
+        with self.assertRaises(PipelineError):
+            p2_runner.reconcile_p2_smoke(
+                self.prepared,
+                generation_records=self.fake_smoke.generation_records,
+                judge_records=self.fake_smoke.judge_records,
+                response_records=forged_pair,
+                dispositions=self.fake_smoke.dispositions,
+            )
+
+        forged_dose = copy.deepcopy(self.fake_smoke.response_records)
+        forged_dose[0]["dose_evidence"]["measurement_dose_sha256"] = "f" * 64
+        forged_dose[0]["record_sha256"] = canonical_sha256({
+            key: value for key, value in forged_dose[0].items()
+            if key != "record_sha256"
+        })
+        with self.assertRaises(PipelineError):
+            p2_runner.reconcile_p2_smoke(
+                self.prepared,
+                generation_records=self.fake_smoke.generation_records,
+                judge_records=self.fake_smoke.judge_records,
+                response_records=forged_dose,
+                dispositions=self.fake_smoke.dispositions,
+            )
 
     def test_fake_4000_path_uses_shared_orchestration_and_stage_only_outputs(self) -> None:
         self.assertEqual(self.fake_result["status"], "P2_FAKE_4000_PATH_PASS")

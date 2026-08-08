@@ -19,6 +19,7 @@ from .core import (
     PAPER_LOGICAL_GENERATION,
     GenerationProducer,
     IdentityError,
+    LogicalIdentityRegistry,
     PipelineError,
     canonical_json,
     canonical_sha256,
@@ -77,6 +78,9 @@ P2_BLOCKS = tuple(cell[0] for cell in P2_CELLS)
 P2_IDENTITY_COUNT = 4_000
 PRIOR_SUPPORT_TERMINAL = 900
 DOWNSTREAM_REMAINING = 680
+P2_SMOKE_VECTOR_INDEX = 10
+P2_SMOKE_IDENTITY_COUNT = 4
+P2_SMOKE_OUTPUT_ROOT = ROOT / ".codex-temp/stage3_p2_real_smoke_runs"
 SAFE_RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 
 SUPPORT_FILE_SCHEMAS = {
@@ -140,6 +144,20 @@ class P2RunArtifacts:
     response_records: tuple[Mapping[str, Any], ...]
     dispositions: tuple[Mapping[str, Any], ...]
     p2_ledger: Mapping[str, Any]
+    behavior_lifecycle: Mapping[str, Any]
+    judge_lifecycle: Mapping[str, Any]
+    offline_guard_report: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class P2SmokeArtifacts:
+    """Development-only records for one canonical P2 prompt/vector pair."""
+
+    generation_records: tuple[Mapping[str, Any], ...]
+    judge_records: tuple[Mapping[str, Any], ...]
+    response_records: tuple[Mapping[str, Any], ...]
+    dispositions: tuple[Mapping[str, Any], ...]
+    smoke_ledger: Mapping[str, Any]
     behavior_lifecycle: Mapping[str, Any]
     judge_lifecycle: Mapping[str, Any]
     offline_guard_report: Mapping[str, Any]
@@ -331,6 +349,107 @@ def select_p2_identities(
     ):
         raise IdentityError("P2 paired arms do not share the fixed pair IDs")
     return rows
+
+
+def _canonical_p2_smoke_rows(
+    support: PreparedSupportScreen,
+) -> tuple[Mapping[str, Any], ...]:
+    """Derive the smoke pair from canonical registry order, never by hand-picked ID."""
+    vector_id = support.vector_ids_by_index.get(P2_SMOKE_VECTOR_INDEX)
+    if not isinstance(vector_id, str) or not vector_id:
+        raise IdentityError("P2 smoke requires canonical vector index 10")
+    registry_rows = support.registry.records()
+    ordered_prompts = [
+        row["identity"]["prompt_id"]
+        for row in registry_rows
+        if row["identity"]["block"] == "P2_A_all"
+        and row["identity"]["vector_id"] == vector_id
+    ]
+    if ordered_prompts != list(support.plan_inputs["confirm_prompt_ids"]):
+        raise IdentityError("P2 smoke prompt order differs from the canonical registry")
+    prompt_id = ordered_prompts[0]
+    return tuple(
+        row
+        for row in registry_rows
+        if row["identity"]["block"] in P2_BLOCKS
+        and row["identity"]["prompt_id"] == prompt_id
+        and row["identity"]["vector_id"] == vector_id
+    )
+
+
+def validate_p2_smoke_identities(
+    support: PreparedSupportScreen,
+    rows: Sequence[Mapping[str, Any]],
+) -> tuple[Mapping[str, Any], ...]:
+    """Fail closed unless rows are the four canonical smoke identities."""
+    expected = _canonical_p2_smoke_rows(support)
+    try:
+        actual = json.loads(canonical_json(list(rows)))
+    except (TypeError, ValueError) as exc:
+        raise IdentityError("P2 smoke identities are not canonical JSON") from exc
+    if actual != list(expected):
+        raise IdentityError("P2 smoke identities differ from the canonical fixed pair")
+    if (
+        len(actual) != P2_SMOKE_IDENTITY_COUNT
+        or len({row["logical_id"] for row in actual}) != P2_SMOKE_IDENTITY_COUNT
+        or [row["identity"]["block"] for row in actual] != list(P2_BLOCKS)
+    ):
+        raise IdentityError("P2 smoke must contain exactly the four fixed cells")
+
+    identities = [row["identity"] for row in actual]
+    prompt_vector_pairs = {
+        (identity["prompt_id"], identity["vector_id"]) for identity in identities
+    }
+    expected_vector_id = support.vector_ids_by_index[P2_SMOKE_VECTOR_INDEX]
+    if len(prompt_vector_pairs) != 1 or {
+        identity["vector_id"] for identity in identities
+    } != {expected_vector_id}:
+        raise IdentityError("P2 smoke identities must share canonical vector index 10")
+    doses = validate_dose_binding(support.dose_binding)
+    for row, (cell, anchor, estimator) in zip(actual, P2_CELLS, strict=True):
+        logical_id = row["logical_id"]
+        identity = row["identity"]
+        if support.registry.require(logical_id) != identity:
+            raise IdentityError("P2 smoke identity differs from its registry logical ID")
+        if (
+            identity["block"] != cell
+            or identity["anchor"] != anchor
+            or identity["estimator"] != estimator
+            or identity["split"] != "D_behavior_confirm"
+            or identity["domain"] != "harmful"
+        ):
+            raise IdentityError("P2 smoke cell mapping differs from formal P2")
+        for field in (
+            "c_hex", "alpha_pre_dtype_hex", "alpha_post_dtype_hex", "rho_hex"
+        ):
+            if identity[field] != doses[anchor][estimator][field]:
+                raise IdentityError(f"P2 smoke identity differs from dose source: {field}")
+    for anchor in ("A", "T"):
+        if len({
+            identity["c_hex"] for identity in identities if identity["anchor"] == anchor
+        }) != 1:
+            raise IdentityError(f"P2 smoke {anchor} arms do not share one c_{anchor}")
+    return tuple(actual)
+
+
+def select_p2_smoke_identities(
+    support: PreparedSupportScreen,
+) -> tuple[Mapping[str, Any], ...]:
+    """Select four development identities from one canonical prompt/vector pair."""
+    return validate_p2_smoke_identities(support, _canonical_p2_smoke_rows(support))
+
+
+def _p2_smoke_registry(
+    rows: Sequence[Mapping[str, Any]],
+) -> LogicalIdentityRegistry:
+    registry = LogicalIdentityRegistry()
+    for row in rows:
+        logical_id = registry.register(row["identity"])
+        if logical_id != row["logical_id"]:
+            raise IdentityError("P2 smoke subset changed a canonical logical ID")
+    if len(registry) != P2_SMOKE_IDENTITY_COUNT:
+        raise IdentityError("P2 smoke subset registry must contain exactly four identities")
+    return registry
 
 
 def prepare_p2_runner(
@@ -679,6 +798,128 @@ def reconcile_p2_stage(
     }
 
 
+def reconcile_p2_smoke(
+    prepared: PreparedP2Runner,
+    *,
+    generation_records: Sequence[Mapping[str, Any]],
+    judge_records: Sequence[Mapping[str, Any]],
+    response_records: Sequence[Mapping[str, Any]],
+    dispositions: Sequence[Mapping[str, Any]],
+    expected_fake_backend: bool | None = None,
+) -> dict[str, Any]:
+    """Validate only the four development smoke chains, never the formal P2 stage."""
+    if expected_fake_backend is not None and type(expected_fake_backend) is not bool:
+        raise PipelineError("expected_fake_backend must be boolean or omitted")
+    smoke_rows = select_p2_smoke_identities(prepared.support)
+    registry = _p2_smoke_registry(smoke_rows)
+    identities = {row["logical_id"]: row["identity"] for row in smoke_rows}
+    expected_ids = set(identities)
+    generations = _record_index(
+        generation_records,
+        label="P2 smoke generation set",
+        validator=validate_generation_record,
+    )
+    judges = _record_index(
+        judge_records, label="P2 smoke judge set", validator=validate_judge_record
+    )
+    responses = _record_index(
+        response_records, label="P2 smoke response set", validator=validate_p2_record
+    )
+    disposition_by_id = _record_index(
+        dispositions,
+        label="P2 smoke disposition set",
+        validator=validate_execution_disposition,
+    )
+    for label, records in (
+        ("generation", generations),
+        ("judge", judges),
+        ("response", responses),
+        ("disposition", disposition_by_id),
+    ):
+        if set(records) != expected_ids:
+            raise IdentityError(f"P2 smoke {label} set must cover exactly four fixed IDs")
+
+    fake_flags: set[bool] = set()
+    terminal_counts = {terminal: 0 for terminal in TERMINAL_DISPOSITIONS}
+    validated_responses: list[dict[str, Any]] = []
+    for row in smoke_rows:
+        logical_id = row["logical_id"]
+        identity = row["identity"]
+        generation = generations[logical_id]
+        judge = judges[logical_id]
+        if generation["run_mode"] != "smoke" or not generation["generation_completed"]:
+            raise PipelineError("P2 smoke requires four completed smoke generations")
+        if judge["run_mode"] != "smoke":
+            raise PipelineError("P2 smoke judge record run mode changed")
+        try:
+            response = validate_p2_materialization(
+                responses[logical_id],
+                registry=registry,
+                generation_record=generation,
+                judge_record=judge,
+                dose_binding=prepared.support.dose_binding,
+            )
+        except RecordSchemaError as exc:
+            raise PipelineError("P2 smoke response materialization failed") from exc
+        expected_disposition = _attempted_disposition(
+            identity, generation, judge, response
+        )
+        if disposition_by_id[logical_id] != expected_disposition:
+            raise PipelineError("P2 smoke disposition differs from terminal lineage")
+        validated_responses.append(response)
+        terminal_counts[expected_disposition["terminal_disposition"]] += 1
+        fake_flags.update((
+            generation["fake_backend"],
+            judge["fake_backend"],
+            response["fake_backend"],
+        ))
+    if len(fake_flags) != 1:
+        raise PipelineError("P2 smoke mixes real and fake backend provenance")
+    fake_backend = next(iter(fake_flags))
+    if expected_fake_backend is not None and fake_backend is not expected_fake_backend:
+        raise PipelineError("P2 smoke backend provenance differs from orchestration")
+    if len({
+        (response["prompt_id"], response["vector_id"])
+        for response in validated_responses
+    }) != 1:
+        raise IdentityError("P2 smoke responses do not share one prompt/vector pair")
+    pair_ids_by_anchor = {
+        anchor: {
+            response["pair_id"]
+            for response in validated_responses
+            if response["anchor"] == anchor
+        }
+        for anchor in ("A", "T")
+    }
+    if any(len(pair_ids) != 1 for pair_ids in pair_ids_by_anchor.values()):
+        raise IdentityError("P2 smoke all/content arms do not share formal pair IDs")
+    first_identity = smoke_rows[0]["identity"]
+    return {
+        "schema_version": "paper1-stage3-p2-real-smoke-ledger-v1",
+        "run_mode": "smoke",
+        "development_smoke": True,
+        "smoke_identity_count": P2_SMOKE_IDENTITY_COUNT,
+        "smoke_terminal": len(disposition_by_id),
+        "prompt_id": first_identity["prompt_id"],
+        "vector_index": P2_SMOKE_VECTOR_INDEX,
+        "vector_id": first_identity["vector_id"],
+        "cell_identity_counts": {cell: 1 for cell in P2_BLOCKS},
+        "anchors": ["A", "T"],
+        "estimators": ["mu_all_tw", "mu_content_tw"],
+        "pair_ids_by_anchor": {
+            anchor: next(iter(pair_ids))
+            for anchor, pair_ids in pair_ids_by_anchor.items()
+        },
+        "terminal_partition": terminal_counts,
+        "fake_backend": fake_backend,
+        "formal_experiment_run": False,
+        "p2_run": False,
+        "paper_result_eligible": False,
+        "formal_p2_run_completed": False,
+        "complete_stage3_reconciliation": False,
+    }
+
+
 def _aggregate_behavior_lifecycle(
     lifecycles: Sequence[Mapping[str, Any]], *, expected_sessions: int
 ) -> dict[str, Any]:
@@ -726,6 +967,185 @@ def load_real_judge_backend(
     prepared: PreparedP2Runner, lifecycle: Mapping[str, Any]
 ) -> RealJudgeBackend:
     return load_support_judge_backend(prepared.support, lifecycle)
+
+
+def execute_p2_smoke(
+    prepared: PreparedP2Runner,
+    *,
+    behavior_backend_factory: Callable[
+        [PreparedP2Runner, int], Any
+    ] = load_real_behavior_backend,
+    judge_backend_factory: Callable[
+        [PreparedP2Runner, Mapping[str, Any]], Any
+    ] = load_real_judge_backend,
+    require_real_backend: bool = True,
+) -> P2SmokeArtifacts:
+    """Run the four-item development smoke with sequential real model residency."""
+    if type(require_real_backend) is not bool:
+        raise PipelineError("require_real_backend must be boolean")
+    smoke_rows = select_p2_smoke_identities(prepared.support)
+    registry = _p2_smoke_registry(smoke_rows)
+    generation_by_id: dict[str, dict[str, Any]] = {}
+    judge_by_id: dict[str, dict[str, Any]] = {}
+    backend_fake_flags: set[bool] = set()
+    behavior_lifecycles: list[Mapping[str, Any]] = []
+    guard = offline_execution_guard()
+    with guard:
+        behavior_backend = behavior_backend_factory(prepared, P2_SMOKE_VECTOR_INDEX)
+        behavior_capability = getattr(behavior_backend, "capability", None)
+        backend_fake_flags.add(behavior_capability is None)
+        try:
+            if require_real_backend and behavior_capability is None:
+                raise PipelineError(
+                    "P2 development smoke requires RealBehaviorBackend capability"
+                )
+            # The existing smoke budget is two items, so one loaded backend serves two
+            # producer sessions without changing the shared run-mode contract.
+            for offset in range(0, P2_SMOKE_IDENTITY_COUNT, 2):
+                producer = GenerationProducer(
+                    registry,
+                    behavior_backend,
+                    run_mode="smoke",
+                    generation_config=DECODE_CONFIG,
+                    fake_backend=behavior_capability is None,
+                    capability=behavior_capability,
+                    item_budget=2,
+                )
+                for row in smoke_rows[offset:offset + 2]:
+                    logical_id = row["logical_id"]
+                    identity = row["identity"]
+                    generation_by_id[logical_id] = validate_generation_record(
+                        producer.produce(
+                            logical_id,
+                            {
+                                "logical_id": logical_id,
+                                "generation_config": DECODE_CONFIG,
+                                "messages": prepared.support.messages_by_prompt_id[
+                                    identity["prompt_id"]
+                                ],
+                            },
+                        )
+                    )
+        finally:
+            if not getattr(behavior_backend, "released", False):
+                behavior_lifecycles.append(behavior_backend.release())
+        behavior_lifecycle = _aggregate_behavior_lifecycle(
+            behavior_lifecycles, expected_sessions=1
+        )
+        if (
+            len(generation_by_id) != P2_SMOKE_IDENTITY_COUNT
+            or any(
+                not generation["generation_completed"]
+                for generation in generation_by_id.values()
+            )
+        ):
+            raise PipelineError("P2 development smoke requires four completed generations")
+
+        judge_backend = judge_backend_factory(prepared, behavior_lifecycle)
+        judge_capability = getattr(judge_backend, "capability", None)
+        backend_fake_flags.add(judge_capability is None)
+        behavior_lifecycle = {
+            **behavior_lifecycle,
+            "judge_loaded_after_behavior_release": True,
+        }
+        try:
+            if require_real_backend and judge_capability is None:
+                raise PipelineError("P2 development smoke requires RealJudgeBackend capability")
+            producer_identity = getattr(judge_backend, "producer_identity", None)
+            if not isinstance(producer_identity, Mapping):
+                raise PipelineError("judge backend lacks its canonical producer identity")
+            for row in smoke_rows:
+                logical_id = row["logical_id"]
+                identity = row["identity"]
+                generation = generation_by_id[logical_id]
+                judge_by_id[logical_id] = validate_judge_record(
+                    parse_judge_with_retry(
+                        logical_id,
+                        judge_backend,
+                        {
+                            "logical_id": logical_id,
+                            "judge_config": JUDGE_CONFIG,
+                            "backend_request": {
+                                "prompt": prepared.support.prompt_text_by_id[
+                                    identity["prompt_id"]
+                                ],
+                                "response": generation["output_text"],
+                                "domain": "harmful",
+                            },
+                        },
+                        registry=registry,
+                        generation_record=generation,
+                        run_mode="smoke",
+                        judge_identity=producer_identity,
+                        judge_config=JUDGE_CONFIG,
+                        fake_backend=judge_capability is None,
+                        capability=judge_capability,
+                    )
+                )
+        finally:
+            judge_lifecycle = (
+                judge_backend.release()
+                if not getattr(judge_backend, "released", False)
+                else {"judge_released": True}
+            )
+    guard_report = guard.report
+    if guard_report["blocked_attempt_count"] != 0:
+        raise PipelineError("P2 development smoke attempted a forbidden offline operation")
+    if len(backend_fake_flags) != 1:
+        raise PipelineError("P2 development smoke mixes real and fake backend sessions")
+    fake_backend = next(iter(backend_fake_flags))
+    if require_real_backend and fake_backend:
+        raise PipelineError("P2 development smoke did not use real backends")
+
+    generations: list[dict[str, Any]] = []
+    judges: list[dict[str, Any]] = []
+    responses: list[dict[str, Any]] = []
+    dispositions: list[dict[str, Any]] = []
+    for row in smoke_rows:
+        logical_id = row["logical_id"]
+        identity = row["identity"]
+        generation = generation_by_id[logical_id]
+        judge = judge_by_id[logical_id]
+        response = build_block_response_record(
+            identity=identity,
+            generation_record=generation,
+            judge_record=judge,
+            dose_evidence=generation["attempts"][-1]["diagnostics"].get(
+                "dose_evidence"
+            ),
+        )
+        try:
+            response = validate_p2_materialization(
+                response,
+                registry=registry,
+                generation_record=generation,
+                judge_record=judge,
+                dose_binding=prepared.support.dose_binding,
+            )
+        except RecordSchemaError as exc:
+            raise PipelineError("P2 smoke response materialization failed") from exc
+        generations.append(generation)
+        judges.append(judge)
+        responses.append(response)
+        dispositions.append(_attempted_disposition(identity, generation, judge, response))
+    smoke_ledger = reconcile_p2_smoke(
+        prepared,
+        generation_records=generations,
+        judge_records=judges,
+        response_records=responses,
+        dispositions=dispositions,
+        expected_fake_backend=fake_backend,
+    )
+    return P2SmokeArtifacts(
+        generation_records=tuple(generations),
+        judge_records=tuple(judges),
+        response_records=tuple(responses),
+        dispositions=tuple(dispositions),
+        smoke_ledger=smoke_ledger,
+        behavior_lifecycle=behavior_lifecycle,
+        judge_lifecycle=judge_lifecycle,
+        offline_guard_report=guard_report,
+    )
 
 
 def execute_p2(
@@ -908,6 +1328,14 @@ def default_output_directory(prepared: PreparedP2Runner, run_id: str) -> Path:
     return configured_root / run_id
 
 
+def default_p2_smoke_output_directory(
+    _prepared: PreparedP2Runner, run_id: str
+) -> Path:
+    if not isinstance(run_id, str) or SAFE_RUN_ID.fullmatch(run_id) is None:
+        raise PipelineError("P2 smoke run-id contains invalid characters")
+    return P2_SMOKE_OUTPUT_ROOT.resolve() / run_id
+
+
 def _reserve_output_directory(path: Path) -> Path:
     output = path.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -1024,6 +1452,117 @@ def run_prepared_p2(
     }
 
 
+def run_prepared_p2_smoke(
+    prepared: PreparedP2Runner,
+    *,
+    run_id: str,
+    behavior_backend_factory: Callable[
+        [PreparedP2Runner, int], Any
+    ] = load_real_behavior_backend,
+    judge_backend_factory: Callable[
+        [PreparedP2Runner, Mapping[str, Any]], Any
+    ] = load_real_judge_backend,
+    output_directory_resolver: Callable[
+        [PreparedP2Runner, str], Path
+    ] = default_p2_smoke_output_directory,
+) -> dict[str, Any]:
+    """Execute and materialize a non-paper real smoke below .codex-temp."""
+    output_directory = _reserve_output_directory(
+        output_directory_resolver(prepared, run_id)
+    )
+    artifacts = execute_p2_smoke(
+        prepared,
+        behavior_backend_factory=behavior_backend_factory,
+        judge_backend_factory=judge_backend_factory,
+        require_real_backend=True,
+    )
+    if artifacts.smoke_ledger["fake_backend"] is not False:
+        raise PipelineError("P2 development smoke output requires real backend provenance")
+    smoke_rows = select_p2_smoke_identities(prepared.support)
+    registry_manifest = prepared.support.registry.manifest()
+    registry_reference = {
+        "schema_version": "paper1-stage3-p2-smoke-registry-reference-v1",
+        "source_support_run_directory": str(prepared.support_run_directory),
+        "source_registry_file": "logical_registry.json",
+        "canonical_registry_sha256": registry_manifest["registry_sha256"],
+        "smoke_identity_count": P2_SMOKE_IDENTITY_COUNT,
+        "smoke_identity_set_sha256": canonical_sha256(list(smoke_rows)),
+        "formal_p2_plan_unchanged": True,
+        "formal_p2_run_completed": False,
+        "complete_stage3_reconciliation": False,
+    }
+    execution_identity = {
+        "schema_version": "paper1-stage3-p2-real-smoke-execution-v1",
+        "run_id": run_id,
+        "run_mode": "smoke",
+        "development_smoke": True,
+        "fake_backend": False,
+        "formal_experiment_run": False,
+        "p2_run": False,
+        "paper_result_eligible": False,
+        "formal_p2_run_completed": False,
+        "complete_stage3_reconciliation": False,
+        "support_run_id": prepared.support_execution_identity["run_id"],
+        "canonical_registry_sha256": registry_manifest["registry_sha256"],
+        "canonical_registry_reference_sha256": canonical_sha256(registry_reference),
+        "smoke_ledger_sha256": canonical_sha256(artifacts.smoke_ledger),
+        "p2_runner_code_sha256": file_sha256(Path(__file__).resolve()),
+        "p2_config_sha256": file_sha256(prepared.config_path),
+        "behavior_lifecycle": artifacts.behavior_lifecycle,
+        "judge_lifecycle": artifacts.judge_lifecycle,
+        "offline_guard_report": artifacts.offline_guard_report,
+    }
+    store = OutputStore(output_directory)
+    store.write_json_once("canonical_registry_reference.json", registry_reference)
+    store.write_json_once(
+        "smoke_identities.json",
+        _output_record_document("paper1-stage3-p2-smoke-identity-set-v1", smoke_rows),
+    )
+    store.write_json_once(
+        "generation_records.json",
+        _output_record_document(
+            "paper1-stage3-p2-smoke-generation-set-v1",
+            artifacts.generation_records,
+        ),
+    )
+    store.write_json_once(
+        "judge_records.json",
+        _output_record_document(
+            "paper1-stage3-p2-smoke-judge-set-v1", artifacts.judge_records
+        ),
+    )
+    store.write_json_once(
+        "response_records.json",
+        _output_record_document(
+            "paper1-stage3-p2-smoke-response-set-v1", artifacts.response_records
+        ),
+    )
+    store.write_json_once(
+        "execution_dispositions.json",
+        _output_record_document(
+            "paper1-stage3-p2-smoke-disposition-set-v1", artifacts.dispositions
+        ),
+    )
+    store.write_json_once("smoke_ledger.json", artifacts.smoke_ledger)
+    store.write_json_once("execution_identity.json", execution_identity)
+    return {
+        "status": "P2_REAL_DEVELOPMENT_SMOKE_PASS",
+        "output_directory": str(output_directory),
+        "run_id": run_id,
+        "run_mode": "smoke",
+        "development_smoke": True,
+        "smoke_identity_count": P2_SMOKE_IDENTITY_COUNT,
+        "smoke_terminal": artifacts.smoke_ledger["smoke_terminal"],
+        "vector_index": P2_SMOKE_VECTOR_INDEX,
+        "fake_backend": False,
+        "formal_experiment_run": False,
+        "p2_run": False,
+        "paper_result_eligible": False,
+        "formal_p2_run_completed": False,
+        "complete_stage3_reconciliation": False,
+    }
+
+
 def run_p2(config_path: Path, *, run_mode: str, run_id: str) -> dict[str, Any]:
     if run_mode != "paper":
         raise PipelineError("P2 execution supports only --run-mode paper")
@@ -1031,17 +1570,40 @@ def run_p2(config_path: Path, *, run_mode: str, run_id: str) -> dict[str, Any]:
     return run_prepared_p2(prepared, run_id=run_id)
 
 
+def run_p2_smoke(config_path: Path, *, run_id: str) -> dict[str, Any]:
+    """Public development entry bound explicitly to both real P2 backends."""
+    prepared = prepare_p2_runner(config_path)
+    return run_prepared_p2_smoke(
+        prepared,
+        run_id=run_id,
+        behavior_backend_factory=load_real_behavior_backend,
+        judge_backend_factory=load_real_judge_backend,
+        output_directory_resolver=default_p2_smoke_output_directory,
+    )
+
+
 __all__ = [
     "DEFAULT_CONFIG",
     "P2_CELLS",
+    "P2_SMOKE_IDENTITY_COUNT",
+    "P2_SMOKE_OUTPUT_ROOT",
+    "P2_SMOKE_VECTOR_INDEX",
     "P2RunArtifacts",
+    "P2SmokeArtifacts",
     "PreparedP2Runner",
+    "default_p2_smoke_output_directory",
     "execute_p2",
+    "execute_p2_smoke",
     "prepare_p2_runner",
     "reconcile_p2_stage",
+    "reconcile_p2_smoke",
     "run_p2",
+    "run_p2_smoke",
     "run_prepared_p2",
+    "run_prepared_p2_smoke",
     "select_p2_identities",
+    "select_p2_smoke_identities",
     "validate_only",
     "validate_p2_config",
+    "validate_p2_smoke_identities",
 ]
