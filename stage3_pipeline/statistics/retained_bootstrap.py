@@ -423,8 +423,13 @@ def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dic
     if cell_ids != list(K1_CELLS) or set(cells) != set(K1_CELLS):
         raise RetainedBootstrapError("FRAME_ORDER_INVALID", "K1 cell order is not canonical")
 
+    shared_coordinates: list[tuple[str, str]] | None = None
     for cell_id in K1_CELLS:
         records = cells[cell_id]
+        if not records:
+            raise RetainedBootstrapError(
+                "INVALID_DENOMINATOR", f"{cell_id} matched coordinate subset is empty"
+            )
         for row in records:
             if row["prompt_id"] not in prompt_position or row["vector_id"] not in vector_position:
                 raise RetainedBootstrapError(
@@ -435,18 +440,19 @@ def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dic
                     "INPUT_SCHEMA_INVALID", f"{cell_id} has invalid harmful label"
                 )
         actual_coordinates = [(row["prompt_id"], row["vector_id"]) for row in records]
-        expected_coordinates = [
-            (prompt_id, vector_id)
-            for prompt_id in prompt_ids
-            for vector_id in vector_ids
-        ]
-        if set(actual_coordinates) != set(expected_coordinates):
+        canonical_coordinates = sorted(
+            actual_coordinates,
+            key=lambda item: (prompt_position[item[0]], vector_position[item[1]]),
+        )
+        if actual_coordinates != canonical_coordinates:
+            raise RetainedBootstrapError("FRAME_ORDER_INVALID", f"{cell_id} rows are not canonical")
+        if shared_coordinates is None:
+            shared_coordinates = actual_coordinates
+        elif set(actual_coordinates) != set(shared_coordinates):
             raise RetainedBootstrapError(
                 "INPUT_SCHEMA_INVALID",
-                f"{cell_id} must contain each fixed prompt/vector coordinate exactly once",
+                f"{cell_id} coordinates differ from the shared K1 matched subset",
             )
-        if actual_coordinates != expected_coordinates:
-            raise RetainedBootstrapError("FRAME_ORDER_INVALID", f"{cell_id} rows are not canonical")
 
     points_by_cell = {cell_id: _profile_point(cells[cell_id], HARMFUL_LABELS) for cell_id in K1_CELLS}
     if len(prompt_ids) < 2 or len(vector_ids) < 2:
