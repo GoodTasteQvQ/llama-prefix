@@ -51,7 +51,11 @@ class RepositoryTests(unittest.TestCase):
             for path in design_directory.rglob("*")
             if path.is_file()
         )
-        self.assertEqual(files, ["README.md", "paper1_stage3_experiment_design.md"])
+        self.assertEqual(files, [
+            "README.md",
+            "paper1_stage3_experiment_design.md",
+            "paper1_stage3_protocol_amendment_p2_v2.md",
+        ])
         design = (design_directory / "paper1_stage3_experiment_design.md").read_text(
             encoding="utf-8"
         )

@@ -1,0 +1,111 @@
+{
+  "schema_version": "paper1-stage3-qwen25-p2-independent-th-v1",
+  "amendment_id": "paper1-stage3-p2-independent-th-v2",
+  "amendment_date": "2026-08-22",
+  "status": "independent_p2_runner_ready",
+  "run_mode": "paper",
+  "paper_result_eligible": false,
+  "formal_experiment_run": false,
+  "old_p2_run": false,
+  "p1_run": false,
+  "support_run": false,
+  "k1_run": false,
+  "protocol_amendment_relative_path": "writing/stage3 design/paper1_stage3_protocol_amendment_p2_v2.md",
+  "old_p2_run_directory": "/data/goodtaste_workspace/paper1_stage3_runs/p2-qwen25-paper-20260808T051044Z",
+  "old_p2_immutable": true,
+  "support_run_directory": "/data/goodtaste_workspace/paper1_stage3_runs/support-qwen25-paper-detached-20260807T133730Z",
+  "support_config_relative_path": "configs/stage3/qwen25_support_screen_v1.json",
+  "confirmation_prompt_frame": "configs/stage3/jbb_behavior_confirm_v1.json",
+  "vector_confirm_indices": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "cells": [
+    {
+      "cell": "P2_T_all",
+      "anchor": "T",
+      "estimator": "mu_all_tw",
+      "count": 1000
+    },
+    {
+      "cell": "P2_T_content",
+      "anchor": "T",
+      "estimator": "mu_content_tw",
+      "count": 1000
+    },
+    {
+      "cell": "P2_H_all",
+      "anchor": "H",
+      "estimator": "mu_all_tw",
+      "count": 1000
+    },
+    {
+      "cell": "P2_H_content",
+      "anchor": "H",
+      "estimator": "mu_content_tw",
+      "count": 1000
+    }
+  ],
+  "identity_count": 4000,
+  "endpoint_order": [
+    {
+      "member_id": "P2-U(T)",
+      "outcome": "unsafe",
+      "contrast": "all-minus-content",
+      "anchor": "T",
+      "matched_set": "M_T",
+      "all_cell": "P2_T_all",
+      "content_cell": "P2_T_content"
+    },
+    {
+      "member_id": "P2-B(H)",
+      "outcome": "broken",
+      "contrast": "all-minus-content",
+      "anchor": "H",
+      "matched_set": "M_H",
+      "all_cell": "P2_H_all",
+      "content_cell": "P2_H_content"
+    }
+  ],
+  "retry_policy": {
+    "generation_max_attempts": 2,
+    "generation_retry": "one_identical_technical_retry",
+    "judge_max_attempts": 2,
+    "judge_retry": "one_identical_parse_or_technical_retry",
+    "terminal_missingness": "existing_first_failure_precedence"
+  },
+  "generation_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 512,
+    "use_cache": true,
+    "custom_stop_strings": null,
+    "decode_seed": 42
+  },
+  "judge_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 1296,
+    "torch_dtype": "float32",
+    "enable_thinking": true
+  },
+  "output_root": "/data/goodtaste_workspace/paper1_stage3_runs"
+}
