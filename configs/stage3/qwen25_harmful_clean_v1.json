@@ -1,0 +1,30 @@
+{
+  "schema_version": "paper1-stage3-qwen25-harmful-clean-v1",
+  "status": "harmful_clean_runner_ready",
+  "run_mode": "paper",
+  "paper_result_eligible": false,
+  "formal_experiment_run": false,
+  "harmful_clean_identity_count": 50,
+  "source": {
+    "role": "D_behavior_confirm",
+    "prompt_count": 50
+  },
+  "vector_free": true,
+  "clean_alpha": 0.0,
+  "generation_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 512,
+    "use_cache": true,
+    "custom_stop_strings": null,
+    "decode_seed": 42
+  },
+  "judge_config": {
+    "do_sample": false,
+    "num_beams": 1,
+    "max_new_tokens": 1296,
+    "torch_dtype": "float32",
+    "enable_thinking": true
+  },
+  "output_root": "/data/goodtaste_workspace/paper1_stage3_runs"
+}
