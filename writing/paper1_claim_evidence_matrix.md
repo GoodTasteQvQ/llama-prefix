@@ -26,6 +26,9 @@
 | E06 | Stage 3 compact calibration design | design complete; implementation in active development; no paper results | `writing/stage3 design/paper1_stage3_experiment_design.md` |
 | E07 | Stage 3 implementation tests | pending current smoke/pilot, offline, schema, budget, and statistical golden checks | `tests/stage3/` |
 | E08 | Mistral formal judged summary | not located | no current result claim permitted |
+| E09 | Accepted amended independent T/H P2 descriptive result, `paper1-stage3-p2-independent-th-v2` (`P2-U(T)` and `P2-B(H)`; `M_T=976`, `M_H=966`; `COMPLETED_PARSED=3942`, `TERMINAL_JUDGE_FAILURE=58`). This is an independent amended P2, not a replacement, correction, or extension of the original P2; descriptive endpoint estimates only; amended P2 statistics, bootstrap, and K1 were not run; `paper_result_eligible=false` | `PARTIAL` (descriptive only; not paper-result eligible) | `.codex-temp/stage3_p2_amended_th_descriptive_report_v1/report.md`; `/data/goodtaste_workspace/paper1_stage3_runs/p2-amended-th-materialized-qwen25-paper-20260822T051005Z-v1/p2_independent_raw_result.json`; amendment: `writing/stage3 design/paper1_stage3_protocol_amendment_p2_v2.md` |
+
+E09 边界：此条目只登记 amended P2，不修改或覆盖原始 P2 证据记录、原始 P2 endpoint、统计结果或结论，也不修改或覆盖 C9 现有原始 P2 主张；原始 P2 与 amended P2 必须分开报告。该条目保留当前协议中的禁止边界，不新增显著性、p 值、置信区间、因果或一般安全结论，也不因结果方向写“支持”或“反对”性质的强主张。
 
 ## 主张—证据矩阵
 
