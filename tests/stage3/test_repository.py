@@ -55,6 +55,7 @@ class RepositoryTests(unittest.TestCase):
             "README.md",
             "paper1_stage3_experiment_design.md",
             "paper1_stage3_protocol_amendment_p2_v2.md",
+            "paper1_stage3_protocol_status_supplement_p2_v2_formal.md",
         ])
         design = (design_directory / "paper1_stage3_experiment_design.md").read_text(
             encoding="utf-8"
