@@ -27,6 +27,7 @@ HARMFUL_CLEAN_BLOCK_ID = "harmful-clean-prompt"
 BENIGN_BROKEN_BLOCK_ID = "benign-broken-prompt"
 
 K1_CELLS = ("P2_A_all", "P2_A_content", "P2_T_all", "P2_T_content")
+K1_V2_CELLS = ("P2_T_all", "P2_T_content", "P2_H_all", "P2_H_content")
 HARMFUL_LABELS = ("broken", "unsafe", "refusal", "safe")
 BENIGN_LABELS = ("broken", "unsafe", "refusal", "helpful")
 
@@ -370,7 +371,19 @@ def _profile_point(records: Sequence[Mapping[str, Any]], labels: Sequence[str]) 
     }
 
 
-def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dict[str, Any]:
+def analyze_k1(
+    payload: Mapping[str, Any], *, fixture_mode: bool = False,
+    cell_order: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    """Analyze a four-cell K1 profile with an optional explicit cell order.
+
+    Omitting ``cell_order`` intentionally preserves the historical A/T order
+    byte-for-byte.  Callers using an amended design must pass their fixed
+    order explicitly; the statistical procedure itself is unchanged.
+    """
+    active_cells = list(K1_CELLS if cell_order is None else cell_order)
+    if cell_order is not None and active_cells not in (list(K1_CELLS), list(K1_V2_CELLS)):
+        raise RetainedBootstrapError("FRAME_ORDER_INVALID", "K1 cell order is not four distinct registered cells")
     required = {"schema_version", "synthetic_data", "block_type", "prompt_frame", "vector_frame", "cells"}
     _exact_keys(payload, required, "k1 payload")
     _validate_header(payload, "k1", fixture_mode)
@@ -420,11 +433,11 @@ def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dic
         raise RetainedBootstrapError("IDENTITY_COLLISION", "duplicate K1 cell/prompt/vector coordinate")
     _validate_frame_order(payload["prompt_frame"], "prompt")
     _validate_frame_order(payload["vector_frame"], "vector")
-    if cell_ids != list(K1_CELLS) or set(cells) != set(K1_CELLS):
+    if cell_ids != active_cells or set(cells) != set(active_cells):
         raise RetainedBootstrapError("FRAME_ORDER_INVALID", "K1 cell order is not canonical")
 
     shared_coordinates: list[tuple[str, str]] | None = None
-    for cell_id in K1_CELLS:
+    for cell_id in active_cells:
         records = cells[cell_id]
         if not records:
             raise RetainedBootstrapError(
@@ -454,7 +467,7 @@ def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dic
                 f"{cell_id} coordinates differ from the shared K1 matched subset",
             )
 
-    points_by_cell = {cell_id: _profile_point(cells[cell_id], HARMFUL_LABELS) for cell_id in K1_CELLS}
+    points_by_cell = {cell_id: _profile_point(cells[cell_id], HARMFUL_LABELS) for cell_id in active_cells}
     if len(prompt_ids) < 2 or len(vector_ids) < 2:
         raise RetainedBootstrapError(
             "INSUFFICIENT_RESAMPLING_UNITS", "K1 requires at least two prompt and vector units"
@@ -466,7 +479,7 @@ def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dic
     vector_sync = sync_unit_id(family="k1-profile", axis="vector", frame_hash=vector_hash)
     flat_point = {
         f"{cell_id}|{label}": points_by_cell[cell_id][label]
-        for cell_id in K1_CELLS for label in HARMFUL_LABELS
+        for cell_id in active_cells for label in HARMFUL_LABELS
     }
     successful = {key: [] for key in flat_point}
     failures: list[str] = []
@@ -482,7 +495,7 @@ def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dic
         values: dict[str, float] = {}
         denominators: dict[str, int] = {}
         try:
-            for cell_id in K1_CELLS:
+            for cell_id in active_cells:
                 weighted_rows: list[tuple[Mapping[str, Any], int]] = []
                 for row in cells[cell_id]:
                     weight = (
@@ -518,7 +531,7 @@ def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dic
                     "prompt_draw_indices": prompt_draws,
                     "prompt_multiplicities": prompt_mult,
                     "replicate": replicate,
-                    "shared_by_cells": list(K1_CELLS),
+                    "shared_by_cells": list(active_cells),
                     "vector_draw_indices": vector_draws,
                     "vector_multiplicities": vector_mult,
                 }
@@ -528,7 +541,7 @@ def analyze_k1(payload: Mapping[str, Any], *, fixture_mode: bool = False) -> dic
     result.update(
         {
             "block_type": "k1",
-            "cell_order": list(K1_CELLS),
+            "cell_order": list(active_cells),
             "frame": {
                 "prompt_frame_sha256": prompt_hash,
                 "prompt_order": prompt_ids,
