@@ -420,7 +420,13 @@ def build_benign_broken_payload(
         "schema_version": retained_bootstrap.SCHEMA_VERSION,
         "synthetic_data": False,
         "block_type": "benign_broken",
-        "complete_prompt_frame": [item for item in complete_frame if item["prompt_id"] in {p["prompt_id"] for p in prompts}],
+        "complete_prompt_frame": [
+            {"position": position, "prompt_id": item["prompt_id"]}
+            for position, item in enumerate(
+                item for item in complete_frame
+                if item["prompt_id"] in {p["prompt_id"] for p in prompts}
+            )
+        ],
         "vector_frame": vector_frame,
         "prompts": prompts,
     }

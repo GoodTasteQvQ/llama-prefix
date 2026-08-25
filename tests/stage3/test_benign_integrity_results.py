@@ -103,11 +103,21 @@ class BenignIntegrityResultTests(unittest.TestCase):
         )
         self.assertEqual(len(payload["complete_prompt_frame"]), 29)
         self.assertEqual(
+            [item["position"] for item in payload["complete_prompt_frame"]],
+            list(range(29)),
+        )
+        self.assertEqual(
             [item["prompt_id"] for item in payload["complete_prompt_frame"]],
             [f"prompt-{index:02d}" for index in range(30) if index != 5],
         )
         self.assertEqual(len(payload["vector_frame"]), 20)
         self.assertNotIn("prompt-05", {item["prompt_id"] for item in payload["prompts"]})
+        response_ids = {
+            response_id
+            for prompt in payload["prompts"]
+            for response_id in [prompt["clean"]["response_id"], *(row["response_id"] for row in prompt["steered"])]
+        }
+        self.assertTrue(all(not response_id.startswith(("clean-05", "steered-05-")) for response_id in response_ids))
         self.assertTrue(all(row["label"] in results.BENIGN_LABELS for prompt in payload["prompts"] for row in [prompt["clean"], *prompt["steered"]]))
 
     def test_payload_preserves_twenty_vector_average_and_prompt_rd_inputs(self) -> None:
