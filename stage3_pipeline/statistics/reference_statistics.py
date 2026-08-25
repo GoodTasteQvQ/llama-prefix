@@ -306,10 +306,24 @@ def p2_raw_simultaneous(
     members: list[dict[str, Any]],
     replicates: int = 9_999,
     min_success: int | None = None,
+    member_order: Iterable[str] | None = None,
 ) -> dict[str, Any]:
-    expected_order = ["P2-U(A)", "P2-B(T)"]
+    # The historical A/T order remains the default.  A caller may opt into a
+    # fixed, explicitly registered order without changing the resampling
+    # algorithm or any of the default P2 outputs.
+    expected_order = (
+        ["P2-U(A)", "P2-B(T)"]
+        if member_order is None
+        else [str(member_id) for member_id in member_order]
+    )
+    if len(expected_order) != 2 or len(set(expected_order)) != 2:
+        raise NonEstimable("p2_member_order_must_contain_two_unique_members")
     if [member.get("member_id") for member in members] != expected_order:
-        raise NonEstimable("p2_member_order_must_be_P2-U(A)_then_P2-B(T)")
+        if member_order is None:
+            raise NonEstimable("p2_member_order_must_be_P2-U(A)_then_P2-B(T)")
+        raise NonEstimable(
+            "p2_member_order_must_match_explicit_order:" + ",".join(expected_order)
+        )
     if replicates < 2:
         raise ValueError("replicates must be at least 2")
     required_successes = math.ceil(0.95 * replicates) if min_success is None else min_success
