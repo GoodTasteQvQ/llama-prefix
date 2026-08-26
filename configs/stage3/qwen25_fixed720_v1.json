@@ -1,0 +1,25 @@
+{
+  "schema_version": "paper1-stage3-qwen25-fixed720-v1",
+  "implementation_version": "paper1-stage3-fixed720-runner-v1",
+  "requested_n": 720,
+  "master_seed": 42,
+  "p2_source_run": "/data/goodtaste_workspace/paper1_stage3_runs/p2-qwen25-amended-th-paper-20260822T051005Z-v2",
+  "p2_formal_result": "/data/goodtaste_workspace/paper1_stage3_runs/p2-v2-formal-qwen25-paper-20260822T051005Z-v1/p2_independent_formal_result.json",
+  "harmful_source_run": "/data/goodtaste_workspace/paper1_stage3_runs/harmful-clean-qwen25-paper-20260825T071017Z",
+  "harmful_result": "/data/goodtaste_workspace/paper1_stage3_runs/harmful-clean-materialized-qwen25-paper-20260825T071017Z-v1/harmful_clean_result.json",
+  "benign_source_run": "/data/goodtaste_workspace/paper1_stage3_runs/benign-integrity-qwen25-paper-recovery-20260825T102609Z",
+  "benign_result": "/data/goodtaste_workspace/paper1_stage3_runs/benign-integrity-materialized-qwen25-paper-recovery-20260825T102609Z-v2/benign_integrity_result.json",
+  "active_cell_order": [
+    "P2_T_all",
+    "P2_T_content",
+    "P2_H_all",
+    "P2_H_content"
+  ],
+  "active_member_mapping": {
+    "P2_T_all": "P2-U(T)",
+    "P2_T_content": "P2-U(T)",
+    "P2_H_all": "P2-B(H)",
+    "P2_H_content": "P2-B(H)"
+  },
+  "output_directory": ".codex-temp/fixed720-selection-owner-run"
+}

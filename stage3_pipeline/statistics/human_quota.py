@@ -17,6 +17,7 @@ RNG_NAMESPACE = "v3.5-rc2"
 DEFAULT_N = 720
 DEFAULT_SEED = 42
 P2_CELLS = ("P2_A_all", "P2_A_content", "P2_T_all", "P2_T_content")
+ACTIVE_P2_CELLS = ("P2_T_all", "P2_T_content", "P2_H_all", "P2_H_content")
 ELIGIBLE_BLOCKS = ("P2", "harmful_clean", "benign_clean", "benign_steered")
 HARMFUL_CLASSES = ("broken", "unsafe", "refusal", "safe")
 BENIGN_CLASSES = ("broken", "unsafe", "refusal", "helpful")
@@ -32,6 +33,12 @@ CELL_TO_MEMBER = {
     "P2_A_content": "P2-U(A)",
     "P2_T_all": "P2-B(T)",
     "P2_T_content": "P2-B(T)",
+}
+ACTIVE_CELL_TO_MEMBER = {
+    "P2_T_all": "P2-U(T)",
+    "P2_T_content": "P2-U(T)",
+    "P2_H_all": "P2-B(H)",
+    "P2_H_content": "P2-B(H)",
 }
 
 
@@ -57,7 +64,9 @@ def quota_class(predicted_class: str) -> str:
     return predicted_class
 
 
-def _typed_record_fields(record: Mapping[str, Any]) -> tuple[str, str, str, bool, str]:
+def _typed_record_fields(
+    record: Mapping[str, Any], *, cell_order: Sequence[str] = P2_CELLS
+) -> tuple[str, str, str, bool, str]:
     if not isinstance(record, Mapping):
         raise AllocationError("allocator record must be an object")
     block = record.get("block")
@@ -82,7 +91,7 @@ def _typed_record_fields(record: Mapping[str, Any]) -> tuple[str, str, str, bool
         raise AllocationError("matched must be a boolean")
     if block == "P2":
         logical_cell = record["logical_cell"]
-        if not isinstance(logical_cell, str) or logical_cell not in P2_CELLS:
+        if not isinstance(logical_cell, str) or logical_cell not in cell_order:
             raise AllocationError(f"invalid P2 logical_cell: {logical_cell!r}")
         allowed_classes = HARMFUL_CLASSES
     else:
@@ -97,8 +106,12 @@ def _typed_record_fields(record: Mapping[str, Any]) -> tuple[str, str, str, bool
     return response_id, block, logical_cell, matched, predicted_class
 
 
-def stratum_key(record: Mapping[str, Any]) -> str:
-    _response_id, block, logical_cell, matched, predicted_class = _typed_record_fields(record)
+def stratum_key(
+    record: Mapping[str, Any], *, cell_order: Sequence[str] = P2_CELLS
+) -> str:
+    _response_id, block, logical_cell, matched, predicted_class = _typed_record_fields(
+        record, cell_order=cell_order
+    )
     qclass = quota_class(predicted_class)
     if block == "P2" and matched:
         return f"C|{logical_cell}|{qclass}"
@@ -164,14 +177,18 @@ def capped_hamilton(
     return allocation
 
 
-def _validate_records(records: Sequence[Mapping[str, Any]]) -> None:
+def _validate_records(
+    records: Sequence[Mapping[str, Any]], cell_order: Sequence[str] = P2_CELLS
+) -> None:
     seen: set[str] = set()
     for record in records:
-        response_id, _block, _logical_cell, _matched, _predicted_class = _typed_record_fields(record)
+        response_id, _block, _logical_cell, _matched, _predicted_class = _typed_record_fields(
+            record, cell_order=cell_order
+        )
         if response_id in seen:
             raise AllocationError(f"duplicate response_id: {response_id}")
         seen.add(response_id)
-        stratum_key(record)
+        stratum_key(record, cell_order=cell_order)
 
 
 def _hash_rank(master_seed: int, key: str, response_id: str) -> tuple[str, str]:
@@ -182,10 +199,12 @@ def _hash_rank(master_seed: int, key: str, response_id: str) -> tuple[str, str]:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest(), response_id
 
 
-def _critical_base(capacities: Mapping[str, int]) -> tuple[dict[str, int], dict[str, int]]:
+def _critical_base(
+    capacities: Mapping[str, int], cell_order: Sequence[str] = P2_CELLS
+) -> tuple[dict[str, int], dict[str, int]]:
     base = {key: 0 for key in capacities}
     shortfalls: dict[str, int] = {}
-    for cell in P2_CELLS:
+    for cell in cell_order:
         cell_keys = sorted(k for k in capacities if k.startswith(f"C|{cell}|"))
         cell_capacity = sum(capacities[k] for k in cell_keys)
         floor_target = min(30, cell_capacity)
@@ -213,18 +232,33 @@ def allocate_human_sample(
     records: Sequence[Mapping[str, Any]],
     n_total: int = DEFAULT_N,
     master_seed: int = DEFAULT_SEED,
+    *,
+    active_cell_order: Sequence[str] | None = None,
+    member_mapping: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Return a deterministic quota trace and selected response identities."""
     if n_total != DEFAULT_N:
         raise AllocationError(f"the current design fixes n_total={DEFAULT_N}")
     if master_seed != DEFAULT_SEED:
         raise AllocationError(f"the current design fixes master_seed={DEFAULT_SEED}")
-    _validate_records(records)
+    cell_order = tuple(P2_CELLS if active_cell_order is None else active_cell_order)
+    if len(cell_order) != 4 or len(set(cell_order)) != 4:
+        raise AllocationError("active_cell_order must contain four unique cells")
+    if active_cell_order is None:
+        expected_mapping = CELL_TO_MEMBER
+    else:
+        expected_mapping = ACTIVE_CELL_TO_MEMBER
+    if set(cell_order) != set(expected_mapping):
+        raise AllocationError("active_cell_order does not match a registered cell frame")
+    mapping = dict(expected_mapping if member_mapping is None else member_mapping)
+    if mapping != {cell: expected_mapping[cell] for cell in cell_order}:
+        raise AllocationError("member_mapping does not match the registered cell frame")
+    _validate_records(records, cell_order)
 
     by_stratum: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     stratum_class: dict[str, str] = {}
     for record in records:
-        key = stratum_key(record)
+        key = stratum_key(record, cell_order=cell_order)
         by_stratum[key].append(record)
         stratum_class[key] = quota_class(record["predicted_class"])
     capacities = {key: len(rows) for key, rows in sorted(by_stratum.items())}
@@ -234,10 +268,8 @@ def allocate_human_sample(
     if eligible_count < n_total:
         quotas = dict(capacities)
         selected_ids = sorted(record["response_id"] for record in records)
-        member_status = {
-            "P2-U(A)": "non_estimable_fixed720_capacity",
-            "P2-B(T)": "non_estimable_fixed720_capacity",
-        }
+        members = sorted(set(mapping.values()))
+        member_status = {member: "non_estimable_fixed720_capacity" for member in members}
         trace = {
             "allocator_version": IMPLEMENTATION_VERSION,
             "master_seed": master_seed,
@@ -253,7 +285,7 @@ def allocate_human_sample(
                 cell: max(0, 30 - sum(
                     count for key, count in capacities.items() if key.startswith(f"C|{cell}|")
                 ))
-                for cell in P2_CELLS
+                for cell in cell_order
                 if sum(count for key, count in capacities.items() if key.startswith(f"C|{cell}|")) < 30
             },
             "member_quota_status": member_status,
@@ -267,7 +299,7 @@ def allocate_human_sample(
         trace["trace_sha256"] = sha256_json({k: v for k, v in trace.items() if k != "trace_sha256"})
         return trace
 
-    base, shortfalls = _critical_base(capacities)
+    base, shortfalls = _critical_base(capacities, cell_order)
     class_capacity = {
         qclass: sum(capacities[k] for k in capacities if stratum_class[k] == qclass)
         for qclass in QUOTA_CLASSES
@@ -313,9 +345,9 @@ def allocate_human_sample(
         selected_ids.extend(ranked[: quotas[key]])
     selected_ids.sort()
 
-    member_status = {"P2-U(A)": "quota_complete", "P2-B(T)": "quota_complete"}
+    member_status = {member: "quota_complete" for member in sorted(set(mapping.values()))}
     for cell in shortfalls:
-        member_status[CELL_TO_MEMBER[cell]] = "non_estimable_matched_cell_capacity"
+        member_status[mapping[cell]] = "non_estimable_matched_cell_capacity"
 
     trace = {
         "allocator_version": IMPLEMENTATION_VERSION,
