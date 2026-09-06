@@ -1,0 +1,38 @@
+{
+  "manifest_schema": "semantic-pair-source-manifest-v1",
+  "retrieved_at_utc": "2026-09-06",
+  "datasets": [
+    {
+      "dataset_id": "heretic-org/Semantic-Harmful",
+      "revision": "001ca2ceaef94a748235e0ba1366aee48436e286",
+      "license_declared_by_dataset": "CC-BY-4.0",
+      "source_url": "https://huggingface.co/datasets/heretic-org/Semantic-Harmful/tree/001ca2ceaef94a748235e0ba1366aee48436e286",
+      "matched_pairs_url": "https://huggingface.co/datasets/heretic-org/Semantic-Harmful/blob/001ca2ceaef94a748235e0ba1366aee48436e286/metadata/matched_pairs.json"
+    },
+    {
+      "dataset_id": "heretic-org/Semantic-Harmless",
+      "revision": "7e9f2b01272da85f2be7a3437f31ac46698e8735",
+      "license_declared_by_dataset": "CC-BY-4.0",
+      "source_url": "https://huggingface.co/datasets/heretic-org/Semantic-Harmless/tree/7e9f2b01272da85f2be7a3437f31ac46698e8735"
+    }
+  ],
+  "files": {
+    "matched_pairs.json": "d066ddd4a8005271d21f269aacc4cc30bfb5d2f1d7004f3f37004e42f63f5225",
+    "semantic_harmful_README.md": "2157ee61e1e2b180f2c8ba5c702566bb7f29b3f41155368d673b2c65d7cf87a3",
+    "semantic_harmless_README.md": "ec4c6c98e47c723d4ba73c91e2d075d50784955895c6623ab76f6d5b0ea8054c",
+    "semantic_harmful_LICENSE": "cbd5af318286b74656f145dff5091907cc23d6d8c9ad09e0291ec2497792ba41",
+    "semantic_harmless_LICENSE": "cbd5af318286b74656f145dff5091907cc23d6d8c9ad09e0291ec2497792ba41"
+  },
+  "pair_metadata": {
+    "embedding_model": "google/embeddinggemma-300m",
+    "matching_strategy": "hungarian",
+    "threshold": 0.6,
+    "random_seed": 42,
+    "num_matched_pairs": 416
+  },
+  "notes": [
+    "The paired repository declares CC-BY-4.0; upstream dataset license fields are not complete in their cards.",
+    "This bundle is an immutable source snapshot for research provenance, not a claim of human validation.",
+    "The manifest does not include its own SHA256."
+  ]
+}
