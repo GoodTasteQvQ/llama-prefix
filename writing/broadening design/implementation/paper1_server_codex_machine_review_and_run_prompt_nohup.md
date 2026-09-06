@@ -171,10 +171,11 @@ launch_nohup machine-prepare bash "$MBD_WRAPPER" prepare \
 只有以下两个条件同时满足，才允许继续：
 
 1. 新 prepare 已达到 `READY_FOR_CONSTRUCTION` 且实际 `k>=30`；
-2. 原 smoke 的 24/4 统计已核对，并且从原始 trace/environment 或等价的运行内证据确认
+2. 原 smoke 的 24/4 统计已核对，并且存在独立、可核验的 trace/environment 证据，确认
    Qwen/Llama 模型加载、native template、`resid_pre` hook、两 phase、zero-alpha/clean
-   token ids、cache counters 和 Judge 解析。只有总 PASS 字段而没有原始证据时，保持
-   `REAL_RUNTIME_GATE=PENDING_SERVER_VERIFICATION` 并停止。
+   token ids、cache counters 和 Judge 解析。嵌在 smoke report 中的 cases 或总 PASS 字段
+   都不能替代独立证据；缺少独立文件时保持 `REAL_RUNTIME_GATE=PENDING_SERVER_VERIFICATION`
+   并停止，不得重新消耗已经用完的 smoke 配额。
 
 条件满足后，严格复用现有 nohup 任务书，逐步执行：
 
