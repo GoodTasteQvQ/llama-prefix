@@ -9,7 +9,8 @@
 ## 1. 必须遵守的边界
 
 1. 工作目录为 `/data/goodtaste_workspace/llama-prefix`。先确认当前提交为
-   `fb3edb6` 或其后包含 smoke 统计修正的提交；保留其他用户修改，不执行 pull 覆盖修改。
+   `b6896d1` 或其后包含机器审核适配的提交；`fb3edb6` 只包含 smoke 统计修正，不能作为
+   本任务的代码基线。保留其他用户修改，不执行 pull 覆盖修改。
 2. 只使用 `/data/goodtaste_workspace/envs/llama-prefix/bin/python`、GPU 0、逻辑设备
    `cuda:0`、batch size 1、离线本地模型。不下载模型，不使用 Mistral，不使用第二张 GPU。
 3. 机器审核只处理 `safe_pair_split.records` 中的全部 `preliminary_include=true` 行，
@@ -48,9 +49,30 @@ MBD_BASE_CONFIG="$PWD/configs/paper1_broadening/mbd_nm_v21.json"
 MBD_LOG_ROOT="$PWD/logs/paper1_broadening"
 ```
 
-沿用 `paper1_server_codex_run_prompt_nohup.md` 的 `launch_nohup` 函数。每次只提交一个
-阶段，保存 PID、日志和 `.exit`，同时检查退出码和 JSON 业务状态。不要把后台 PID 当作
-成功，不要在前一 GPU 子进程仍运行时启动下一个 GPU 子进程。
+定义并使用以下 `launch_nohup` 函数。每次只提交一个阶段，保存 PID、日志和 `.exit`，
+同时检查退出码和 JSON 业务状态。不要把后台 PID 当作成功，不要在前一 GPU 子进程仍运行
+时启动下一个 GPU 子进程。
+
+```bash
+launch_nohup() {
+  local step="$1"
+  shift
+  local tag="${step}-$(date -u +%Y%m%dT%H%M%SZ)-$$-${RANDOM}"
+  local log="$MBD_LOG_ROOT/$tag.log"
+  local status="$MBD_LOG_ROOT/$tag.exit"
+  nohup bash -c '
+    status_file="$1"
+    shift
+    rc=0
+    "$@" || rc=$?
+    printf "%s\n" "$rc" > "$status_file"
+    exit "$rc"
+  ' mbd-job "$status" "$@" > "$log" 2>&1 < /dev/null &
+  local pid=$!
+  printf '%s\n' "$pid" > "$MBD_LOG_ROOT/$tag.pid"
+  printf 'pid=%s log=%s exit_file=%s\n' "$pid" "$log" "$status"
+}
+```
 
 ## 3. 复核当前状态
 
@@ -72,6 +94,17 @@ launch_nohup offline-tests "$MBD_MODEL_PYTHON" -m pytest \
 
 测试失败时只做与本任务直接相关的最小修复，并重新运行受影响测试；不能以删除测试或
 放宽 gate 获取通过。
+
+重新执行不加载模型的资产预检，并把结果写入项目临时目录：
+
+```bash
+MBD_ASSET_REPORT="$TMPDIR/mbd-assets-machine-$(date -u +%Y%m%dT%H%M%SZ)-$$.json"
+launch_nohup discover-assets bash "$MBD_WRAPPER" discover-assets \
+  --config "$MBD_BASE_CONFIG" --output "$MBD_ASSET_REPORT"
+```
+
+确认 Qwen/Llama/Judge 分片完整；E1 缺 HarmBench、E2 缺 Gemma 时分别保持 NOT_RUN，不能
+用 JBB 来源标签替代 HarmBench，也不能用其他模型替代 Gemma。
 
 核对 smoke 原始 JSON 和日志：`generation_calls` 必须为 24，`judge_calls` 必须为 4；
 `cases=28` 只是 24 个 generation 记录加 4 个 Judge 记录。保留 `PASS/NON_EVIDENCE`。
