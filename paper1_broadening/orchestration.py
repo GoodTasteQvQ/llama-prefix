@@ -93,6 +93,8 @@ DESIGN_SNAPSHOT_PATHS = (
     "writing/broadening design/review/paper1_ccf_a_implementation_review.md",
     "writing/broadening design/implementation/paper1_server_codex_implementation_prompt.md",
     "writing/broadening design/implementation/paper1_server_codex_run_prompt_nohup.md",
+    "writing/broadening design/implementation/paper1_server_codex_machine_review_and_run_prompt_nohup.md",
+    "writing/broadening design/review/paper1_machine_review_protocol_review.md",
 )
 
 

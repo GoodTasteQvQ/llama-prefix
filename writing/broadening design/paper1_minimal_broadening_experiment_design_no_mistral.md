@@ -84,9 +84,14 @@ JBB 使用 `data/jbb_behaviors_harmful.json` 全部 100 行，保留 source inde
 Benign 使用 `data/stage3/benign_prompt_frames_v1/selected_benign_confirm_30.json`。
 
 Contrastive 候选池为 `data/safe_pairs.json`，当前有 500 pairs。检查两侧文本的 NFKC、空白
-折叠和小写 exact duplicates，并对与 evaluation 的词面近邻进行双人盲审。语义重叠指实质相同
-的请求，不把同属一个风险类别认作泄漏。构造/开发不得包含重叠项，也不得以 evaluation 输出
-选择删项。JBB 与 safe-pair harmful 目前 normalized exact overlap 为 0，语义审查仍待完成。
+折叠和小写 exact duplicates，并对与 evaluation 的词面近邻进行语义审核。默认路径是两位独立
+人工 reviewer；若研究者明确授权机器辅助路径，可使用单独的 `safe-pair-semantic-overlap-v1`
+协议：每个 preliminary eligible pair 启动两个相互隔离的 Codex subagent，保存原始意见、agent
+身份、提示版本、输入 frame digest 和时间，按“只有双方都 include 才 include，否则 exclude”的
+固定规则汇总。该路径不是人工审核，不能在论文中写成 human validation；subagent 失败、意见
+缺失或主会话无法保存记录时必须停在 gate。语义重叠指实质相同的请求，不把同属一个风险类别
+认作泄漏。构造/开发不得包含重叠项，也不得以 evaluation 输出选择删项。JBB 与 safe-pair
+harmful 目前 normalized exact overlap 为 0，语义审核仍待完成。
 
 对合格 N 个 pair 用 `random.Random(42)` 打乱一次；固定保留最后 100 个为 development。
 前面的 pair 取 `5*k` 个分成五个互斥 folds，`k=min(80,floor((N-100)/5))`，剩余不使用。

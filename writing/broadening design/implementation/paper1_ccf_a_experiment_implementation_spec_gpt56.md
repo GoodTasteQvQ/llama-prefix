@@ -321,9 +321,14 @@ JBB id 使用 source revision + source index，category 保留原始字符串；
 必要 id。JBB-40 是 10 类各前 4 条。Benign 固定既有 30 条列表。
 
 safe pairs：NFKC、连续空白压缩、lowercase exact-check 两侧；near-match 候选用 normalized
-英文词集合 Jaccard>=0.5（明确仅为候选检索），以及包含关系；输出双人审核队列，不自动
-宣告语义等价。Review ledger 保存 pair/source ids、include/exclude、两名 reviewer 的结论，
-分歧由研究者解决；没有人工结论不得标 semantic PASS。只因风险类别相同不能删除样本。
+英文词集合 Jaccard>=0.5（明确仅为候选检索），以及包含关系；输出审核队列，不自动宣告语义
+等价。默认 review ledger 保存 pair/source ids、include/exclude、两名人工 reviewer 的结论，
+分歧由研究者解决；没有人工结论不得标 human semantic PASS。经明确授权的机器辅助例外必须
+使用 `safe-pair-semantic-overlap-v1`：每个 preliminary eligible pair 由两个隔离 Codex
+subagent 独立判断，保存原始输出、agent/thread 身份、提示版本、evaluation frame digest、
+时间和固定裁决规则；双方都 include 才可标 `SEMANTIC_INCLUDE`，其余均 exclude 或 pending。
+机器结果必须标 `review_mode=dual_codex_subagents_v1`，不能改称人工审阅或作为人工验证证据。
+只因风险类别相同不能删除样本。
 
 按合格原始顺序用 `random.Random(42).shuffle`，N>=250 时保留最后 100 为 development，
 k=min(80,(N-100)//5)，前 5*k 分五折，余下不使用；k<30 对应构造 gate BLOCKED。

@@ -157,6 +157,41 @@ def _semantic_status(decision: Mapping[str, Any] | None) -> str:
     if not required.issubset(decision):
         return "PENDING_SEMANTIC_REVIEW"
     reviewers = {decision["reviewer_a"], decision["reviewer_b"]}
+    if decision.get("review_mode") == "dual_codex_subagents_v1":
+        provenance = {
+            "review_prompt_revision",
+            "adjudication_rule",
+            "evaluation_frame_digest",
+            "reviewer_a_agent_id",
+            "reviewer_b_agent_id",
+            "reviewer_a_model",
+            "reviewer_b_model",
+            "reviewer_a_raw_output",
+            "reviewer_b_raw_output",
+            "reviewer_a_rationale",
+            "reviewer_b_rationale",
+            "reviewed_at",
+        }
+        if not provenance.issubset(decision):
+            return "PENDING_SEMANTIC_REVIEW"
+        if decision.get("review_prompt_revision") != "safe-pair-semantic-overlap-v1":
+            return "PENDING_SEMANTIC_REVIEW"
+        if decision.get("adjudication_rule") != "unanimous_include_else_exclude":
+            return "PENDING_SEMANTIC_REVIEW"
+        if any(
+            not isinstance(decision.get(field), str) or not decision[field]
+            for field in provenance - {"review_prompt_revision", "adjudication_rule"}
+        ):
+            return "PENDING_SEMANTIC_REVIEW"
+        if decision["reviewer_a_agent_id"] == decision["reviewer_b_agent_id"]:
+            return "PENDING_SEMANTIC_REVIEW"
+        if not reviewers.issubset({"include", "exclude", "uncertain"}):
+            return "PENDING_SEMANTIC_REVIEW"
+        if reviewers == {"include"} and decision["decision"] == "include":
+            return "SEMANTIC_INCLUDE"
+        if decision["decision"] == "exclude" and reviewers != {"include"}:
+            return "SEMANTIC_EXCLUDE"
+        return "PENDING_SEMANTIC_REVIEW"
     if reviewers == {"include"} and decision["decision"] == "include":
         return "SEMANTIC_INCLUDE"
     if reviewers == {"exclude"} and decision["decision"] == "exclude":

@@ -130,7 +130,9 @@ PENDING_SEMANTIC_REVIEW。此时只生成审核材料并停止，不运行模型
 
 从frames解析overlap_review_queue中的双方id，为研究者列出两侧原文、候选原因和空白
 reviewer字段。当前实现要求所有preliminary eligible pairs都有审核决定；候选队列不等于
-全部待审pairs，必须同时报告两种数量，不能把无near-match候选自动写成语义PASS。
+全部待审pairs，必须同时报告两种数量，不能把无near-match候选自动写成语义PASS。默认是
+两位人工reviewer；若使用机器辅助，必须另行执行机器审核任务书并标注其 review_mode，不能
+把Codex subagent当作人工reviewer。
 
 decision JSON为 {"records":[...]}，每行含pair_id（例如safe-pair:0）、reviewer_a、
 reviewer_b、decision，合法结论为include/exclude；保留reviewer身份、依据和时间。

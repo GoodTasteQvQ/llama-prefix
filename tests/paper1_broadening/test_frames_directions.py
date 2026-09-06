@@ -111,6 +111,49 @@ def test_safe_pair_split_deduplicates_roles_and_keeps_semantic_gate_pending() ->
     assert ready["executable_eligible_count"] == ready["preliminary_eligible_count"]
 
 
+def test_dual_codex_semantic_review_is_provenanced_and_conservatively_resolved() -> None:
+    pairs = [
+        {"harmful": f"harmful request {index}", "harmless": f"harmless request {index}"}
+        for index in range(500)
+    ]
+    base = {
+        "review_mode": "dual_codex_subagents_v1",
+        "review_prompt_revision": "safe-pair-semantic-overlap-v1",
+        "adjudication_rule": "unanimous_include_else_exclude",
+        "evaluation_frame_digest": "fixture-evaluation-digest",
+        "reviewer_a_agent_id": "agent-a",
+        "reviewer_b_agent_id": "agent-b",
+        "reviewer_a_model": "fixture-model-a",
+        "reviewer_b_model": "fixture-model-b",
+        "reviewer_a_raw_output": "{\"verdict\":\"include\"}",
+        "reviewer_b_raw_output": "{\"verdict\":\"include\"}",
+        "reviewer_a_rationale": "distinct requested task",
+        "reviewer_b_rationale": "distinct requested task",
+        "reviewed_at": "2026-09-06T00:00:00Z",
+    }
+    decisions = {
+        f"safe-pair:{index}": {**base, "reviewer_a": "include", "reviewer_b": "include", "decision": "include"}
+        for index in range(500)
+    }
+    decisions["safe-pair:3"] = {
+        **base,
+        "reviewer_a": "include",
+        "reviewer_b": "uncertain",
+        "decision": "exclude",
+        "reviewer_b_rationale": "possible shared operational goal",
+    }
+    split = build_safe_pair_split(pairs, decisions=decisions)
+    assert split["gate"] == "READY_FOR_CONSTRUCTION"
+    assert split["executable_eligible_count"] == 499
+    assert next(row for row in split["records"] if row["pair_id"] == "safe-pair:3")["semantic_review_status"] == "SEMANTIC_EXCLUDE"
+
+    decisions["safe-pair:4"] = {
+        **decisions["safe-pair:4"],
+        "reviewer_b_agent_id": "agent-a",
+    }
+    assert build_safe_pair_split(pairs, decisions=decisions)["gate"] == "PENDING_SEMANTIC_REVIEW"
+
+
 def test_e1_selection_uses_native_category_order_and_source_index(tmp_path: Path) -> None:
     source = []
     for category in ("zeta", "alpha", "beta", "delta"):
