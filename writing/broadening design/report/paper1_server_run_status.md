@@ -69,11 +69,16 @@ Asset report: `.codex-temp/mbd-assets-20260906T020918Z-4022513.json`.
 ## Existing smoke review
 
 Existing file `.codex-temp/paper1_broadening_smoke-final/smoke_report.json` reports `PASS` with
-`evidence_status=NON_EVIDENCE`, 28 generation calls and 4 Judge calls, both direction families,
+`evidence_status=NON_EVIDENCE`, 24 generation calls and 4 Judge calls, both direction families,
 zero-alpha/clean token-id equality, and model/Judge release lifecycle checks passing. The expected
 standalone trace/environment files were not present. This report is therefore retained as an already
 used implementation smoke record, not a new formal evidence gate; it cannot replace the required
 safe-pair human review or a reproducible current-run A100 verification.
+
+The JSON `cases` array has 28 entries because the four Judge records are appended to the 24 generation
+records. They are distinguished by generation entries containing `runtime_counters` and Judge entries
+containing `judge`; no retry or additional generation is represented. The original smoke log contains
+one run and no retry accounting.
 
 ## Stage status and accounting
 
@@ -83,7 +88,7 @@ safe-pair human review or a reproducible current-run A100 verification.
 | Asset discovery | PASS | JSON report written | E1/E2 unavailable | Runtime checks still pending |
 | Prepare | PASS | 12,640 core identities planned; 0 executed | no generation/Judge | Safe-pair semantic review pending |
 | Safe-pair review | PENDING | 498 preliminary eligible; 86 candidate rows listed | 0 human decisions | Must be completed by two human reviewers |
-| Real smoke | PENDING | Existing NON_EVIDENCE report only | 28 prior generation + 4 prior Judge | Recheck raw trace/environment before formal run |
+| Real smoke | PENDING | Existing NON_EVIDENCE report only | 24 prior generation + 4 prior Judge (28 combined `cases` entries) | Recheck raw trace/environment before formal run |
 | Directions | NOT_RUN | 0 / 0 | 0 | Blocked by safe-pair and runtime gates |
 | Core screen | NOT_RUN | 0 / 0 | 0 | Must follow human review and smoke gate |
 | Core schedule/generation | NOT_RUN | 0 / 0 | 0 | Dose decisions required first |
