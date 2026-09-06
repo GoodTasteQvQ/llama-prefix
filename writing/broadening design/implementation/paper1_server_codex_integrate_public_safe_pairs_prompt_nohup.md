@@ -147,13 +147,15 @@ data/external/semantic_harmful_harmless_v1/integration_manifest.json
 创建本次运行专用的配置副本，基础配置保持不变，仅替换：
 
 ```json
+"design_revision": "v2.1.1-public-pairs",
 "data": {
   "safe_pairs_path": "data/safe_pairs_public_semantic_v1.json",
   "overlap_decisions_path": "<本次审核 ledger 的绝对或项目相对路径>"
 }
 ```
 
-不能修改 `configs/paper1_broadening/mbd_nm_v21.json`。如果现有 loader 只接受
+不能修改 `configs/paper1_broadening/mbd_nm_v21.json`。resolved config 必须把顶层
+`design_revision` 改为 `v2.1.1-public-pairs`，其余科学字段保持完全一致。如果现有 loader 只接受
 `harmful`/`harmless` 两个字段，优先让额外 metadata 被忽略；只有确有必要时才做最小适配，
 并增加对应离线测试。不能把 pair 数量写死为 500；沿用现有动态规则
 `k=min(80,(N-100)//5)`，并要求 `k>=30`。

@@ -4,6 +4,8 @@
 对象：`public-semantic-pairs-integration-v1` 任务书  
 审阅结论：`PASS_WITH_DISCLOSURE`
 
+本次审阅同时覆盖设计修订 `MBD-NM v2.1.1-public-pairs` 的规模影响和任务提示词清理。
+
 ## 结论
 
 推荐把 `heretic-org/Semantic-Harmful` 与配套的 `heretic-org/Semantic-Harmless` 作为本实验
@@ -21,6 +23,18 @@ safe-pair construction 的公开替代源。它是当前候选中唯一同时满
 完整。因此任务书要求双独立 Codex 机器质量审核、保留 source/raw/hash，并要求论文中如实
 称为机器辅助审核。若研究目标或投稿 venue 要求人工安全标注，仍需另行安排人工抽样或全量
 审核，不能把本任务的结果升级为 human validation。
+
+## 规模审计
+
+safe-pair source 从历史 AI 文件的 500 对变为公开 source 的 416 对。按既有公式
+`k=min(80,floor((N-100)/5))`，审核前最大 `k=63`，分配为五个最多 63 对的 construction
+fold、100 条 development 和 1 条 unused。机器审核、exact/near overlap 排除后，prepare
+必须重新计算实际 `k`；`k<30` 时阻断 construction。
+
+这项变化不改变正式 generation 规模：core 仍为 12,640，extension 仍为 7,840，总上限仍为
+20,480。原因是正式 generation 使用固定的 JBB-100、benign-30、development screen 规则、
+8+5 directions、两 phase 和 A/S；safe-pair 数量只改变 contrastive direction construction
+每 fold 的样本量。新 run 使用 `v2.1.1-public-pairs`，旧 `v2.1` run 不得与其混合。
 
 ## 数据事实核验
 
@@ -82,3 +96,9 @@ overlap 0 条；按现有 token Jaccard/containment 候选规则，harmful 侧 4
 任务书在上述披露和停止条件下通过，可以交给服务器 Codex 执行 source bundle 校验、转换、
 双机器质量审核、离线测试和重新 prepare。执行完成后应先审阅服务器报告，再决定是否把新
 数据正式用于 directions；本任务书本身不授权正式实验运行。
+
+## 提示词清理
+
+已删除已完成或已被新 source 替代的三个服务器提示词：旧实现交付、旧 500-pair 机器审核与
+旧正式运行提示词。`implementation/` 目录只保留当前的 public safe-pair 整合任务书和稳定的
+实现规范；当前任务书不启动正式 generation。

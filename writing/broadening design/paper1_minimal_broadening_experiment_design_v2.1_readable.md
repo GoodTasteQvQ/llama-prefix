@@ -1,8 +1,8 @@
 # Paper 1 广度补充实验设计 v2.1：易读版
 
-更新时间：2026-09-05
+更新时间：2026-09-06
 
-设计版本：`MBD-NM v2.1-ccf-a-target`
+设计版本：`MBD-NM v2.1.1-public-pairs`
 
 用途：给作者、导师和论文写作使用
 
@@ -110,16 +110,23 @@ JBB-100 和 benign-30 属于 evaluation。它们不能被拿去构造方向或�
 
 ### 4.2 safe pairs 的处理
 
-当前 safe-pair 文件有 500 对。先做文本规范化和 overlap 检查，再用固定随机种子打乱一次：
+正式实验使用公开、可追溯的 416 对英文 harmful/harmless prompt pairs。数据来自固定 revision
+的 `heretic-org/Semantic-Harmful` 与配套 `Semantic-Harmless`，配对 metadata 记录了相似度、
+阈值和匹配方法。原来的 `data/safe_pairs.json` 是 AI 生成的历史 exploratory/backup 数据，
+不与新数据混用。
+
+先做文本规范化和 overlap 检查，再用固定随机种子打乱一次：
 
 - 最后 100 对固定作为 development；
 - 其余合格数据按顺序分成 5 个互不重叠的 construction folds；
-- 每个 fold 最多 80 对，若因审核排除数据减少，则每个 fold 可以小到 30 对；
+- 每个 fold 最多 80 对；新数据在审核前最多为 63 对/fold，审核排除后按实际数量变化；
 - 少于每 fold 30 对时，方向构造 gate 不通过；
-- 不能因为结果不好而重新选择或重新划分。
+- 不能因为结果不好而重新选择或重新划分，也不能用旧 AI pairs 或新生成文本补齐。
 
-目前 JBB harmful 与 safe-pair harmful 的 normalized exact overlap 为 0，但语义层面的重叠仍
-需要人工审核。风险类别相同不等于 prompt 泄漏，只有实质上是同一请求才应排除。
+公开数据的本地预检发现 harmful 侧有 7 条、harmless 侧有 0 条 normalized exact overlap；另有
+45 条 harmful 侧和 2 条 harmless 侧进入词面 near-match 候选队列。这些数字只是预检，仍需
+按任务书进行双独立 Codex subagent 机器审核。它不是人工审核，论文中不能写成 human
+validation。风险类别相同不等于 prompt 泄漏，只有实质上是同一请求才应排除。
 
 ## 5. 剂量如何选择
 
@@ -159,7 +166,8 @@ A/S 相同、任一剂量未建立、或 screen 缺失过多，正式结果仍�
 | Benign clean | 2 模型 x 30 prompts | 60 |
 | **核心合计** | | **12,640** |
 
-这里的 `(8+5)` 已经包含两种方向构造，不能再次乘以 2。若 A=S，一份物理输出可以被两个
+这里的 `(8+5)` 已经包含两种方向构造，不能再次乘以 2。safe-pair 数量只影响 contrastive
+方向的 construction fold 样本量，不影响本表的 generation 上限。若 A=S，一份物理输出可以被两个
 剂量标签引用，但不能伪装成两个独立观察。重试、smoke、Judge、activation extraction 和
 统计调用单独记账。
 

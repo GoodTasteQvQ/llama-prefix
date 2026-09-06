@@ -1,7 +1,7 @@
 # Paper 1 有边界的广度补充实验设计（不含 Mistral）
 
-更新时间：2026-09-05  
-设计：`MBD-NM v2.1-ccf-a-target`  
+更新时间：2026-09-06  
+设计：`MBD-NM v2.1.1-public-pairs`  
 状态：`DOCUMENT REVIEW PASSED / NOT RUN`  
 实现入口：[GPT-5.6 实现规范](implementation/paper1_ccf_a_experiment_implementation_spec_gpt56.md)
 
@@ -83,20 +83,35 @@ Rogue 的 intervention mask。
 JBB 使用 `data/jbb_behaviors_harmful.json` 全部 100 行，保留 source index/category/Goal。
 Benign 使用 `data/stage3/benign_prompt_frames_v1/selected_benign_confirm_30.json`。
 
-Contrastive 候选池为 `data/safe_pairs.json`，当前有 500 pairs。检查两侧文本的 NFKC、空白
-折叠和小写 exact duplicates，并对与 evaluation 的词面近邻进行语义审核。默认路径是两位独立
-人工 reviewer；若研究者明确授权机器辅助路径，可使用单独的 `safe-pair-semantic-overlap-v1`
-协议：每个 preliminary eligible pair 启动两个相互隔离的 Codex subagent，保存原始意见、agent
-身份、提示版本、输入 frame digest 和时间，按“只有双方都 include 才 include，否则 exclude”的
-固定规则汇总。该路径不是人工审核，不能在论文中写成 human validation；subagent 失败、意见
-缺失或主会话无法保存记录时必须停在 gate。语义重叠指实质相同的请求，不把同属一个风险类别
-认作泄漏。构造/开发不得包含重叠项，也不得以 evaluation 输出选择删项。JBB 与 safe-pair
-harmful 目前 normalized exact overlap 为 0，语义审核仍待完成。
+正式 construction source 改为公开、可追溯的
+`data/safe_pairs_public_semantic_v1.json`，其 source bundle 固定登记
+`heretic-org/Semantic-Harmful@001ca2ceaef94a748235e0ba1366aee48436e286` 与
+`heretic-org/Semantic-Harmless@7e9f2b01272da85f2be7a3437f31ac46698e8735`，共 416 个
+一一对应的英文 harmful/harmless pairs。配对 metadata 记录
+`google/embeddinggemma-300m`、normalized embeddings、Hungarian matching、threshold
+`0.6` 和 seed `42`；配对仓库声明 CC-BY-4.0。原 `data/safe_pairs.json` 是 AI 生成的历史
+exploratory/backup source，不与新 source 混用，也不被覆盖。
+
+对两侧文本检查 NFKC、空白折叠和小写 exact duplicates，并对与 evaluation 的词面近邻进行
+语义审核。默认路径是两位独立人工 reviewer；当前授权执行的是
+`public-semantic-pair-quality-v1` 双 Codex subagent 机器辅助路径：每个 preliminary eligible
+pair 启动两个相互隔离的 subagent，保存原始意见、agent 身份、提示版本、输入 frame digest
+和时间，按“只有双方都 include 才 include，否则 exclude”的固定规则汇总。该路径不是人工
+审核，不能在论文中写成 human validation；subagent 失败、意见缺失或主会话无法保存记录时
+必须停在 gate。语义重叠指实质相同的请求，不把同属一个风险类别认作泄漏。构造/开发不得
+包含重叠项，也不得以 evaluation 输出选择删项。
+
+公开 source 的本地预检为：harmful 侧与 JBB/benign evaluation frames 有 7 条 normalized
+exact overlap，harmless 侧为 0 条；按现有词集合 Jaccard/containment 规则另有 45 条 harmful
+侧和 2 条 harmless 侧 near-match candidates。这些是待审核/排除的候选统计，不是最终语义
+裁决；重新 prepare 后必须以实际保留数量为准。
 
 对合格 N 个 pair 用 `random.Random(42)` 打乱一次；固定保留最后 100 个为 development。
 前面的 pair 取 `5*k` 个分成五个互斥 folds，`k=min(80,floor((N-100)/5))`，剩余不使用。
-要求 `k>=30`，否则构造资产 gate 不通过。N=500 时仍为 5 x 80 + 100。这样少量去重不必
-补造新数据；实际 k、未用行和排除理由全部记录，不凭结果调整 k。Development 的前 20 条
+要求 `k>=30`，否则构造资产 gate 不通过。新 source 在审核前的上限为
+`k=min(80,floor((416-100)/5))=63`，即最多 `5 x 63 + 100`，余下 1 条不使用；审核排除后
+的实际 `k`、未用行和排除理由全部记录。若实际 `k<30`，不得用旧 AI pairs、JBB、HarmBench
+或新生成文本补齐，也不得因结果好坏调整公式。Development 的前 20 条
 harmful 固定用于 dose screen，其全部 100 条用于测量和符号诊断。
 
 三个角色严格分开：construction 构造向量；development 选择剂量；evaluation 只产出论文
