@@ -31,6 +31,7 @@ class PhaseAwareSteeringController:
         defense_config: dict[str, Any] | None = None,
         filter_role_marker_ids: set[int] | None = None,
         filter_newline_ids: set[int] | None = None,
+        capture_traces: bool = True,
     ) -> None:
         self.layer_module = layer_module
         self.fixed_prompt_ids = fixed_prompt_ids
@@ -42,12 +43,17 @@ class PhaseAwareSteeringController:
         self.defense_config = defense_config or {}
         self.filter_role_marker_ids = filter_role_marker_ids or set()
         self.filter_newline_ids = filter_newline_ids or set()
+        self.capture_traces = capture_traces
 
         self.prefill_calls = 0
         self.decode_cached_calls = 0
         self.decode_full_calls = 0
         self.decode_calls = 0
         self.generated_steered_calls = 0
+        self.prefill_steered_calls = 0
+        self.prefill_mask_sum_total = 0.0
+        self.decode_mask_sum_total = 0.0
+        self.decode_nonzero_mask_calls = 0
         self.decode_step_index = 0
         self.total_calls = 0
         self.traces: list[HookTrace] = []
@@ -213,30 +219,40 @@ class PhaseAwareSteeringController:
             self.decode_calls += 1
 
         mask = self._mask_tensor(hidden_states, phase)
+        mask_sum = float(mask.sum().item())
+        if phase == "prefill":
+            self.prefill_mask_sum_total += mask_sum
+        else:
+            self.decode_mask_sum_total += mask_sum
+            if mask_sum > 0.0:
+                self.decode_nonzero_mask_calls += 1
         projection_score = self._projection_score(hidden_states)
         attack_strength = self._attack_strength(phase)
         defense_strength = self._defense_strength(phase, projection_score)
 
         if attack_strength:
             hidden_states = hidden_states + attack_strength * attack_vector * mask
-            if phase != "prefill" and float(mask.sum().item()) > 0:
+            if phase == "prefill" and mask_sum > 0.0:
+                self.prefill_steered_calls += 1
+            if phase != "prefill" and mask_sum > 0.0:
                 self.generated_steered_calls += 1
 
         if defense_strength:
             hidden_states = hidden_states - defense_strength * defense_vector * mask
 
-        self.traces.append(
-            HookTrace(
-                phase=phase,
-                seq_len=seq_len,
-                mask_sum=float(mask.sum().item()),
-                attack_applied=bool(attack_strength),
-                defense_applied=bool(defense_strength),
-                attack_strength=float(attack_strength),
-                defense_strength=float(defense_strength),
-                projection_score=projection_score,
+        if self.capture_traces:
+            self.traces.append(
+                HookTrace(
+                    phase=phase,
+                    seq_len=seq_len,
+                    mask_sum=mask_sum,
+                    attack_applied=bool(attack_strength),
+                    defense_applied=bool(defense_strength),
+                    attack_strength=float(attack_strength),
+                    defense_strength=float(defense_strength),
+                    projection_score=projection_score,
+                )
             )
-        )
 
         if phase != "prefill":
             self.decode_step_index += 1
@@ -261,6 +277,10 @@ class PhaseAwareSteeringController:
             "decode_full_calls": self.decode_full_calls,
             "decode_calls": self.decode_calls,
             "generated_steered_calls": self.generated_steered_calls,
+            "prefill_steered_calls": self.prefill_steered_calls,
+            "prefill_mask_sum_total": self.prefill_mask_sum_total,
+            "decode_mask_sum_total": self.decode_mask_sum_total,
+            "decode_nonzero_mask_calls": self.decode_nonzero_mask_calls,
             "attack_strength_mode": strength_mode,
             "attack_coefficient": self.attack_config.get("coefficient"),
             "attack_coefficient_c": self.attack_config.get("coefficient_c"),
@@ -268,6 +288,7 @@ class PhaseAwareSteeringController:
             "attack_effective_alpha": self.attack_config.get("effective_alpha"),
             "attack_mu_source": self.attack_config.get("mu_source"),
             "attack_mu_config": self.attack_config.get("mu_config", {}),
+            "capture_traces": self.capture_traces,
             "trace_count": len(self.traces),
             "decode_mask_sums": [
                 trace.mask_sum for trace in self.traces if trace.phase != "prefill"
