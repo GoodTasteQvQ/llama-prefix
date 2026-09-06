@@ -1,7 +1,8 @@
 # Paper 1 补充实验设计审阅
 
 日期：2026-09-05  
-对象：[实验设计](paper1_minimal_broadening_experiment_design_no_mistral.md)  
+对象：[实验设计](../paper1_minimal_broadening_experiment_design_no_mistral.md)
+
 版本：`MBD-NM v2.1-ccf-a-target`  
 结论：**PASS，限文档设计一致性；真实运行仍有资产、人审和 smoke 前提。**
 

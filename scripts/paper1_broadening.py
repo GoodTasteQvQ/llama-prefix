@@ -41,6 +41,7 @@ from paper1_broadening.pipeline import (
     run_real_screen,
 )
 from paper1_broadening.runtime import discover_assets
+from paper1_broadening.judge import judge_rubric_revision
 from paper1_broadening.smoke import run_fixture_smoke, run_real_smoke
 
 
@@ -283,7 +284,7 @@ def command_sample_human(args: argparse.Namespace) -> dict[str, Any]:
     packet_paths = write_blinded_packets(
         allocation,
         run_dir / f"human_packets{suffix}",
-        "Apply the supplied four-class rubric. Do not infer experiment metadata.",
+        judge_rubric_revision()["templates"]["harmful"],
     )
     return {"allocation": allocation, "packet_paths": packet_paths}
 

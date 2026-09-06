@@ -19,8 +19,10 @@ CCF-A 写进文章，而是让审稿人能够回答：
 
 现有 Paper 1 的稳定主线是：在被审计的 activation-steering 实现中，KV-cache/phase 语义
 会改变实际干预时机；持续 generated-token steering 的高强度结果需要结合 broken、repetition
-和四分类输出解释；calibration 是支持性 Qwen case study。补充实验完成后，只把实际结果
-填入相应位置，不预先承诺“跨 benchmark、跨模型或跨层复现”。
+和四分类输出解释；已有 Stage 3 的 Calibration-Frame Sensitivity（P1/P2/K1）是独立的
+calibration-aware Qwen case study。这里的“已有”指已登记的生成/分析结果，不等于人工验证和
+两阶段敏感性已经全部完成。补充实验完成后，只把实际结果填入相应位置，不预先承诺
+“跨 benchmark、跨模型或跨层复现”。
 
 这份路线不替代导师的选题判断、目标期刊的格式要求或最终英文润色。它提供执行顺序、文件
 产物、停止条件和审阅方法。每一阶段完成后再进入下一阶段，未通过审阅的阶段保留为草稿。
@@ -94,6 +96,8 @@ writing/paper1_draft/
   方法混进来；
 - Mistral、E1/E2/E3 在没有实际合格结果前不能写为完成；
 - fixed720 selection、人工标签和 Judge quality 的状态不能混写；
+- Calibration-Frame Sensitivity 的 P1/P2/K1 已有结果必须单独登记，不能与 v2.1 新补充实验的
+  development `mu_content` 或 E1/E2/E3 合并，也不能把它写成待完成实验；
 - 结果落地后的 provenance manifest 是 artifact 证据，不是运行前科学结果。
 
 完成标准：读者只看这一页，就能知道哪些结论可写、哪些结论必须留空。
@@ -216,7 +220,8 @@ useful_structure,not_to_copy,notes
 4. direction、dose、prompt frame 和数据分割；
 5. four-class Judge、binary ASR、ARR/repetition；
 6. missingness、bootstrap、人工审核和 provenance；
-7. 补充实验方法占位。
+7. Calibration-aware Case Study：已有 P1/P2/K1 的 frame 定义、固定支持集、endpoint 和结论边界；
+8. 补充实验方法占位。
 
 每个小节结束写“本节允许支持的结论”。Methods 不混入结果数字，不写“我们发现”。
 
@@ -229,7 +234,8 @@ useful_structure,not_to_copy,notes
 3. 观察到的数值和不确定性；
 4. 这一结果支持什么、不能支持什么。
 
-先写 phase audit，再写行为结果，再写 cross-model，再写 calibration。对于原始 P2 和
+先写 phase audit，再写行为结果，再写 cross-model，再写 Calibration-Frame Sensitivity。
+对于原始 P2 和
 amended P2 v2，分别给运行身份、endpoint、保留样本和区间；禁止用一张表把两者合并成一个结果。
 
 ### 6.3 Introduction、Related Work、Discussion
@@ -365,7 +371,8 @@ uncertainty / denominator / panel_role / main_or_appendix / caption_claim / limi
 1. 建立 `paper1_draft/` 目录和 `00_scope_and_status.md`；
 2. 将 `paper1_claim_evidence_matrix.md` 转成 `01_claim_ledger.csv`，先填 15-20 条主张；
 3. 为每条主张补 result path、分母和 allowed/forbidden wording；
-4. 核对原始 P2、amended P2 v2、K1、harmful-clean、benign 和 fixed720 的最新状态；
+4. 核对 Stage 3 P1/P2/K1、原始 P2、amended P2 v2、harmful-clean、benign 和 fixed720 的最新状态，
+   并把 Calibration-Frame Sensitivity 单独登记到 claim ledger；
 5. 选 12-20 篇论文填 `03_literature_matrix.csv`，先不写 Related Work；
 6. 产出一页相关工作差异表和一页图表规则；
 7. 写 `04_outline.md` 与 `05_figure_table_plan.md`；

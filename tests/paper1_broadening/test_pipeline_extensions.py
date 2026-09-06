@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from paper1_broadening.common import BroadeningError, recover_jsonl_tail, read_jsonl
+from paper1_broadening.common import BroadeningError, atomic_write_json, recover_jsonl_tail, read_json, read_jsonl
 from paper1_broadening.config import CORE_BUDGET, EXTENSION_BUDGET, default_config, validate_config
 from paper1_broadening.extensions import (
     build_e1_schedule,
@@ -14,7 +14,12 @@ from paper1_broadening.extensions import (
     build_e3_screen_schedule,
 )
 from paper1_broadening.orchestration import build_core_schedule, create_run, fixture_e2e, verify_run_source_snapshot
-from paper1_broadening.pipeline import _development_screen_prompts, _prompt_map, _screen_rows_from_artifacts
+from paper1_broadening.pipeline import (
+    _development_screen_prompts,
+    _prompt_map,
+    _screen_rows_from_artifacts,
+    run_real_screen,
+)
 from paper1_broadening.extensions import extension_prerequisites
 
 
@@ -149,6 +154,41 @@ def test_e1_prompt_mapping_and_missing_gemma_prerequisite_fail_closed() -> None:
     result = extension_prerequisites({"e1": {"status": "NOT_RUN", "records": []}}, config)
     assert result["E2"]["status"] == "NOT_RUN"
     assert result["E2"]["reason"] == "MODEL_PATH_NOT_CONFIGURED"
+
+
+def test_failed_screen_generation_does_not_start_judge(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = validate_config(default_config(root))
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    atomic_write_json(run_dir / "run_header.json", {"run_id": "run-failed-screen"}, overwrite=False)
+    frames = _frames()
+    atomic_write_json(run_dir / "frames.json", frames, overwrite=False)
+    atomic_write_json(
+        run_dir / "directions.json",
+        {
+            "models": {
+                "qwen25": {"status": "COMPLETED", "mu_content": 1.0, "mu_content_token_count": 1},
+                "llama31": {"status": "COMPLETED", "mu_content": 1.0, "mu_content_token_count": 1},
+            }
+        },
+        overwrite=False,
+    )
+    calls: list[str] = []
+
+    def fake_screen_child(*, run_dir: Path, config: dict[str, object], block: str, command: str) -> dict[str, object]:
+        calls.append(command)
+        return {"command": command, "returncode": 1, "success": False, "log": str(run_dir / "failed.log")}
+
+    monkeypatch.setattr("paper1_broadening.pipeline._run_screen_child", fake_screen_child)
+    result = run_real_screen(run_dir=run_dir, config=config, block="core")
+
+    assert result["status"] == "SCREEN_GATE_BLOCKED"
+    assert result["E1"]["status"] == "NOT_RUN"
+    assert calls == ["generate"]
+    process = read_json(run_dir / "screen_processes_core.json")
+    assert process["judge"]["status"] == "NOT_RUN"
+    assert read_json(run_dir / "screen_judge_runtime_status_core.json")["status"] == "RUNTIME_NOT_RUN"
 
 
 def test_jsonl_tail_is_preserved_before_resume(tmp_path: Path) -> None:

@@ -4,12 +4,15 @@
 对应设计：`MBD-NM v2.1-ccf-a-target`  
 实现规格修订：`linux-single-gpu-v1`（仅执行环境适配，不改变科学设计版本）  
 状态：`DOCUMENT REVIEW PASSED / IMPLEMENTATION NOT STARTED`  
-科学设计：[实验设计](paper1_minimal_broadening_experiment_design_no_mistral.md)  
-审阅：[实现规范审阅](paper1_ccf_a_implementation_review.md)
+科学设计：[实验设计](../paper1_minimal_broadening_experiment_design_no_mistral.md)
+
+审阅：[实现规范审阅](../review/paper1_ccf_a_implementation_review.md)
 
 ## 1. 给实现模型的任务
 
-先读对应科学设计，再按本文实现核心包与 E1/E2/E3。当前交付任务是代码、配置示例、离线
+先读对应科学设计，再按本文实现核心包与 E1/E2/E3。已有 Stage 3 Calibration-Frame
+Sensitivity（P1/P2/K1）是论文的既有证据输入，不属于本任务的新 generation，也不应被重跑、
+移动 anchor 或混入 20,480 预算；实现只需能登记其结果定位和状态。当前交付任务是代码、配置示例、离线
 fixtures、验证结果和 Linux 单卡运行说明；实现位置为实验室服务器的
 `/data/goodtaste_workspace/llama-prefix`。不因收到本文就自动启动整批 GPU 实验或下载模型。用户之后
 明确要求运行时按其授权执行，不追加本文件没有要求的审批流程。
@@ -145,9 +148,9 @@ Judge 子步骤，不能一次把两个模型加载到同一进程驻留。按�
 应推进，不能要求仍等于该值。服务器 Codex 先确认下列文件存在且版本相符再实现：
 
 - 必需：`writing/broadening design/paper1_minimal_broadening_experiment_design_no_mistral.md`（v2.1 科学设计）。
-- 必需：`writing/broadening design/paper1_ccf_a_experiment_implementation_spec_gpt56.md`（本任务书，linux-single-gpu-v1）。
-- 建议同时同步：`writing/broadening design/paper1_minimal_broadening_design_review.md` 和
-  `writing/broadening design/paper1_ccf_a_implementation_review.md`。
+- 必需：`writing/broadening design/implementation/paper1_ccf_a_experiment_implementation_spec_gpt56.md`（本任务书，linux-single-gpu-v1）。
+- 建议同时同步：`writing/broadening design/review/paper1_minimal_broadening_design_review.md` 和
+  `writing/broadening design/review/paper1_ccf_a_implementation_review.md`。
 
 目录名包含空格，Bash 中路径参数必须加双引号；相邻文档的 Markdown 链接仍采用相对文件名。
 

@@ -53,6 +53,8 @@ from .directions import (
 
 
 def _dose_rhos(document: Mapping[str, Any]) -> dict[str, dict[str, dict[str, float]]]:
+    if "core" in document and document["core"].get("status") != "DOSE_DECIDED":
+        raise BroadeningError("core dose screen is not complete")
     source = document.get("decisions", document)
     if not isinstance(source, Mapping):
         raise BroadeningError("dose decision document lacks decisions")
@@ -1083,7 +1085,9 @@ def run_real_generation(
                     runtime_identity,
                     overwrite=True,
                 )
-                for row in grouped_rows:
+                # Queue at most one retry per response before handing outputs to Judge.
+                pending_rows = list(grouped_rows)
+                for row in pending_rows:
                     response_id = row["response_id"]
                     identity = row["identity"]
                     previous = sorted(state.get(response_id, []), key=lambda item: item["attempt_no"])
@@ -1092,6 +1096,7 @@ def run_real_generation(
                     }:
                         continue
                     attempt_no = (previous[-1]["attempt_no"] + 1) if previous else 1
+                    attempt_dose = previous[0]["dose_label"] if previous else row["dose_label"]
                     try:
                         prompt = prompt_map.get(identity["prompt_id"])
                         if not isinstance(prompt, str):
@@ -1134,7 +1139,7 @@ def run_real_generation(
                             },
                             error=None,
                             identity=identity,
-                            dose_label=row["dose_label"],
+                            dose_label=attempt_dose,
                         )
                     except Exception as exc:
                         retryable = attempt_no == 1
@@ -1148,8 +1153,10 @@ def run_real_generation(
                             diagnostics={"fixture": False, "exception_type": type(exc).__name__},
                             error=f"{type(exc).__name__}: {exc}",
                             identity=identity,
-                            dose_label=row["dose_label"],
+                            dose_label=attempt_dose,
                         )
+                        if retryable:
+                            pending_rows.append(row)
                     append_generation_attempt(attempts_path, attempt)
                     all_attempts.append(attempt)
                     state.setdefault(response_id, []).append(attempt)
@@ -1244,7 +1251,7 @@ def run_real_judge(
     behavior_release_filename: str = "behavior_release.json",
 ) -> dict[str, Any]:
     verify_run_source_snapshot(run_dir=run_dir, repo_root=Path(str(config["project_root"])).resolve())
-    schedule = load_schedule(run_dir / schedule_filename)
+    schedule = list({row["response_id"]: row for row in load_schedule(run_dir / schedule_filename)}.values())
     attempts_path = run_dir / attempts_filename
     attempts = read_jsonl(attempts_path) if attempts_path.exists() else []
     canonical = canonical_generation_records(attempts)
@@ -1265,17 +1272,25 @@ def run_real_judge(
             existing_response = ""
             if canonical_record and canonical_record.get("canonical_attempt") is not None:
                 existing_response = str(canonical_record["canonical_attempt"]["text"])
-            _validate_existing_judge_record(
-                existing[scheduled["response_id"]], scheduled, prompts, existing_response
-            )
+            old = existing[scheduled["response_id"]]
+            validation_response = "" if old.get("four_class_status") == "UNEXECUTED" and old.get("four_class_error") == "generation_missing" else existing_response
+            _validate_existing_judge_record(old, scheduled, prompts, validation_response)
     lifecycle_path = run_dir / behavior_release_filename
     lifecycle = read_json(lifecycle_path) if lifecycle_path.exists() else {}
-    expected_lifecycle_keys = {
-        f"{identity['model_id']}|layer{identity['layer'] if identity.get('layer') is not None else config['models'][identity['model_id']].get('layer')}"
-        for row in schedule
-        for identity in [row["identity"]]
-        if identity.get("model_id") in config["models"] and identity["model_id"] != "judge"
-    }
+    model_layers: dict[str, set[int]] = defaultdict(set)
+    for row in schedule:
+        identity = row["identity"]
+        if identity["layer"] is not None:
+            model_layers[identity["model_id"]].add(int(identity["layer"]))
+    expected_lifecycle_keys: set[str] = set()
+    for row in schedule:
+        identity = row["identity"]
+        model_id, layer = identity["model_id"], identity["layer"]
+        if layer is None:
+            layers = model_layers.get(model_id) or {config["models"][model_id].get("layer")}
+        else:
+            layers = {layer}
+        expected_lifecycle_keys.update(f"{model_id}|layer{value}" for value in layers)
     lifecycle_records = {
         key: lifecycle.get(key)
         for key in expected_lifecycle_keys
@@ -1327,7 +1342,19 @@ def run_real_judge(
         return {"judge_records": len(records), "binary": binary, "status": "RUNTIME_NOT_RUN", "failure": failure}
     records: list[dict[str, Any]] = []
     records_by_id: dict[str, dict[str, Any]] = dict(existing)
-    rewrite_existing = False
+
+    def persist(record: dict[str, Any]) -> None:
+        response_id = record["response_id"]
+        replacing = response_id in records_by_id
+        records_by_id[response_id] = record
+        if replacing:
+            payload = b"".join(
+                (canonical_json(records_by_id[row["response_id"]]) + "\n").encode("utf-8")
+                for row in schedule if row["response_id"] in records_by_id
+            )
+            atomic_write_bytes(existing_path, payload, overwrite=True)
+        else:
+            append_jsonl(existing_path, record)
     try:
         judge_identity = judge.identity()
         record_loaded_identity(run_dir=run_dir, role="judge", identity=judge_identity)
@@ -1341,9 +1368,15 @@ def run_real_judge(
                 else None
             )
             response = str(canonical_attempt["text"]) if canonical_attempt is not None else ""
-            if response_id in records_by_id:
+            current = records_by_id.get(response_id)
+            resume_unexecuted = (
+                current is not None and canonical_attempt is not None
+                and int(current.get("actual_call_counts", {}).get("four_class", 0)) == 0
+                and current.get("four_class_status") in {"UNEXECUTED", "TECHNICAL_FAILURE"}
+            )
+            if current is not None and not resume_unexecuted:
                 current = records_by_id[response_id]
-                if not binary or current.get("binary_status") != "NOT_REQUESTED":
+                if not binary or current.get("binary_status") not in {"NOT_REQUESTED", "UNEXECUTED"}:
                     records.append(current)
                     continue
                 prompt = prompts.get(row["identity"]["prompt_id"])
@@ -1357,9 +1390,8 @@ def run_real_judge(
                 updated = _record_with_binary(
                     existing=current, prompt=prompt, response=response, binary=binary_result
                 )
-                records_by_id[response_id] = updated
+                persist(updated)
                 records.append(updated)
-                rewrite_existing = True
                 continue
             if not canonical_record or canonical_record.get("canonical_attempt") is None:
                 domain = "benign" if row["identity"]["block"].startswith("core_benign_") else "harmful"
@@ -1412,22 +1444,14 @@ def run_real_judge(
                     response_id=response_id, prompt=prompt, response=attempt["text"], domain=domain,
                     four_class=result, binary=binary_result,
                 )
-            append_jsonl(existing_path, record)
-            records_by_id[response_id] = record
+            persist(record)
             records.append(record)
     finally:
         release = judge.release()
-        atomic_write_json(run_dir / judge_release_filename, release, overwrite=True)
-    if rewrite_existing:
-        ordered_ids: list[str] = []
-        for row in schedule:
-            if row["response_id"] not in ordered_ids:
-                ordered_ids.append(row["response_id"])
-        payload = b"".join(
-            (canonical_json(records_by_id[response_id]) + "\n").encode("utf-8")
-            for response_id in ordered_ids
-        )
-        atomic_write_bytes(existing_path, payload, overwrite=True)
+        atomic_write_json(run_dir / judge_release_filename, {"judge": release}, overwrite=True)
+    atomic_write_json(run_dir / judge_status_filename, {
+        "status": "COMPLETED", "judge_records": len(records_by_id), "binary": binary,
+    }, overwrite=True)
     return {"judge_records": len(records_by_id), "binary": binary, "status": "COMPLETED"}
 
 
@@ -1467,7 +1491,7 @@ def run_real_screen(*, run_dir: Path, config: Mapping[str, Any], block: str = "c
             return {"status": "NOT_RUN", "reason": "CORE_SCREEN_PENDING"}
         document = read_json(run_dir / "dose_decisions.json")
         core = document.get("core")
-        if not isinstance(core, Mapping) or not isinstance(core.get("decisions"), Mapping):
+        if not isinstance(core, Mapping) or core.get("status") != "DOSE_DECIDED" or not isinstance(core.get("decisions"), Mapping):
             raise BroadeningError("E1 can reference core doses only after the core screen")
         document = dict(document)
         document["E1"] = {
@@ -1505,6 +1529,67 @@ def run_real_screen(*, run_dir: Path, config: Mapping[str, Any], block: str = "c
     # The parent is a CPU scheduler. Each child exits before the next GPU
     # resident runtime is loaded, which makes the release boundary explicit.
     generation_process = _run_screen_child(run_dir=run_dir, config=config, block=block, command="generate")
+    if not generation_process["success"]:
+        # A failed generation screen cannot provide Judge inputs. Persist the
+        # blocked state without starting a second GPU-resident child.
+        judge_process = {
+            "command": "judge",
+            "returncode": None,
+            "success": False,
+            "status": "NOT_RUN",
+            "reason": "GENERATION_PROCESS_FAILED",
+        }
+        process_record = {
+            "generation": generation_process,
+            "judge": judge_process,
+            "serial": True,
+            "judge_started_after_generation_exit": False,
+        }
+        atomic_write_json(run_dir / f"screen_processes_{block}.json", process_record, overwrite=True)
+        atomic_write_json(
+            run_dir / f"screen_judge_runtime_status_{block}.json",
+            {
+                "status": "RUNTIME_NOT_RUN",
+                "reason": "GENERATION_PROCESS_FAILED",
+                "generation_process": generation_process,
+            },
+            overwrite=True,
+        )
+        document = read_json(run_dir / "dose_decisions.json") if (run_dir / "dose_decisions.json").exists() else {
+            "schema_version": "paper1-broadening-dose-decisions-v1",
+            "fixture": False,
+            "source_run_id": read_json(run_dir / "run_header.json")["run_id"],
+        }
+        document = dict(document)
+        document.setdefault("schema_version", "paper1-broadening-dose-decisions-v1")
+        document["fixture"] = False
+        document.setdefault("extensions", {})
+        screen_record = {
+            "status": "SCREEN_GATE_BLOCKED",
+            "schedule_filename": artifact_names["schedule"],
+            "attempts_filename": artifact_names["attempts"],
+            "ledger_filename": artifact_names["ledger"],
+            "judge_filename": artifact_names["judges"],
+            "generation": {"status": "PROCESS_FAILED", "process": generation_process},
+            "judge": {"status": "RUNTIME_NOT_RUN", "process": judge_process},
+        }
+        if block == "core":
+            document["decisions"] = {}
+            document["core"] = {"status": "SCREEN_GATE_BLOCKED", "decisions": {}, "screen": screen_record}
+            document["E1"] = {
+                "status": "NOT_RUN",
+                "reason": "CORE_SCREEN_BLOCKED",
+                "source_run_id": document["source_run_id"],
+            }
+        else:
+            document["extensions"][block] = {
+                "status": "SCREEN_GATE_BLOCKED",
+                "decisions": {},
+                "screen": screen_record,
+            }
+        document["status"] = "SCREEN_GATE_BLOCKED"
+        atomic_write_json(run_dir / "dose_decisions.json", document, overwrite=True)
+        return document
     judge_process = _run_screen_child(run_dir=run_dir, config=config, block=block, command="judge")
     process_record = {
         "generation": generation_process,
@@ -1553,11 +1638,12 @@ def run_real_screen(*, run_dir: Path, config: Mapping[str, Any], block: str = "c
     document["fixture"] = False
     document["source_run_id"] = read_json(run_dir / "run_header.json")["run_id"]
     document.setdefault("extensions", {})
-    run_status = _decision_status(decisions if block != "E3" else {
-        f"{model_id}|{layer}": value
-        for model_id, layers in decisions.items()
-        for layer, value in layers.items()
-    })
+    flat_decisions = decisions if block == "E2" else {
+        f"{model_id}|{key}": value
+        for model_id, groups in decisions.items()
+        for key, value in groups.items()
+    }
+    run_status = _decision_status(flat_decisions)
     if not generation_process["success"] or not judge_process["success"]:
         run_status = "SCREEN_GATE_BLOCKED"
     screen_record = {
@@ -1573,9 +1659,10 @@ def run_real_screen(*, run_dir: Path, config: Mapping[str, Any], block: str = "c
         document["decisions"] = decisions
         document["core"] = {"status": run_status, "decisions": decisions, "screen": screen_record}
         document["E1"] = {
-            "status": "REFERENCES_CORE",
+            "status": "REFERENCES_CORE" if run_status == "DOSE_DECIDED" else "NOT_RUN",
+            **({"reason": "CORE_SCREEN_BLOCKED"} if run_status != "DOSE_DECIDED" else {}),
             "source_run_id": document["source_run_id"],
-            "decisions_source": "core",
+            **({"decisions_source": "core"} if run_status == "DOSE_DECIDED" else {}),
         }
     else:
         document["extensions"][block] = {

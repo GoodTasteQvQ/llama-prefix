@@ -3,8 +3,9 @@
 更新时间：2026-09-05  
 设计：`MBD-NM v2.1-ccf-a-target`  
 状态：`DOCUMENT REVIEW PASSED / NOT RUN`  
-实现入口：[GPT-5.6 实现规范](paper1_ccf_a_experiment_implementation_spec_gpt56.md)  
-审阅：[设计审阅](paper1_minimal_broadening_design_review.md)
+实现入口：[GPT-5.6 实现规范](implementation/paper1_ccf_a_experiment_implementation_spec_gpt56.md)
+
+审阅：[设计审阅](review/paper1_minimal_broadening_design_review.md)
 
 ## 0. 决策：扩大证据范围，但不以实验数量判定论文等级
 
@@ -40,6 +41,15 @@ CCF-A”的门槛。严谨的复现、测量和负结果研究也可以成为强
 1. `public_v1` 的实际干预时序与 `decode_only` 有何差别？由 hook/cache trace 回答。
 2. 在独立 development frame 选出的 A/S 两个剂量下，unsafe 与 broken 的组成是否不同？
 3. 这种观察在不同 prompts、方向构造、外部数据、第三架构和离散层位点上保留到什么程度？
+4. 已完成的 Calibration-Frame Sensitivity 实验中，all-token 与 content-token 的校准 frame 是否
+   改变 measured calibration scale、dose geometry 和固定支持集上的行为估计？
+
+第 4 个问题属于已有 Stage 3 的 calibration-aware 支持性证据，不是本设计新增的 E1/E2/E3
+实验，也不占用本设计的 20,480 generation 预算。它的 P1/P2/K1 结果必须作为独立证据线进入论文；
+本设计中新出现的 `mu_content` 只是新补充实验选择剂量所需的 development calibration，不能
+替代或覆盖已有的 Calibration-Frame Sensitivity。已有实验不重跑、不移动其 anchor 或 endpoint，
+其结论仍受原 Stage 3 的 `P1 gate`、P2 estimation-only 和 K1 描述性边界约束。这里的“已有结果”
+指已登记的生成/分析产物；人工验证和两阶段敏感性是否完成，仍以 claim-evidence matrix 的状态为准。
 
 核心包最多支持“在 Qwen/Llama、JBB-100 和两种被测方向构造中的条件化结果”。Contrastive
 activation addition 是第二种方向构造，是对 second attack family 缺口的有限补充；它不是
@@ -89,6 +99,10 @@ harmful 固定用于 dose screen，其全部 100 条用于测量和符号诊断�
 候选删除与已执行 construction/development 重叠的行，不能回头重选核心构造数据。
 
 ### 3.2 方向与 calibration
+
+本节的 `mu_content` 仅服务于新补充实验的 A/S dose calibration。它不能被误读为重新执行
+Stage 3 的 all-token/content-token sensitivity。已有 Calibration-Frame Sensitivity 的结果、
+运行身份和主张边界以 Stage 3 归档及 `paper1_claim_evidence_matrix.md` 为准。
 
 Rogue 使用 CPU float32 Gaussian 后 L2 normalize；master seed 42，模型 seed 固定为
 `42*10000 + model_index`，Qwen/Llama/Gemma index 为 1/2/3。新 namespace 避免与历史
@@ -227,7 +241,7 @@ broken 的加权 recall <0.75 时对应自动结论降级；gold 该类 <10 时�
 
 ## 9. 执行顺序和产物
 
-固定分割/资产 -> 构造与无干预测量 -> smoke -> development generate/Judge -> A/S 决策 ->
+冻结并登记已有 Stage 3 Calibration-Frame Sensitivity 证据 -> 固定分割/资产 -> 构造与无干预测量 -> smoke -> development generate/Judge -> A/S 决策 ->
 evaluation generation -> Judge/accounting -> 自动分析 -> 盲标抽样与人审 -> 人审敏感性/最终
 分析 -> 结果关闭写入 -> provenance SHA256。E1 直接引用核心剂量，不重复 screen。
 

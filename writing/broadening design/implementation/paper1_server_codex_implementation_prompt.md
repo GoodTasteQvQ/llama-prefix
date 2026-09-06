@@ -13,8 +13,8 @@
 依次阅读以下文件，路径含空格，命令参数必须加引号：
 
 1. `writing/broadening design/paper1_minimal_broadening_experiment_design_no_mistral.md`。
-2. `writing/broadening design/paper1_ccf_a_experiment_implementation_spec_gpt56.md`。
-3. 同目录 `paper1_minimal_broadening_design_review.md` 和 `paper1_ccf_a_implementation_review.md`。
+2. `writing/broadening design/implementation/paper1_ccf_a_experiment_implementation_spec_gpt56.md`。
+3. `writing/broadening design/review/` 下的 `paper1_minimal_broadening_design_review.md` 和 `paper1_ccf_a_implementation_review.md`。
 4. 任务书指出的现有代码和相关 tests，再决定最小改动位置。
 
 科学定义以第 1 份文件为准，实现/环境契约以第 2 份为准。本提示词补充本次执行权限、交付
@@ -109,7 +109,7 @@ analysis -> mock human -> human sensitivity -> archive；mock 输出全部标 FI
 ## 最终交付与完成条件
 
 保存代码、配置示例、fixtures/tests、运行说明，以及
-`writing/broadening design/paper1_server_implementation_completion_report.md`。报告至少包含：
+`writing/broadening design/report/paper1_server_implementation_completion_report.md`。报告至少包含：
 
 - 需求覆盖表、改动路径、启动 HEAD/dirty state、实际 Python/依赖/物理 GPU 与环境差异；
 - 实际测试命令、退出码/摘要、日志位置、离线端到端结果、预算核对；

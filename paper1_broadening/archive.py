@@ -85,6 +85,10 @@ def _terminal_check(run_dir: Path, *, require_human: bool) -> dict[str, Any]:
                 missing.append(f"{block}:{field}")
         ledger = read_jsonl(run_dir / names["ledger"]) if (run_dir / names["ledger"]).is_file() else []
         judge_records = read_jsonl(run_dir / names["judges"]) if (run_dir / names["judges"]).is_file() else []
+        terminal_missing_ids = {
+            row.get("response_id") for row in ledger
+            if row.get("terminal_status") in {"TERMINAL_TECHNICAL_FAILURE", "TERMINAL_FAILURE"}
+        }
         scheduled_blocks.append((block, names, schedule, ledger))
         if len(ledger) != len(schedule):
             nonterminal.append(f"{block}:generation_ledger:scheduled_row_count_mismatch")
@@ -131,6 +135,7 @@ def _terminal_check(run_dir: Path, *, require_human: bool) -> dict[str, Any]:
             f"{block}:judge_records:{row.get('response_id', 'UNKNOWN')}:UNEXECUTED"
             for row in judge_records
             if row.get("four_class_status") == "UNEXECUTED"
+            and not (row.get("response_id") in terminal_missing_ids and row.get("four_class_error") == "generation_missing")
         )
         ledger_ids = {row.get("response_id") for row in ledger}
         judge_id_set = {row.get("response_id") for row in judge_records}
@@ -145,6 +150,7 @@ def _terminal_check(run_dir: Path, *, require_human: bool) -> dict[str, Any]:
                 f"{block}:judge_records:{row.get('response_id', 'UNKNOWN')}:binary_UNEXECUTED"
                 for row in judge_records
                 if row.get("binary_status") == "UNEXECUTED"
+                and not (row.get("response_id") in terminal_missing_ids and row.get("binary_error") == "generation_missing")
             )
 
         # A real block is archiveable only after both runtimes have emitted

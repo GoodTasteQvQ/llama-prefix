@@ -88,10 +88,11 @@ SOURCE_SNAPSHOT_PATHS = (
 
 DESIGN_SNAPSHOT_PATHS = (
     "writing/broadening design/paper1_minimal_broadening_experiment_design_no_mistral.md",
-    "writing/broadening design/paper1_ccf_a_experiment_implementation_spec_gpt56.md",
-    "writing/broadening design/paper1_minimal_broadening_design_review.md",
-    "writing/broadening design/paper1_ccf_a_implementation_review.md",
-    "writing/broadening design/paper1_server_codex_implementation_prompt.md",
+    "writing/broadening design/implementation/paper1_ccf_a_experiment_implementation_spec_gpt56.md",
+    "writing/broadening design/review/paper1_minimal_broadening_design_review.md",
+    "writing/broadening design/review/paper1_ccf_a_implementation_review.md",
+    "writing/broadening design/implementation/paper1_server_codex_implementation_prompt.md",
+    "writing/broadening design/implementation/paper1_server_codex_run_prompt_nohup.md",
 )
 
 
@@ -456,6 +457,9 @@ def write_generation_ledger(
     overwrite: bool = False, filename: str = "generation_ledger.jsonl",
 ) -> dict[str, Any]:
     by_response: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    scheduled_doses: dict[str, set[str]] = defaultdict(set)
+    for scheduled in schedule:
+        scheduled_doses[scheduled["response_id"]].add(scheduled["dose_label"])
     for attempt in attempts:
         by_response[str(attempt["response_id"])].append(attempt)
     rows: list[dict[str, Any]] = []
@@ -465,7 +469,7 @@ def write_generation_ledger(
         for attempt in response_attempts:
             if attempt.get("identity") is not None and attempt.get("identity") != scheduled["identity"]:
                 raise BroadeningError("generation attempt identity differs from its scheduled identity")
-            if attempt.get("dose_label") is not None and attempt.get("dose_label") != scheduled["dose_label"]:
+            if attempt.get("dose_label") is not None and attempt["dose_label"] not in scheduled_doses[response_id]:
                 raise BroadeningError("generation attempt dose differs from its scheduled identity")
         canonical = next((row for row in response_attempts if row["status"] == "COMPLETED"), None)
         rows.append({

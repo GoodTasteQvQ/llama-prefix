@@ -1,8 +1,10 @@
 # Paper 1 GPT-5.6 实现任务书审阅
 
 日期：2026-09-05  
-对象：[实现任务书](paper1_ccf_a_experiment_implementation_spec_gpt56.md)  
-对应：[实验设计](paper1_minimal_broadening_experiment_design_no_mistral.md)  
+对象：[实现任务书](../implementation/paper1_ccf_a_experiment_implementation_spec_gpt56.md)
+
+对应：[实验设计](../paper1_minimal_broadening_experiment_design_no_mistral.md)
+
 版本：`MBD-NM v2.1-ccf-a-target`  
 实现规格修订：`linux-single-gpu-v1`  
 结论：**PASS，限实现规格静态审阅；尚无新代码、离线测试结果或模型 smoke 结果。**

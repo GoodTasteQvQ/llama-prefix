@@ -4,7 +4,7 @@
 
 ## 1. 服务器实现提示词
 
-对象：[服务器实现提示词](paper1_server_codex_implementation_prompt.md)。
+对象：[服务器实现提示词](../implementation/paper1_server_codex_implementation_prompt.md)。
 结论：`PASS / PROMPT REVIEW ONLY`。尚未由服务器执行，不是 CODE_REVIEW=PASS。
 
 | 检查 | 结论与处理 |
@@ -24,7 +24,7 @@
 
 ## 2. 论文写作路线
 
-对象：[Paper 1 完成论文行动路线](paper1_writing_action_roadmap.md)。
+对象：[Paper 1 完成论文行动路线](../paper1_writing_action_roadmap.md)。
 结论：`PASS / ROADMAP REVIEW ONLY`。它是写作执行计划，不是论文完成或投稿保证。
 
 | 检查 | 结论与处理 |
@@ -50,4 +50,27 @@
 - [x] 实现提示词要求代码完成后审查，且把代码缺陷与资产缺失分开。
 - [x] 论文行动路线已保存，补充实验部分留白。
 - [x] 实现提示词与写作路线均有独立边界审阅。
-- [ ] 新增交付文档尚未提交或推送；待本轮 Git 检查通过后完成。
+- [x] `paper1_minimal_broadening_experiment_design_v2.1_readable.md` 已完成静态一致性审阅。
+- [x] 易读版已补入既有 Calibration-Frame Sensitivity 问题，明确它不是问题三的替代，也不是 v2.1 新增扩展。
+- [x] 易读版只改变说明层次和术语密度，不改变 v2.1 的科学范围、预算、停止边界或哈希时点。
+- [x] 严格 v2.1 设计仍是服务器实现的唯一规范；易读版不能替代严格版。
+- [ ] 新增易读版尚未提交或推送；是否提交/推送需由后续 Git 操作单独处理。
+
+## 4. v2.1 易读版审阅
+
+对象：[v2.1 易读实验设计](../paper1_minimal_broadening_experiment_design_v2.1_readable.md)。
+结论：`PASS / READABILITY COMPANION ONLY`。
+
+审阅确认：
+
+- 版本标识为 `MBD-NM v2.1-ccf-a-target`，没有发现旧 v2.0 字段。
+- 核心预算 `12,640`、扩展预算 `7,840`、总预算 `20,480` 与严格版一致；表格中的方向数量没有重复乘以两种 family。
+- E1 外部提示、E2 第三架构、E3 额外层位点的目的、资产门槛和“不满足则不运行”边界与严格版一致。
+- safe-pair 的 construction/development/evaluation 分工、A/S 剂量选择、人工审核上限和结果落地后生成 provenance SHA256 均被保留。
+- 文档明确排除 Mistral，并明确不把扩展完成或正结果当作 CCF-A 的自动条件。
+- 文档只使用说明性表格和段落，没有新增实现接口、统计规则或实验单元；因此不会给服务器 Codex 引入第二套规范。
+- Calibration-Frame Sensitivity 已单独列为校准问题，并限定为已有 Qwen 支持性案例；没有把 calibration scale 的变化扩大为结构因果或一般 collapse 结论。
+- 对原始/严格实验设计的复核确认：Stage 3 P1/P2/K1 本身已有完整定义；v2.1 严格版现已明确登记其为既有证据输入，不重跑、不计入 20,480 预算，并与新 `mu_content` calibration 区分。
+- 论文行动路线现已在 scope/status、Methods、Results 和第一周核对任务中单独登记 Calibration-Frame Sensitivity；补充实验占位不会覆盖这条已完成证据线。
+
+审阅边界：易读版用于作者和导师理解研究设计，不能单独作为代码实现依据；若易读版与严格版出现冲突，以严格版及其审阅记录为准。
