@@ -4,6 +4,10 @@
 `BLOCKED_INSUFFICIENT_CONSTRUCTION_PAIRS`。在审核质量取证完成前，不执行此前的 source recovery
 任务书。以下任务可并行，但每个会话必须使用自己的临时输出目录并保存报告。
 
+本索引已被 `paper1_server_codex_post_audit_task_index.md` 更新。A 的 provenance 审计已经完成，
+因此当前执行顺序以新的 post-audit 索引和 B2/A2 任务书为准；不要再按本文件旧的“直接执行 E”
+描述启动恢复任务。
+
 这些会话只负责取证、预处理或 runtime 探针；它们不授权正式实验，也不应互相修改共享的 ledger、
 source 或 canonical config。各会话完成后保留报告和日志，不在服务器端 commit/push。
 
