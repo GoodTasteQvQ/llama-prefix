@@ -1,6 +1,6 @@
 # Paper 1 写作蓝图
 
-更新时间：2026-07-23
+更新时间：2026-08-12
 
 状态：当前论文叙事基线。历史 TDSC 审计中的旧主张矩阵不再作为当前写作依据；
 当前证据边界见 `paper1_claim_evidence_matrix.md`。
@@ -16,8 +16,8 @@
 - Beyond ASR: Phase Semantics and Generation Collapse in Activation Steering Attacks
 - Cache Semantics Matter: Auditing Generation-Time Activation Steering Under `use_cache=True`
 
-标题暂不加入 `attention sink`、三模型或 dose-calibration 字样。Stage 3 是标定与复现性增强，
-不是当前已经得到结果的主发现。
+标题暂不加入 `attention sink`、三模型或 dose-calibration 字样。Stage 3 已有
+P1/P2/K1 正式结果，但仍是标定与复现性的支持性 Qwen case study，不取代论文主线。
 
 ## 一句话主张
 
@@ -25,7 +25,8 @@
 steering；在当前 Qwen 和 Llama full1000 条件下，持续作用于 generated tokens 的高强度
 steering 呈现低 ASR 与大量 broken/repetition 并存。本文据此把 Rogue-style
 activation-steering 评估组织为 phase-aware、failure-aware 和 calibration-aware 三层；其中
-calibration-aware 是尚待 Stage 3 正式结果支持的 Qwen case study。
+calibration-aware Qwen case study 显示 token frame 实质改变 measured calibration scale 与
+intervention-dose geometry，但预设 P2 行为对比的不确定区间均包含 0。
 
 ## 论文故事路线
 
@@ -44,13 +45,19 @@ calibration-aware 是尚待 Stage 3 正式结果支持的 Qwen case study。
   `unsafe/refusal/safe/broken`、ARR、repetition 和输出诊断分解 binary-negative 结果。
 7. Qwen 与 Llama 共享相同的定性 ordering，但观测到的 attack peak、collapse onset/严重度区间、
   短拒答模式和 metric artifact 不同；本文报告条件化的描述性异质性，不进行模型脆弱性排名。
-8. Stage 3 当前是 `DESIGN COMPLETE / IMPLEMENTATION IN ACTIVE DEVELOPMENT / NOT RUN`。它在固定 Qwen checkpoint/support 上审计
-  all-token versus content-token calibration frame 是否改变 `mu`、intervention-dose geometry
-   (`alpha`、`rho`、relative dose) 与 unsafe/broken paired RD。P2 是 estimation-only；Stage 3
-   不是 Attention Sink 因果证明，也不负责新的跨模型主结论。
-9. Stage 3 的 P2 是 estimation-only，同时包括 benign integrity 和 matched human-corrected sensitivity；不产生 p-value、显著性、确认性判断或一般安全保证。
-10. Stage 3 是 calibration/reproducibility case study，不是 Attention Sink 导致 collapse、structural token 单独致因或解释跨模型差异的因果证明。
-11. 因此，本文将 Rogue-style activation-steering 评估组织为 **phase-aware、failure-aware 和 calibration-aware** 三层框架；其中前两层构成论文主线，calibration-aware 是 Qwen 上的支持性贡献。
+8. Stage 3 的 P1、support、P2 raw 和 K1 已完成。P1 显示 `mu_all_tw=441.4951`、
+  `mu_content_tw=62.1641`，`delta_select_tw=6.1021`，其单侧 95% 下界 `6.0529>0.10`，
+  因而 prespecified P1 gate PASS。
+9. P2 raw 可估计：`P2-U(A)=+1.03 pp`，simultaneous 95% CI `[-1.33,+3.39] pp`；
+  `P2-B(T)=+0.41 pp`，CI `[-0.48,+1.30] pp`。两个区间均包含 0，因此行为后果仍不确定。
+10. K1 在四 cell 共同的 951 个 prompt-vector 坐标上描述四分类组成；T all-token
+  相比 T content-token 显示更高 unsafe（9.15% vs 1.47%）和更低 refusal（69.72% vs
+  79.81%）。这是描述性 profile，不是新的 arm-contrast 推断，不改变 P2 不确定分支。
+11. Harmful-clean 50、benign 630、fixed720 human validation 和 matched human-corrected
+  sensitivity 尚未完成。P2 始终是 estimation-only，不产生 p-value、显著性、
+  确认性判断或一般安全保证。
+12. Stage 3 是 calibration/reproducibility case study，不是 Attention Sink 导致 collapse、structural token 单独致因或解释跨模型差异的因果证明。
+13. 因此，本文将 Rogue-style activation-steering 评估组织为 **phase-aware、failure-aware 和 calibration-aware** 三层框架；其中前两层构成论文主线，calibration-aware 是 Qwen 上的支持性贡献。
 
 
 
@@ -61,8 +68,9 @@ calibration-aware 是尚待 Stage 3 正式结果支持的 Qwen case study。
 - `RQ3`: Which qualitative patterns are shared by Qwen and Llama, and which quantities remain model-specific?
 - `RQ4`: Does the all-token versus content-token frame in Rogue-style `mu` calibration change intervention-dose geometry and fixed-support Qwen estimates?
 
-`RQ1-RQ3` 是论文主线；`RQ4` 是解释与可复现性增强。即使 Stage 3 得到零结果或区间较宽，
-`RQ1-RQ3` 的论文故事仍然成立。
+`RQ1-RQ3` 是论文主线；`RQ4` 是解释与可复现性增强。当前对 `RQ4` 的回答是：
+calibration geometry 的变化已建立，但预设 raw P2 行为对比仍不确定。这不影响
+`RQ1-RQ3` 的论文主线。
 
 ## 核心贡献
 
@@ -75,7 +83,8 @@ calibration-aware 是尚待 Stage 3 正式结果支持的 Qwen case study。
    不把该 ordering 写成已识别的连续转变点或模型排名。
 4. **Calibration-aware reproducibility audit**：在 Qwen 上检验 all-token/content-token frame 对
   `mu` 与 intervention-dose geometry 的影响，并把该影响与 fixed-support unsafe/broken 估计连接。
-   该贡献在 Stage 3 结果产生前只能写成预先规定的研究问题和方法，不能写成已证实发现。
+   P1 已建立 material calibration shift；P2 raw 点估计为正但 simultaneous CI 包含 0，
+   因而只能报告行为后果不确定，并用 K1 补充描述性组成。
 
 
 
@@ -88,7 +97,8 @@ calibration-aware 是尚待 Stage 3 正式结果支持的 Qwen case study。
   低 ASR 与 broken/repetition 急剧上升同时出现。
 4. 方法贡献：binary ASR 衡量攻击是否形成有效有害帮助，但不足以诊断非成功输出；因此本文联合
   使用 phase-aware instrumentation、Rogue-compatible ASR 与 failure-aware decomposition，并以
-   Qwen Stage 3 审计 dose calibration 的可复现性。四分类标签本身不作为原创分类学主张。
+   Qwen Stage 3 审计 dose calibration 的可复现性。P1 确认 calibration geometry 对 token
+   frame 敏感，而 P2 raw 对其行为后果仍给出跨 0 区间。四分类标签本身不作为原创分类学主张。
 
 摘要不得写“三模型验证”，除非 Mistral 的正式 config、raw、judged、summary 和日志均已归档。
 摘要不得写“Attention Sink 导致 collapse”。
@@ -151,7 +161,8 @@ Mistral 若完成，作为第三模型外部验证加入；若未完成，不影
 - P1：all-token 与 content-token pooled norm、token shares、equal-domain sensitivity；
 - nominal `c`、`mu` 与 intervention-dose geometry (`alpha`、`rho`、relative dose) 的映射；
 - P2：Qwen A/T fixed-support 上 all-token/content-token calibration 的 unsafe/broken paired RD；
-- benign integrity、human judge validation 与 matched two-phase sensitivity；
+- K1：在 `M_A intersect M_T` 共同 951 坐标上的四分类描述性 profile；
+- harmful-clean、benign integrity、human judge validation 与 matched two-phase sensitivity 仍为待完成项；
 - 只报告 Qwen case-study 结论，不解释未测量的跨模型结构差异。
 
 
@@ -172,6 +183,7 @@ Mistral 若完成，作为第三模型外部验证加入；若未完成，不影
 - 主要攻击家族仍是 Rogue-style random-vector steering；
 - first-k=3、decay=0.85 只是固定实例；
 - Stage 3 是 Qwen calibration case study，不是 Attention Sink 或跨模型因果解释；
+- Stage 3 的 harmful-clean、benign、fixed720 和 human-corrected sensitivity 尚未完成；
 - Mistral、跨层、第二攻击家族属于后续增强，不得写成已完成证据。
 
 
@@ -187,7 +199,7 @@ Mistral 若完成，作为第三模型外部验证加入；若未完成，不影
 3. Qwen/Llama Track B 的 ASR 与 broken 强度曲线。
 4. Qwen/Llama repetition 与 failure-aware outcome decomposition。
 5. attack peak、observed collapse onset/严重度区间和稳定性 ordering 的跨模型摘要。
-6. Stage 3 P1 norm/token-share 与 P2 fixed-support RD；仅在 paper run 结果产生后加入。
+6. Stage 3 P1 norm/token-share、P2 fixed-support RD 与 K1 common-frame profile；当前结果已可加入。
 
 
 
@@ -202,10 +214,13 @@ Mistral 若完成，作为第三模型外部验证加入；若未完成，不影
 
 ## Stage 3 结果分支
 
+当前实际分支：**P1 gate 通过，但 P2 raw 不确定**。
+
 - P1 gate 通过且 P2 方向清晰：可以写 token-frame calibration materially changes measured
 intervention-dose geometry，
 并在固定 Qwen support 上对应不同 unsafe/broken estimates。
-- P1 gate 通过但 P2 不确定：只能写 calibration measurement changes，行为后果不确定。
+- P1 gate 通过但 P2 不确定：写 token-frame calibration materially changes measured
+intervention-dose geometry，但 prespecified raw behavioral contrasts remain uncertain。这是当前分支。
 - P1 gate 未通过：报告负结果或移入 appendix，不得继续寻找替代 estimator/anchor。
 - 任意结果均不得写 structural token 或 Attention Sink “导致”跨模型 collapse。
 
@@ -220,8 +235,10 @@ intervention-dose geometry，
    不声称识别了连续 transition point、自然阈值或一般 dose-response。
 3. **评估结论**：Rogue-compatible ASR 仍是攻击成功指标，但不能诊断 binary-negative 输出的组成
   或生成完整性；需要与 four-class outcome、ARR、repetition 和输出诊断联合报告。
-4. **Calibration 结论**：在 Stage 3 paper run 完成前只保留为预先规定的问题。完成后只能按 P1/P2 分支报告
-  Qwen 固定 support 上的 calibration-frame sensitivity，不得升级为 Attention Sink 或跨模型机制解释。
+4. **Calibration 结论**：在固定 Qwen support 上，token frame 实质改变 measured calibration
+  scale 和 intervention-dose geometry；预设 P2 raw unsafe/broken contrasts 的同时区间均包含 0，
+  因此行为后果仍不确定。K1 只补充描述性组成，不得升级为 Attention Sink
+  或跨模型机制解释。
 
 
 
@@ -246,8 +263,9 @@ intervention-dose geometry，
 2. Llama 六方法 full1000 及与 Qwen 的统一对照。
 3. failure-aware beyond-ASR summary 与代表性人工核查。
 4. 明确的 threat model、claim boundary 和 artifact manifest。
-5. Stage 3 若完成，作为 calibration-aware 支持章节；若未完成，论文仍可按 RQ1-RQ3 成稿，
-  但不得保留 calibration 结果性贡献。
+5. Stage 3 P1/P2/K1 作为 calibration-aware 支持章节；正文必须同时报告 P1 gate PASS、
+  P2 raw 区间跨 0 以及 K1 的描述性边界。未完成的 harmful-clean、benign 和 human
+  sensitivity 不得写成已有结果。
 
 
 

@@ -48,7 +48,7 @@
 
 建议把这一点提升为论文中的核心论断：
 
-> Direct decode-time steering may suppress unsafe completions, but it can also induce representation collapse. Therefore, safety evaluation based solely on ASR can overestimate defense effectiveness.
+> Direct decode-time steering may suppress unsafe completions, but it can also induce representation collapse. ASR remains a valid attack-success metric, but it cannot distinguish robust refusal from generation failure without additional diagnostics.
 
 ### 2.2.1 Rogue 的攻击强度协议也必须成为复现对象
 
@@ -211,7 +211,7 @@ C(s) = C_base + k · ReLU(s - T)
 | Utility Benchmark | 正常任务能力，例如 AlpacaEval、MT-Bench、MMLU、GSM8K 子集 |
 | Latency Overhead | 推理阶段防御的实际成本 |
 
-其中 ARR 是你现在很值得保留的创新性指标，因为它能解释为什么“ASR 降低”并不等价于“安全提升”。
+其中 ARR 是你现在很值得保留的辅助诊断指标，因为它能进一步分解 ASR 未覆盖的生成质量问题。这里不是否定 ASR 对攻击成功率的有效性，而是说明“攻击未成功”不自动等价于“模型形成了正常安全拒绝”。
 
 ## 6. 论文定位建议
 
@@ -284,6 +284,6 @@ Paper 2 建立在 Paper 1 的发现之上，回答：
 
 也就是说，论文核心不应是“我修补了 Rogue”，而应是：
 
-> 我们发现 activation steering 的攻击和防御结论高度依赖生成阶段语义；如果不区分 prefill 与 decode，不仅会错误理解攻击强度，也会把模型退化误判为安全提升。基于这一点，我们提出了 phase-aware 的动态激活防御。
+> 我们发现 activation steering 的攻击和防御结论高度依赖生成阶段语义；ASR 可以判断攻击是否成功，但若不区分 prefill 与 decode，也不报告 refusal 与 collapse 的组成，就无法判断攻击未成功的具体机制。基于这一点，我们提出了 phase-aware 的动态激活防御。
 
 这个角度比单纯“把随机向量加回去”更有研究价值，也更容易说服审稿人。

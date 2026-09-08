@@ -29,7 +29,7 @@ Paper 1 不应写成“Rogue 作者代码有 bug，所以论文结论不成立�
 
 - `under use_cache=True`，公开 Rogue v1 实现与 generation-time steering 的文字描述未完全对齐
 - 当 steering 真正作用到 generated tokens 后，模型容易出现复读、乱码、输出崩溃等 collapse 现象
-- Rogue 风格的 `mu` 标定对模板、padding、dtype 和 structural token 策略敏感，因此仅用 `ASR` 评估 activation steering 攻击或防御会系统性失真
+- Rogue 风格的 `mu` 标定对模板、padding、dtype 和 structural token 策略敏感；`ASR` 对攻击成功评估仍然有效，但它无法进一步区分非成功输出是正常拒绝、无害未执行还是 generation collapse
 
 这篇的主线应固定为三段：
 
@@ -151,7 +151,7 @@ Paper 2 应强调以下设计：
 - Paper 1 只证明：
   - 阶段语义影响攻击与防御结论
   - `mu` 标定与 prompt / padding / dtype / structural token 设置共同影响攻击强度
-  - `ASR` 不足以评估 activation steering
+  - `ASR` 足以描述攻击成功率，但不足以诊断 activation steering 的非成功输出构成和生成可靠性
 - Paper 2 才证明：
   - 因此需要 phase-aware dynamic defense
   - 动态防御相对静态防御具有更好的 safety-utility-collapse trade-off
