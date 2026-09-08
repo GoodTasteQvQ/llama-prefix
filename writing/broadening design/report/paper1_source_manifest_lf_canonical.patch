@@ -1,0 +1,13 @@
+--- data/external/semantic_harmful_harmless_v1/source/source_manifest.json
++++ writing/broadening design/report/paper1_source_manifest_lf_canonical.json
+@@ -20,8 +20,8 @@
+     "matched_pairs.json": "d066ddd4a8005271d21f269aacc4cc30bfb5d2f1d7004f3f37004e42f63f5225",
+     "semantic_harmful_README.md": "2157ee61e1e2b180f2c8ba5c702566bb7f29b3f41155368d673b2c65d7cf87a3",
+     "semantic_harmless_README.md": "ec4c6c98e47c723d4ba73c91e2d075d50784955895c6623ab76f6d5b0ea8054c",
+-    "semantic_harmful_LICENSE": "cbd5af318286b74656f145dff5091907cc23d6d8c9ad09e0291ec2497792ba41",
+-    "semantic_harmless_LICENSE": "cbd5af318286b74656f145dff5091907cc23d6d8c9ad09e0291ec2497792ba41"
++    "semantic_harmful_LICENSE": "9e5f1b3c610b9c2da5c313bf81d577a7d1acec686bdb0384edefa6df0f90cd94",
++    "semantic_harmless_LICENSE": "9e5f1b3c610b9c2da5c313bf81d577a7d1acec686bdb0384edefa6df0f90cd94"
+   },
+   "pair_metadata": {
+     "embedding_model": "google/embeddinggemma-300m",
