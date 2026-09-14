@@ -1,10 +1,10 @@
 # Paper 1 补充实验任务表
 
-设计版本：`MBD-NM v2.1.1-public-pairs`；状态更新：2026-09-14。A2 数量来自已同步报告，原始证据和 B2 修复代码待补交核验；来源扩展尚未完成。
+设计版本：`MBD-NM v2.1.1-public-pairs`；状态更新：2026-09-14。用户已提供A2独立请求专项核验通过的回执；最终小产物和B2修复代码待补交，来源扩展尚未完成。
 
 | 模块 | 规模 | 当前状态 | 结果 |
 |---|---:|---|---|
-| Public safe-pair 数据准备与审核 | 416 对原始 pairs；409 对完成双审核；目标 5 folds + 100 条 development | 阻塞，补交证据并准备少量来源扩展 | A2 报告 221 include / 188 exclude，`actual_k=24<30`，至少还需29条合格新pair；旧194条失效；LICENSE差异已确认为换行问题 |
+| Public safe-pair 数据准备与审核 | 416 对原始 pairs；409 对完成双审核；目标 5 folds + 100 条 development | 审核执行独立性已核验，数量仍不足 | 最终rebuilt ledger为221 include / 188 exclude，`actual_k=24<30`，至少还需29条合格新pair；旧summary的1 pending已由retry解决，7条exact排除不补审 |
 | Core 方向构造 | Qwen/Llama 各 8 个 Rogue + 5 个 contrastive；核心层分别为 9/11 | 未开始 | 等待 safe-pair gate 和真实运行 gate |
 | Core dose screen | 1,200 次 generation | 未开始 | 尚未确定各模型、方向构造的 A/S 剂量 |
 | Core 正式评估 | 11,440 次 generation；JBB-100、benign-30；2 模型、2 phase、A/S | 未开始 | 尚无正式 generation、Judge 或 analysis 结果 |
@@ -23,4 +23,4 @@
 | E1/E2/E3 及扩展 screen | 7,840 |
 | 合计 | 20,480 |
 
-当前未进入正式 generation。下一步按 [当前任务入口](implementation/paper1_server_codex_post_audit_task_index.md) 并行完成 A3 证据交付、B3 实现交付/资产接线、E 候选来源调查；E 整合/审核须等 A3/B3 通过。数据、E1 overlap 和必要真实运行 gate 通过后，再安排 Core 方向构造和 dose screen。
+当前未进入正式generation。按 [当前任务入口](implementation/paper1_server_codex_post_audit_task_index.md) 并行完成A3收尾交付、B3实现交付、E候选来源调查/独立目录新增审核；E的共享实现修改/最终prepare才等B3交接，不等A3打包或扩展资产接线。数据、E1 overlap和必要真实运行gate通过后，再安排Core方向构造与dose screen。

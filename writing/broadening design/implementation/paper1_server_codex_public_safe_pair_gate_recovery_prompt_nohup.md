@@ -1,17 +1,16 @@
 # E：Public safe-pair gate 有边界恢复
 
-版本：`public-safe-pair-gate-recovery-v2`；更新：2026-09-14。
+版本：`public-safe-pair-gate-recovery-v3`；更新：2026-09-14。取代本文件v2，数据规模/科学规则不变，仅复用已完成A2核验并简化依赖。
 基准设计：`MBD-NM v2.1.1-public-pairs`，当前报告基线为 A2 的 221 条，不再使用失效 v1 的 194 条。
 执行者：新 E 会话，或此前已停止的 E 会话。
 
 ## 1. 目标、前置与授权范围
 
-先读 [当前任务入口](paper1_server_codex_post_audit_task_index.md)，采用其 Linux/nohup 设置与写入归属。可以立即做 §2 的候选发现/下载。执行 §3 及以后前必须从磁盘读取：
+先读 [当前任务入口](paper1_server_codex_post_audit_task_index.md)，采用Linux/nohup和写入归属规则。用户已提供A2专项核验：409条各有真实独立A/B请求，818身份/隔离证据通过，最终rebuilt ledger COMPLETE。复用该核验，不另起全量审计，也不等待A3报告或压缩包。
 
-- `writing/broadening design/report/paper1_a2_evidence_handoff_report.md`，结论为 `A2_EVIDENCE_VERIFIED`；
-- `writing/broadening design/report/paper1_b2_delivery_asset_wiring_report.md`，结论为 `B2_DELIVERY_READY`，且 B3 已停止代码写入。
+立即可做§2–4的来源调查、独立临时目录内转换/来源修订/新增双审核。正常读取服务器已有public source、实际固定协议和最终ledger/summary：`.codex-temp/paper1_broadening_machine_reviews/public-semantic-pairs-v2-20260908T111917Z/` 下 `rebuilt_summary.json`、`public_pair_quality_decisions.v2.rebuilt.json`。旧 `summary.json` 的817 ok/1 pending是341 retry前统计，不再使用；7条exact排除不补审。文件缺失或与已核验结果矛盾时具体报告，不用报告文字补造文件。
 
-两者通过后按本任务书继续，不需再等负责人批准。前置未到时保存阶段报告并等待；前置失败可结束来源调查，但不得正式整合/审核/prepare。报告中的 PASS 必须能定位实际交付文件，不能只相信会话回复。
+§5写共享实现/发布正式source/config/运行测试和prepare前，才需要读取 `writing/broadening design/report/paper1_b2_delivery_asset_wiring_report.md`，确认 `B2_DELIVERY_READY` 且B3已停止代码写入。E1/E2接线或异地打包未完成，不阻止新配对审核；它们的扩展运行门槛仍单独保留。交接通过后直接继续，不需再申请批准。
 
 A2：source=416，preliminary=409，executable=221。既定 `k=min(80,floor((N-100)/5))`、5 folds、development=100、`k>=30` 需要 N>=250，即至少增加 29 条合格配对。目标是补足数据 gate，不扩展正式模型矩阵。
 
@@ -38,13 +37,15 @@ A2：source=416，preliminary=409，executable=221。既定 `k=min(80,floor((N-1
 
 ## 3. 最小 source 修订及 identity
 
-A3/B3通过、候选来源核验后，在任何新增审核前保存：
+候选来源核验后，在任何新增审核前保存：
 
 `writing/broadening design/review/paper1_public_safe_pair_source_expansion_revision.md`
 
 登记新 design revision `MBD-NM v2.1.2-public-pairs-expanded`（若该标识已有不同内容，另取未用修订号）。只改变 source 集合/身份/provenance，记录候选优先顺序、批次上限/选取规则/停止规则；固定审核科学标准、5折、k、development、evaluation、模型/层/decoder/rho/预算都不变。明确 20,480 是正式 logical generation 预算，不把 reviewer API 请求算作实验 generation。主会话做一次边界核对后保存；这里已授权此项有限来源扩展，不需额外申请。
 
-复用经 A3 核验的 public v1 原件和 A2 rebuilt v2 ledger。新 source 文件另存版本，**前416行的全部原始字段/原文/顺序保持一致**，`safe-pair:0..415` 与各行源 revision 不改变；新增只追加，有独立 dataset/revision/pair id/index 映射。保留每批所有待审核行，后续排除由ledger记录，不能删掉不合格行只发布include source。不要用合并文件 revision 覆盖旧行 provenance。
+复用已完成A2核验的public v1原件和rebuilt v2 ledger。新增source先在E自己的临时目录按版本保存，**前416行的全部原始字段/原文/顺序保持一致**，`safe-pair:0..415` 与各行源revision不变；新增只追加，具有独立dataset/revision/pair id/index映射。保留每批所有待审核行，排除由ledger记录，不能只发布include source。合并文件revision不能覆盖旧行provenance。
+
+B3交接前仅使用独立输出和稳定输入，不修改共享实现/config/source，也不运行B3正在修改的模块。需要适配共享loader/重建脚本的步骤移到§5；新review请求和原始意见可先在E临时目录落地。来源修订文档由E单独写，B3不编辑它。已有E临时目录名称可继续含v2，不必仅因任务书升级而迁移历史文件。
 
 旧记录复用条件是 pair id+实际两侧文本+原请求输入语义+evaluation digest+固定审核标准不变。旧 source 的整体 hash 与新合并文件 hash 不必相同；同时保存两者及append-only映射。若 loader 把整文件hash错误地当每条input identity，做最小明确兼容而非伪造旧请求hash；若实际需要改变已审输入，停止并报告，不复制hash“迁移”。
 
@@ -62,13 +63,15 @@ A3/B3通过、候选来源核验后，在任何新增审核前保存：
 
 复用实际A2输出结构，raw至少含pair_id、verdict、四项科学判断、rationale、prompt_revision；与外层记录绑定，不靠正则/分数代替真实判断。旧409条不重新请求。技术重试遵守已有经核验的A2策略：429最多100次是**技术上限而非应当用满的次数**，使用退避，记录attempts；非429技术问题至多一次相同输入重试，仍失败就pending并停止当前批。不得对已合法返回的exclude/uncertain重试以改变结论。等待不无限轮询，不创建每小时通知任务。
 
-每批所有canonical结果完成后，用现有严格重建工具生成新ledger，保留A2原409条和新增全部记录及独立来源引用。不伪造新的旧审核时间/thread id。若断线从已完成记录恢复，不重复调用完成项。计数以实际可执行的唯一pair为准；不用两个reviewer算成两条pair。
+每批所有canonical结果完成后，依据完整raw按固定规则统计，保留A2原409条与新增全部记录及来源引用。稳定的现有严格工具可用于临时ledger；需要修改或依赖B3变动模块时，把最终重建延至§5，不因此重复reviewer调用。不伪造旧审核时间/thread id。断线从完成项恢复；计数以唯一pair为准，不用两位reviewer算两条pair。
 
 ## 5. 离线核验和一次最终 prepare
 
-整合时只补 source/protocol/config 必要兼容与最小针对性测试，不重新实现审计平台。验证：旧416行稳定；新增原文/身份保留；双侧exact去重；全量raw绑定和统一evaluation digest；所有批次固定裁决；k边界与角色隔离；实际source/config/review/源码快照可追溯。
+若来源不满足准入，或两批完整审核后数量仍不足，直接保存临时结果/实际计数和阻塞报告即可，不必为一个不运行prepare的任务等待B3。以下代码交接要求只适用于继续发布正式输入或执行prepare的情况。
 
-B3已完成E1/E2资产模板时复用它，不重新下载、不把E1 provisional队列写成PASS。根据已审完整ledger离线重算N和k；不要每批都启动一个重复的prepare。
+先确认B3的core实现/测试依据可定位、共享写入已结束；再接手必要代码适配，将临时source/config/ledger按相同内容发布为正式版本。最终严格重建和测试时验证旧416行稳定、新增原文/身份、双侧exact去重、raw绑定/统一evaluation digest、固定裁决、k/角色隔离及实际执行快照。只补必要兼容和针对性测试，不开发通用审计平台。
+
+B3已完成E1/E2资产模板时复用；未完成则用通过的core public config，E1/E2保持具体PENDING/NOT_RUN原因，不为凑READY临时放开gate。不重新下载、不把E1 provisional队列写成PASS。根据已审完整ledger离线重算N和k，不每批重复prepare。
 
 若两个批次结束N仍<250：保存source/ledger、统计/测试证据，最终 `BLOCKED_INSUFFICIENT_CONSTRUCTION_PAIRS`，无需再运行必然blocked的prepare。若N>=250且无pending，运行一次最终完整离线测试：
 
@@ -78,7 +81,7 @@ launch_nohup recovery-v2-tests "$MBD_PYTHON" -m pytest \
   --basetemp "$TMPDIR/recovery-v2-tests-$(date -u +%Y%m%dT%H%M%SZ)"
 ```
 
-通过后复制run-specific config，显式绑定新design/source/manifest/ledger和B3资产路径。其他科学字段不变。用已有CLI帮助确认prepare参数，使用新的run id和当前索引的nohup函数，例如：
+通过后复制run-specific config，显式绑定新design/source/manifest/ledger和已接入的B3资产路径，未接入扩展另记状态。其他科学字段不变。用已有CLI帮助确认prepare参数，使用新的run id和当前索引的nohup函数，例如：
 
 ```bash
 MBD_WRAPPER="$PWD/scripts/run_paper1_broadening_single_gpu.sh"
@@ -101,9 +104,9 @@ E1最终frame尚未完成时仍保持独立 `PENDING`/`NOT_RUN`，不得声称�
 - 每批冻结顺序、预检排除、入选/未入选、全部reviewer verdict、requests/attempts/重试；原409条复用证据；
 - 新source/revision/manifest/config/ledger/脚本/测试的实际路径与落地后hash；有变更的科学字段差异应仅限已授权来源修订；
 - 实际N/k、fold/development/unused、prepare路径或未运行理由、最终safe-pair gate、E1/E2剩余门槛；
-- 命令/PID/log/exit、可同步文件清单、完整raw证据压缩包位置/大小/hash。
+- 命令/PID/log/exit、可同步文件清单、完整raw服务器保存路径；若已有压缩包，记录位置/大小/hash。
 
-把小数据、config、source修订、整合脚本、ledger/summary/请求索引/prepare小文件和测试改动准备好同步；不只提交报告。raw证据保留服务器并提供可转移包；不将权重/缓存/认证信息加入交付。不要自己commit/push。
+把小数据、config、source修订、整合脚本、ledger/summary/请求索引/prepare小文件和测试改动准备好同步；不只提交报告。raw保留服务器，需要异地复核时再打包，压缩不是数据gate。交付排除权重/缓存/认证信息，不自己commit/push。
 
 做一次有边界自审，逐项记录PASS或问题：没有复用失效194条；没有为凑数改标准/重审旧排除项；批次预选与全量完成；来源/原文/identity正确；N/k/互斥分割正确；schema兼容和E1/E2状态诚实；没有新增实验块、没有进入模型阶段。只修复任务内问题并复核相应项；无法解决则保存阻塞报告，不伪造PASS。
 
