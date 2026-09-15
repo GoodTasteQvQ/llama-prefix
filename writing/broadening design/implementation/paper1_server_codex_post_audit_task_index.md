@@ -17,10 +17,17 @@ F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。
 | 原C会话，续作C3 | [最终 E1 派生物收尾](paper1_server_codex_c3_e1_consumer_finalize_prompt_nohup.md) | 已完成；final derived files 独立保存，旧 C2 provisional 文件未改，`E1_CONSUMER_PASS` |
 | 原B会话，续作B5 | [E1 消费复核与运行入口交接](paper1_server_codex_b5_e1_consumer_handoff_prompt_nohup.md) | 已完成；CPU consumer 为 `READY_FOR_RUN`，新增仅 run-specific E1 config，未加载模型 |
 | F会话 | [Core 方向构造与 calibration](paper1_server_codex_core_directions_calibration_prompt_nohup.md) | 已完成；单卡顺序完成 `prepare + build-directions`，`CORE_DIRECTIONS_READY`，未 screen 或 generation |
-| 下一阶段 | 尚未建立单独任务书 | Core development screen；必须在独立授权任务中选择 A/S 剂量，不能由本次报告同步自动启动 |
+| 原F会话，续作F2 | [Core development dose screen](paper1_server_codex_core_dose_screen_prompt_nohup.md) | 先校验F run的47项source snapshot；1,200 logical generation + four-class Judge，锁定A/S；不运行正式evaluation |
+| 原B会话，续作B6 | [Core静态证据交接](paper1_server_codex_b6_static_evidence_handoff_prompt_nohup.md) | 只读核对并同步C3/B5/F的实际小型文件和hash，不占GPU、不改代码 |
 | 原E、A、D | 本轮无需新任务 | E完成；A证据沿用；D的Gemma探针不重复 |
 
 三项已完成任务不重跑。后续任务如消费 E1，只能读取已固定的 final E1 输入和 Core direction assets，不能回写 C2 provisional、C3 final 或 canonical scientific config。
+
+## 本轮同步要求
+
+服务器完成 F2/B6 后，除各自报告外必须同步可复核的小型原件。F2 至少包括：F run 的 `run_header.json`、`resolved_config.json`、`frames.json`、`directions.json`、Core screen 的 schedule、generation attempts/ledger、four-class Judge records、`dose_decisions.json`、process/release/runtime 状态文件，以及外层和子进程的 PID、日志、`.exit` 和最终 hash 清单。B6 同步其报告中实际列出的 config、frames、direction metadata/tensor、C3 final E1 派生物和 source snapshot/hash 清单；不要同步模型权重、完整 reviewer raw 或正在写入的 ledger。若 F2 因 snapshot mismatch 或运行错误阻断，仍需同步失败报告、检查结果和未完成文件清单，不得用报告摘要替代缺失原件。
+
+F2/B6 的服务器实现代码、配置、frames、directions、safe-pair/E1 派生物和运行原件均以服务器实际 hash 为准。本机报告或旧 evidence/code 副本不能替代这些文件；如果服务器当前代码与 F run snapshot 不一致，必须保留 `SOURCE_SNAPSHOT_MISMATCH`，暂停 screen，不覆盖 snapshot 或修改原科学设计。
 
 ## 输入和并行归属
 
@@ -28,7 +35,7 @@ F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。
 - 数据型prepare：`results/paper1_broadening/public-safe-pair-recovery-v2-final-20260915T041534Z/`。保持其source、ledger、300个分配ID和原run不变；E1补全不回头改safe split。
 - C3 final 输出为 `.codex-temp/paper1_e1_consumer_final/`；旧 provisional 文件保留，且不对 safe-pair 或 E1 near queue 重发 reviewer。
 - B5 的 E1 路径绑定使用 `configs/paper1_broadening/mbd_nm_v212_public_expanded_e1_final_d148.json`。F 实际使用的 `mbd_nm_v212_public_expanded_e1_final.json` 与其 SHA256 相同（`606721864c4870543c63964fedd4d5a7f4001d54809cb38875ea460152d8e98a`），两者相对 canonical config 仅改变最终 E1 decision path。
-- F 的已完成 run 为 `results/paper1_broadening/core-directions-calibration-20260915T140731Z-1382603/`。后续任务不得与它或上述 final 派生目录共享写入目标。
+- F 的已完成 run 为 `results/paper1_broadening/core-directions-calibration-20260915T140731Z-1382603/`。F2 是该 run 的唯一写入者；B6 只读并将传输副本写入自己的交付目录。其他会话不得并行改写此 run 或上述 final 派生目录。
 
 ## 原实验设计保护
 
@@ -86,4 +93,20 @@ C3报告：`writing/broadening design/report/paper1_e1_consumer_finalization_rep
 B5报告：`writing/broadening design/report/paper1_e1_consumer_handoff_report.md`（CPU PID `1386866`、exit `0`；syntax/JSON PID `1388726`、exit `0`）。
 F报告：`writing/broadening design/report/paper1_core_direction_calibration_report.md`（prepare PID `1382607`、build-directions PID `1383422`，均 exit `0`；`git diff --check` 与 47 项源码快照核验通过）。
 
-三份报告均已完成各自边界自审，且没有 commit/push。此次仅同步执行状态；不改写 C2 provisional、canonical config、safe-pair 数据、科学设计或既有历史 run report。下一步是另行交付并授权 Core development screen，锁定 A/S 后才可安排正式 evaluation。
+三份报告均已完成各自边界自审，且没有 commit/push。本轮交付 F2/B6 任务，不改写 C2 provisional、canonical config、safe-pair 数据、科学设计或既有历史 run report。F2 锁定 A/S 后才可安排正式 evaluation。
+
+## 剩余实验任务
+
+下表是既定设计的待办清单，不是自动启动后续阶段的指令。generation 规模不含另行记账的 Judge、技术重试和既有 smoke。
+
+| 模块 | 剩余规模 | 当前依赖与执行安排 |
+|---|---:|---|
+| Core development screen | 1,200 generation | 本轮原 F 执行 F2；原 B 可并行完成 B6 静态交付 |
+| Core harmful / benign evaluation | 10,600 + 840 generation | F2 技术 gate 通过并保存四组 A/S 后安排；保留负结果状态 |
+| E1 外部集 | 2,320 generation | final frame 已就绪；引用 Core A/S，无独立 screen |
+| E2 第三模型 | 600 screen + 1,160 evaluation | 方向已有；运行前处理 Gemma release 记录缺口并验证该模型的运行边界 |
+| E3 两个额外层 | 1,200 screen + 2,560 evaluation | 方向/各层 mu 已有；仍需各层运行检查和独立 screen；按 E1 -> E2 -> E3 优先级串行使用单卡 |
+| Judge、分析与人工验证 | Core 200 + E1/E2/E3 各 40 条人工样本 | 自动 Judge 与分析随对应输出完成后进行；必须有真实人工标签才称人工验证完成 |
+| 最终归档 | 已关闭的源码/配置/结果/日志 | 汇总状态、生成最终文件 hash；缺失项保留 pending，不伪造 FINAL |
+
+目前只开 F2/B6 两条线即可。C3 不重跑，其他 GPU 任务不并行；Gemma 记录修复暂不改共享实现，待 Core screen 结束后单独确定最小处理范围。
