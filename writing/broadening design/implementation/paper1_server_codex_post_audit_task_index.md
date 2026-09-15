@@ -1,30 +1,31 @@
 # Safe-pair 恢复后的当前任务入口
 
-更新：2026-09-15，依据 `a5f5dd4` 的最终恢复报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4任务均不重新执行。
+更新：2026-09-15，依据 C2/B4 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4任务均不重新执行。
 
 ## 当前决定
 
 服务器报告safe-pair gate通过：516 source − 7 exact = 509 preliminary；旧221 + 新79 = 300 executable；5×40 construction + 100 development = 300，unused=0。无需新增来源或再次审核旧/新safe pairs。报告的 `READY_FOR_CONSTRUCTION` 仅是数据gate，尚未构造向量或运行正式generation。
 
-本机仅同步报告，没有实际expanded代码/config/source/ledger/frames及来源修订文件。本轮做报告和已同步代码入口对照，不声称本机完成了服务器45项测试或独立复现300条。服务器可按以下任务继续，不等待异地文件打包。
+服务器已交付 B4 运行时证据和 C2 overlap 产物。C2 派生文件仍绑定旧 reference digest，B4 consumer 正确 fail-closed；先完成最终派生物收尾，再建立含最终 E1 frames 的正式 run。
 
-## 只交付两个任务，可同时启动
+## 当前任务顺序
 
 | 会话 | 任务书 | 范围与停止点 |
 |---|---|---|
-| 原C会话，续作C2 | [最终E1重叠审核与40条选择](paper1_server_codex_e1_final_overlap_prompt_nohup.md) | CPU+真实双subagent，仅审核最终near-match候选，保存E1 ledger/40条名单和报告；不改共享实现、不prepare、不运行GPU |
-| 原B会话（完成B3的会话），续作B4 | [新适配检查、代码交付与真实smoke](paper1_server_codex_post_recovery_runtime_handoff_prompt_nohup.md) | 检查E新增identity/config/snapshot适配，必要小修复/测试；复用充分的旧smoke证据或补做一次≤24 generation/4 Judge的core真实smoke；交付实际文件并停止 |
+| 原C会话，续作C3 | [最终 E1 派生物收尾](paper1_server_codex_c3_e1_consumer_finalize_prompt_nohup.md) | 复用 C2 raw；只重建 digest/状态/路径绑定，不重审、不加载模型、不改共享实现 |
+| 原B会话，续作B5 | [E1 消费复核与运行入口交接](paper1_server_codex_b5_e1_consumer_handoff_prompt_nohup.md) | 等 C3 final 文件后纯 CPU 验证 `READY_FOR_RUN`，必要时创建 run-specific config，不运行模型 |
+| 新F会话 | [Core 方向构造与 calibration](paper1_server_codex_core_directions_calibration_prompt_nohup.md) | B5 PASS 后 `prepare + build-directions`；单卡顺序构造 Core，并记录自动接入的 E2/E3 方向资产；不screen、不generation |
 | 原E、A、D | 本轮无需新任务 | E完成；A证据沿用；D的Gemma探针不重复 |
 
-若C/B原会话无法继续，可新开一个会话承接对应文件，不能同时让新旧会话做同一任务。C2和B4先独立工作；C2的E1结果交付后，B4只需做一次消费接口检查，不额外启动E1审核。
+若原C/B会话无法继续，可新开会话承接对应任务，不能让新旧会话同时写同一输出。C3完成后才启动B5；F可提前做静态检查，但在 B5 PASS 前不得创建正式 run。
 
 ## 输入和并行归属
 
 - 固定safe-pair输入：`data/safe_pairs_public_semantic_v2_expanded.json`、同前缀 `_ledger.json`/`.manifest.json`；config=`configs/paper1_broadening/mbd_nm_v212_public_expanded.json`。
 - 数据型prepare：`results/paper1_broadening/public-safe-pair-recovery-v2-final-20260915T041534Z/`。保持其source、ledger、300个分配ID和原run不变；E1补全不回头改safe split。
-- C2只读上述稳定文件及HarmBench原件。自己的脚本/数据输出写 `.codex-temp/paper1_e1_final_overlap/`，只写自己的报告，不import B4正在修改的模块；可在启动时复制所需脚本到自己目录。所有语义意见只读，不写共享实现。
-- B4是本轮共享实现唯一写入者。只在CPU检查/小修复完成后运行smoke；执行期间代码保持稳定。E1消费者若需要最小schema适配，由B4处理；C2不并发修改frames.py。
-- C2/B4各自使用新输出目录，已有同名结果保留另建子目录。不重跑恢复prepare，不对safe-pair再发review请求；缺项先定位，出现实际矛盾只报告受影响项。
+- C3只读 C2 raw/reference 和 safe-source snapshot，输出写独立 final 目录，保留旧 provisional 文件；不对 safe-pair 或 E1 near queue 重发 reviewer。
+- B5只读 C3 final 文件和当前实现，必要时写最小 E1 path adapter/run-specific config；不改 canonical scientific config。
+- F 是唯一 GPU 方向构造者；使用 B5 通过后的稳定 config/run。C3、B5、F 不共享同一正在写入的 run 目录。
 
 ## 原实验设计保护
 
@@ -78,9 +79,10 @@ launch_nohup() {
 
 ## 输出与下一阶段
 
-C2报告：`writing/broadening design/report/paper1_e1_final_overlap_report.md`。
-B4报告：`writing/broadening design/report/paper1_post_recovery_runtime_handoff_report.md`。
+C3报告：`writing/broadening design/report/paper1_e1_consumer_finalization_report.md`。
+B5报告：`writing/broadening design/report/paper1_e1_consumer_handoff_report.md`。
+F报告：`writing/broadening design/report/paper1_core_direction_calibration_report.md`。
 
 两份报告分别做一次任务内自审，有问题只修相关项并复核，不加新审计轮次。服务器不commit/push（用户另有明确授权则按其限定范围执行），不清理他人文件。将B4列出的实际代码/数据/配置/来源addendum和C2结果一起同步；raw留服务器，需要复核具体项再转移，不强制大包或双份备份。
 
-C2通过、B4相关接口与runtime通过且实际运行文件可定位后，再交付方向构造→development screen→正式评估任务。现有 `build-directions` 可能自动构造E2/E3资产，下一轮须按其实际范围授权；本轮只调查该入口，不能偷偷执行它或通过设Gemma为空绕过。不会因smoke用了临时向量就声称正式contrastive方向已验证。
+C3/B5通过后，F 才建立最终 run 并运行 `prepare -> build-directions`。现有 `build-directions` 可能自动构造 E2/E3 方向资产，按实际状态分别记录；不会因扩展资产缺失而改写 Core gate。F 完成后再单独交付 Core development screen 任务，锁定 A/S 后才可安排正式 evaluation。
