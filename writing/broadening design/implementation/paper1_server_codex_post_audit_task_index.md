@@ -1,36 +1,45 @@
-# A2/B2 完成后的当前任务入口
+# Safe-pair 恢复后的当前任务入口
 
-更新：2026-09-15，已纳入A3/B3/E回执及设计不可变性审阅。A3/B3已完成；当前只需交付E4续作任务。此前版本不再交付执行。
+更新：2026-09-15，依据 `a5f5dd4` 的最终恢复报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4任务均不重新执行。
 
-## 当前判断
+## 当前决定
 
-- A2 报告：416 条 source、7 条 exact overlap、409 条 preliminary eligible；818 个完成的 A/B 请求，221 条 unanimous include、188 条 exclude，无 pending。`k=min(80,(221-100)//5)=24<30`。至少还需 **29 条新增 executable pairs**，不是 29 条未经审核的原始数据。
-- 用户随后提供A2专项核验：818个真实独立请求/thread/workdir、A/B隔离证据和最终COMPLETE状态已检查。A3已将最终ledger、summary和必要小文件交付；不重复安排来源/独立性全量核验。
-- 最终依据是 `rebuilt_summary.json` 和rebuilt ledger；旧 `summary.json` 的817 ok/1 pending是341 retry前统计，不构成当前阻塞。7条exact overlap无需补审。
-- B3已交付实际实现/配置接线和45项主测试、5项adapter测试，状态`B2_DELIVERY_READY`；实际代码仍需按B3交付清单从服务器同步后才能在本机复核。
-- 旧v1的194条来自失效审核历史，不能复用。当前以A2最终ledger的221条为恢复基线；数量不足本身不构成再次全量重审的理由。
-- A2 prepare 的 E1 资产缺失/E2 未配置，先检查 config 和 loader 接线；C/D 已完成的资产准备不应因此重复执行。
+服务器报告safe-pair gate通过：516 source − 7 exact = 509 preliminary；旧221 + 新79 = 300 executable；5×40 construction + 100 development = 300，unused=0。无需新增来源或再次审核旧/新safe pairs。报告的 `READY_FOR_CONSTRUCTION` 仅是数据gate，尚未构造向量或运行正式generation。
 
-## 现在交付的三个任务
+本机仅同步报告，没有实际expanded代码/config/source/ledger/frames及来源修订文件。本轮做报告和已同步代码入口对照，不声称本机完成了服务器45项测试或独立复现300条。服务器可按以下任务继续，不等待异地文件打包。
 
-| 会话 | 任务书 | 立即可做 | 停止位置 |
-|---|---|---|---|
-| 原 A2 | 已完成 | A3_HANDOFF_RECORDED；不再重复 | 等待后续数据交接 |
-| 原 B2 | 已完成 | B2_DELIVERY_READY；不再重复 | 等待后续数据交接 |
-| 原 E，继续做 E4 | [恢复 safe-pair 来源整合与新增双审核](paper1_server_codex_e_resume_after_a3_b3_prompt_nohup.md) | 审查已下载候选、冻结批次、完成新增双审核；交接后合并/prepare | 保存更新后的 recovery report；不启动模型实验 |
-| 原 C、D | 暂无新任务 | 保留报告与证据 | 等待最终 source，不重复 overlap/Gemma 探针 |
+## 只交付两个任务，可同时启动
 
-三个任务可以现在交付。A3/B3 使用原会话；E 如为新会话，从磁盘读取索引与任务书，不依赖会话记忆。
+| 会话 | 任务书 | 范围与停止点 |
+|---|---|---|
+| 原C会话，续作C2 | [最终E1重叠审核与40条选择](paper1_server_codex_e1_final_overlap_prompt_nohup.md) | CPU+真实双subagent，仅审核最终near-match候选，保存E1 ledger/40条名单和报告；不改共享实现、不prepare、不运行GPU |
+| 原B会话（完成B3的会话），续作B4 | [新适配检查、代码交付与真实smoke](paper1_server_codex_post_recovery_runtime_handoff_prompt_nohup.md) | 检查E新增identity/config/snapshot适配，必要小修复/测试；复用充分的旧smoke证据或补做一次≤24 generation/4 Judge的core真实smoke；交付实际文件并停止 |
+| 原E、A、D | 本轮无需新任务 | E完成；A证据沿用；D的Gemma探针不重复 |
 
-## 依赖和写入归属
+若C/B原会话无法继续，可新开一个会话承接对应文件，不能同时让新旧会话做同一任务。C2和B4先独立工作；C2的E1结果交付后，B4只需做一次消费接口检查，不额外启动E1审核。
 
-1. A3只读source/ledger/raw/run，仅记录已完成核验和交付必要小文件，不重建历史结果。历史执行不能用当前工作树冒充。
-2. B3 是当前共享实现和资产配置的唯一写入者，不修改 A2 审核脚本、source、ledger、旧 run。
-3. E继续在 `.codex-temp/paper1_source_recovery_v2/` 独立处理新候选/临时转换/新增审核；A3交付已完成，不再等待A3。E进入共享实现修改、正式source/config发布、最终测试和prepare前，读取B3的 `B2_DELIVERY_READY` 报告并确认其停止写代码。交接后E成为相关代码/source唯一写入者。
-5. 有实际证据矛盾时只阻断受影响数据的复用，列出具体项；不能自动全量重审或从221中静默删项凑数。只有新的实际问题才重开检查，A3文件整理尚未完成不算证据矛盾。
-6. 三会话不 commit/push、不覆盖式 pull、不 reset/clean，不动其他用户文件或进程。保留交付包供用户同步回来，由本机负责人审核和提交。不得把模型权重、缓存或无关会话提交 Git。
+## 输入和并行归属
 
-## 共用 Linux/nohup 规则
+- 固定safe-pair输入：`data/safe_pairs_public_semantic_v2_expanded.json`、同前缀 `_ledger.json`/`.manifest.json`；config=`configs/paper1_broadening/mbd_nm_v212_public_expanded.json`。
+- 数据型prepare：`results/paper1_broadening/public-safe-pair-recovery-v2-final-20260915T041534Z/`。保持其source、ledger、300个分配ID和原run不变；E1补全不回头改safe split。
+- C2只读上述稳定文件及HarmBench原件。自己的脚本/数据输出写 `.codex-temp/paper1_e1_final_overlap/`，只写自己的报告，不import B4正在修改的模块；可在启动时复制所需脚本到自己目录。所有语义意见只读，不写共享实现。
+- B4是本轮共享实现唯一写入者。只在CPU检查/小修复完成后运行smoke；执行期间代码保持稳定。E1消费者若需要最小schema适配，由B4处理；C2不并发修改frames.py。
+- C2/B4各自使用新输出目录，已有同名结果保留另建子目录。不重跑恢复prepare，不对safe-pair再发review请求；缺项先定位，出现实际矛盾只报告受影响项。
+
+## 原实验设计保护
+
+以下文件和已批准的科学revision默认只读：
+
+- `writing/broadening design/paper1_minimal_broadening_experiment_design_no_mistral.md`
+- `writing/broadening design/paper1_minimal_broadening_experiment_design_v2.1_readable.md`
+- `writing/broadening design/implementation/paper1_ccf_a_experiment_implementation_spec_gpt56.md`
+- `writing/broadening design/review/paper1_public_safe_pair_source_expansion_revision.md`（服务器已有的v2.1.2来源修订）
+
+v2.1.2是此前已授权的一次来源追加，并不允许继续更换来源或科学规则。模型/层/hook/模板/decoder/rho/seed、分割和判定标准、预算/endpoint不得为了让代码通过而修改。必要科学变更只另写proposal、标 `DESIGN_CHANGE_REQUIRED`，相关步骤停止；不自动改正文或把未批准proposal作为新run依据。普通状态、执行报告和独立实现修复记录不属于科学设计变更，可以按本任务保存。
+
+执行前记录这些文件相对当前HEAD的已有diff/未跟踪状态，执行后只比较本任务新增变化。发现既有差异先保存说明，不reset他人修改；报告列实际修改文件，区分授权来源addendum与原设计正文。本机尚未见服务器diff，不能仅凭报告替服务器保证完全无改动。
+
+## Linux/nohup与单卡
 
 ```bash
 cd /data/goodtaste_workspace/llama-prefix || exit 1
@@ -44,6 +53,8 @@ export TRANSFORMERS_OFFLINE=1
 export HF_DATASETS_OFFLINE=1
 export PYTHONUNBUFFERED=1
 export PYTHONPYCACHEPREFIX="$TMPDIR/pycache"
+export CUDA_DEVICE_ORDER=PCI_BUS_ID
+export MBD_GPU=0
 export CUDA_VISIBLE_DEVICES=0
 MBD_PYTHON=/data/goodtaste_workspace/envs/llama-prefix/bin/python
 test -x "$MBD_PYTHON" || exit 1
@@ -61,14 +72,15 @@ launch_nohup() {
 }
 ```
 
-测试、批量核验、转换、ledger 汇总和 prepare 用 nohup。同会话一次一个后台步骤，确认退出并读取 `.exit` 后继续；不同会话只读 CPU 工作可并行。没有 `.exit` 不能写成通过。轻量阅读/Git 状态查询、原生 subagent 调用无需套虚假 nohup 包装；实际 CLI/API runner 才按需要后台运行。PID 不能替代 reviewer 调用证据。
+批量检查、测试及实际runner/smoke通过nohup保存PID/log/exit。同一会话一次一个后台步骤，核对进程结束、退出码和业务JSON再继续；退出0不等于业务PASS。原生subagent调用保存实际事件，无需伪造nohup外壳。历史freeze/review缺exit如实标记，已有完整raw/产物可用于证明结果，不重发已完成请求、不事后编造exit。
 
-服务器下载只用明确来源的 GitHub/ModelScope，不访问 HF，不在线加载模型。三个任务均不启动 GPU 模型实验。文件关闭写入后再计算交付 hash，不增加运行前不可变设计 manifest。
+只有B4可使用GPU0；启动前确认空闲/足够显存，不终止其他用户进程，不切双卡、不在线下载、不升级现有模型环境。被测模型和Judge顺序加载并释放。小型检查无需下载模型、重hash所有权重或重新建立环境。
 
-## 交付与后续
+## 输出与下一阶段
 
-每个任务完成一次有边界自审：发现问题只修复相关项并复核，不扩展实验。失败也保存事实报告和证据，不能为了 PASS 改门槛。报告列实际文件、命令/PID/log/exit、代码状态、未解决项，写 `FORMAL_EXPERIMENTS_NOT_RUN`。
+C2报告：`writing/broadening design/report/paper1_e1_final_overlap_report.md`。
+B4报告：`writing/broadening design/report/paper1_post_recovery_runtime_handoff_report.md`。
 
-下次除三个新报告，还需同步B2原报告及一份实际代码/配置/测试、A2最终ledger/rebuilt summary/协议/请求索引和prepare小产物、E新增数据/整合/审核证据（若完成）。报告不能代替代码。完整raw保留服务器并列路径，需要异地复核时再打包；不以复制/压缩进度阻塞数据工作，不要求同时交付源码副本和可应用补丁。
+两份报告分别做一次任务内自审，有问题只修相关项并复核，不加新审计轮次。服务器不commit/push（用户另有明确授权则按其限定范围执行），不清理他人文件。将B4列出的实际代码/数据/配置/来源addendum和C2结果一起同步；raw留服务器，需要复核具体项再转移，不强制大包或双份备份。
 
-E 通过后，下一阶段是最终 E1 overlap/40 条选择、必要的真实 runtime/smoke 核验，再进入 Core directions/screen。C 届时继续；D 无须重复已通过的零剂量探针。正式运行不在本轮授权范围。所有后续任务必须遵守 `paper1_experiment_design_immutability_audit_20260915.md`。
+C2通过、B4相关接口与runtime通过且实际运行文件可定位后，再交付方向构造→development screen→正式评估任务。现有 `build-directions` 可能自动构造E2/E3资产，下一轮须按其实际范围授权；本轮只调查该入口，不能偷偷执行它或通过设Gemma为空绕过。不会因smoke用了临时向量就声称正式contrastive方向已验证。
