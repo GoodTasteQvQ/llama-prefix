@@ -1,0 +1,54 @@
+{
+  "schema_version": "paper1-b4-delivery-state-v1",
+  "delivery_revision": "post-recovery-runtime-handoff-b4-r2",
+  "status": "B4_DELIVERY_COMPLETE",
+  "branch": "stage3/impl-candidate",
+  "head": "a62ff22d20a900e9a48262830847e9160ee68dc2",
+  "worktree_dirty_before_task": true,
+  "preexisting_changes_preserved": true,
+  "code_contract": "CODE_CONTRACT_PASS",
+  "core_real_smoke": {
+    "status": "CORE_REAL_SMOKE_PASS",
+    "evidence_status": "NON_EVIDENCE",
+    "generation_calls": 24,
+    "judge_calls": 4,
+    "models": ["qwen25", "llama31"]
+  },
+  "e1_consumer": {
+    "status": "E1_CONSUMER_PENDING",
+    "reference_digest": "d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a",
+    "reference_count": 700,
+    "near_match_count": 17,
+    "selected_count": 0,
+    "reason": "E1_SEMANTIC_OVERLAP_REVIEW_PENDING"
+  },
+  "safe_pair": {
+    "source_count": 516,
+    "preliminary_eligible_count": 509,
+    "executable_eligible_count": 300,
+    "actual_k": 40,
+    "construction_fold_sizes": [40, 40, 40, 40, 40],
+    "development_count": 100,
+    "unused_count": 0,
+    "evaluation_frame_digest": "db9026dca9a79d4e9128206118a824c862839d5eadb16440f547142386404fb7",
+    "gate": "READY_FOR_CONSTRUCTION"
+  },
+  "c2_provisional_outputs": {
+    "reference_digest": "8be3f0b5ba135f7f8b0bcf09e8005612f4536b25f1fde8e355036203f5f8253a",
+    "files": [
+      "assets/c2/e1_overlap_ledger.json",
+      "assets/c2/near_match_review_ledger.json",
+      "assets/c2/harmbench40_selection.json",
+      "assets/c2/review_identity_manifest.json"
+    ],
+    "not_consumable": true
+  },
+  "formal_experiments_not_run": true,
+  "prepare_rerun": false,
+  "model_loads_this_task": false,
+  "reviewer_raw_events_copied": false,
+  "delivery_root": "writing/broadening design/report/evidence/paper1_post_recovery_runtime_handoff",
+  "delivery_file_count": 102,
+  "content_hash_count": 101,
+  "file_manifest": "file_manifest.sha256"
+}

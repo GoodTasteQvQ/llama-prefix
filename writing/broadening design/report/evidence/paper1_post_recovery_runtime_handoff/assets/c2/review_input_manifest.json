@@ -1,0 +1,9 @@
+{
+  "candidate_count": 17,
+  "reference_digest": "d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a",
+  "reviewer_a_input_sha256": "d68c61dc07ef73eeceee5fb290295c0537c1ec5ca9bba177956f0f93588b24a5",
+  "reviewer_b_input_sha256": "185d3be42ba62955f95a5deb2a7a5e7b73aa59c25b351d9fc3e9c7103396f9c6",
+  "reviewer_results_not_present": true,
+  "same_candidate_payload_sha256": false,
+  "status": "TWO_ISOLATED_REVIEW_INPUTS_READY"
+}

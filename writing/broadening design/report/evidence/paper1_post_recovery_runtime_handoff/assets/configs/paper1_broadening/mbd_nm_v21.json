@@ -1,0 +1,117 @@
+{
+  "schema_version": "paper1-broadening-config-v1",
+  "design_id": "MBD-NM",
+  "design_revision": "v2.1-ccf-a-target",
+  "implementation_revision": "linux-single-gpu-v1",
+  "project_root": "/data/goodtaste_workspace/llama-prefix",
+  "output_root": "/data/goodtaste_workspace/llama-prefix/results/paper1_broadening",
+  "data": {
+    "jbb_path": "data/jbb_behaviors_harmful.json",
+    "jbb_source_revision": "local-jbb-behaviors-v1",
+    "safe_pairs_path": "data/safe_pairs.json",
+    "benign_path": "data/stage3/benign_prompt_frames_v1/selected_benign_confirm_30.json",
+    "e1_harmbench_path": null,
+    "e1_metadata_path": null,
+    "e1_overlap_decisions_path": null,
+    "overlap_decisions_path": null
+  },
+  "models": {
+    "qwen25": {
+      "model_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+      "tokenizer_path": "/data/goodtaste_workspace/models/Qwen2.5-7B-Instruct",
+      "layer": 9,
+      "model_index": 1,
+      "dtype": "bfloat16"
+    },
+    "llama31": {
+      "model_path": "/data/goodtaste_workspace/models/Meta-Llama-3.1-8B-Instruct",
+      "tokenizer_path": "/data/goodtaste_workspace/models/Meta-Llama-3.1-8B-Instruct",
+      "layer": 11,
+      "model_index": 2,
+      "dtype": "bfloat16"
+    },
+    "gemma2_9b_it": {
+      "model_path": null,
+      "tokenizer_path": null,
+      "layer": null,
+      "model_index": 3,
+      "dtype": "bfloat16"
+    },
+    "judge": {
+      "model_path": "/data/goodtaste_workspace/models/Qwen3-8B",
+      "tokenizer_path": "/data/goodtaste_workspace/models/Qwen3-8B",
+      "dtype": "float32"
+    }
+  },
+  "runtime": {
+    "model_python": "/data/goodtaste_workspace/envs/llama-prefix/bin/python",
+    "gpu": 0,
+    "device": "cuda:0",
+    "batch_size": 1,
+    "local_files_only": true,
+    "trust_remote_code": false,
+    "decoder": {
+      "do_sample": false,
+      "num_beams": 1,
+      "max_new_tokens": 512,
+      "use_cache": true,
+      "repetition_penalty": 1.0,
+      "seed": 42
+    },
+    "judge": {
+      "do_sample": false,
+      "num_beams": 1,
+      "max_new_tokens": 1296,
+      "enable_thinking": true
+    }
+  },
+  "protocol": {
+    "hook_site": "resid_pre",
+    "conditions": ["public_v1", "decode_only"],
+    "rho_grid": [0.5, 0.75, 1.0, 1.25, 1.5],
+    "master_seed": 42,
+    "folds": 5,
+    "max_fold_size": 80,
+    "min_fold_size": 30,
+    "development_count": 100,
+    "screen_prompt_count": 20,
+    "screen_direction_indices": [0, 1, 2],
+    "directions": {"rogue": 8, "contrastive": 5},
+    "bootstrap": {
+      "replicates": 10000,
+      "minimum_successes": 9500,
+      "lower": 0.0125,
+      "upper": 0.9875
+    }
+  },
+  "budget": {
+    "core": {
+      "development": 1200,
+      "harmful_steered": 10400,
+      "harmful_clean": 200,
+      "benign_steered": 780,
+      "benign_clean": 60
+    },
+    "extension": {
+      "e1_steered": 2240,
+      "e1_clean": 80,
+      "e2_steered": 1120,
+      "e2_clean": 40,
+      "e3_steered": 2560,
+      "e2_screen": 600,
+      "e3_screen": 1200
+    },
+    "core_total": 12640,
+    "extension_total": 7840,
+    "logical_generation_total": 20480,
+    "excluded_from_logical_generation_budget": [
+      "A_equals_S_alias_deduplication",
+      "generation_technical_retries",
+      "judge_calls",
+      "judge_retries",
+      "smoke_generation_calls",
+      "smoke_judge_calls",
+      "activation_measurement_forwards"
+    ]
+  }
+}

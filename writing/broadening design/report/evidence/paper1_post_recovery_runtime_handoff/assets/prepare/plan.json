@@ -1,0 +1,52 @@
+{
+  "budget_notes": [
+    "A=S aliases are deduplicated at physical response accounting time.",
+    "Judge calls, retries, smoke, and activation forwards are separate ledgers.",
+    "E1/E2/E3 are not scheduled for runtime without their gates."
+  ],
+  "core_schedule_count": 12640,
+  "extension_schedule_count": 0,
+  "extension_status": {
+    "E1": "NOT_RUN_ASSET_OR_OVERLAP_GATE_PENDING",
+    "E2": "NOT_RUN_GEMMA_ASSET_MISSING",
+    "E3": "NOT_RUN_UNTIL_CORE_LAYER_GATE"
+  },
+  "frame_counts": {
+    "benign30": 30,
+    "jbb100": 100,
+    "jbb40": 40,
+    "safe_pair_actual_k": 40,
+    "safe_pair_source": 516
+  },
+  "schema_version": "paper1-broadening-plan-v1",
+  "scientific_budget": {
+    "core": {
+      "benign_clean": 60,
+      "benign_steered": 780,
+      "development": 1200,
+      "harmful_clean": 200,
+      "harmful_steered": 10400
+    },
+    "core_total": 12640,
+    "excluded_from_logical_generation_budget": [
+      "A_equals_S_alias_deduplication",
+      "generation_technical_retries",
+      "judge_calls",
+      "judge_retries",
+      "smoke_generation_calls",
+      "smoke_judge_calls",
+      "activation_measurement_forwards"
+    ],
+    "extension": {
+      "e1_clean": 80,
+      "e1_steered": 2240,
+      "e2_clean": 40,
+      "e2_screen": 600,
+      "e2_steered": 1120,
+      "e3_screen": 1200,
+      "e3_steered": 2560
+    },
+    "extension_total": 7840,
+    "logical_generation_total": 20480
+  }
+}

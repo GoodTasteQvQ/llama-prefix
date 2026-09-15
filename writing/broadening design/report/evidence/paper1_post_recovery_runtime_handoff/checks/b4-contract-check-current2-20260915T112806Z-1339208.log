@@ -1,0 +1,1 @@
+{"actual_k": 40, "design_snapshot_paths": 16, "e1_reason": "E1_SEMANTIC_OVERLAP_REVIEW_PENDING", "e1_reference_digest": "d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a", "e1_status": "NOT_RUN", "executable": 300, "gate": "READY_FOR_CONSTRUCTION", "preliminary": 509, "source_count": 516, "source_snapshot_paths": 47, "status": "CODE_CONTRACT_PASS"}

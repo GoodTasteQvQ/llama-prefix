@@ -1,0 +1,37 @@
+{
+  "clean_policy": "one_per_model_prompt",
+  "conditions": [
+    "public_v1",
+    "decode_only"
+  ],
+  "counts": {
+    "benign_clean": 60,
+    "benign_steered": 780,
+    "development": 1200,
+    "harmful_clean": 200,
+    "harmful_steered": 10400
+  },
+  "dose_resolution_required_before_evaluation": true,
+  "doses": [
+    "A",
+    "S"
+  ],
+  "evaluation_frames": {
+    "benign": 30,
+    "harmful": 100
+  },
+  "families": {
+    "contrastive": 5,
+    "rogue": 8
+  },
+  "layers": {
+    "llama31": 11,
+    "qwen25": 9
+  },
+  "logical_generation_total": 12640,
+  "models": [
+    "qwen25",
+    "llama31"
+  ],
+  "schema_version": "paper1-broadening-identity-plan-v1"
+}

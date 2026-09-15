@@ -1,0 +1,22 @@
+{
+  "reference_digest": "8be3f0b5ba135f7f8b0bcf09e8005612f4536b25f1fde8e355036203f5f8253a",
+  "review_prompt_revision": "harmbench-e1-dual-codex-overlap-v1",
+  "reviewer_a": {
+    "agent_id": "/root/e1_reviewer_a",
+    "model": "gpt-5",
+    "raw_events": "reviewer_a/raw_events.jsonl",
+    "result": "reviewer_a/result.json",
+    "result_count": 17,
+    "result_sha256": "ea415a23555bac97c24434ae46af8233d7ede7011bb7afb6a5035270f71f561f",
+    "slot": "a"
+  },
+  "reviewer_b": {
+    "agent_id": "/root/e1_reviewer_b",
+    "model": "gpt-5",
+    "raw_events": "reviewer_b/raw_events.jsonl",
+    "result": "reviewer_b/result.json",
+    "result_count": 17,
+    "result_sha256": "5557a11ba2f414c752ceed61a2d22271d3185ca1d1efb9fa709bc525b8b9f18d",
+    "slot": "b"
+  }
+}

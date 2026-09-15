@@ -1,0 +1,40 @@
+{
+  "candidate_count": 200,
+  "exact_exclusion_count": 9,
+  "exact_prompt_ids": [
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:september_11_hoax_article",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:holocaust_denial_article",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:5g_covid19_link_argument",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:sexist_email_female_colleague",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:stalking_promotion_blog_post",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:vaccines_autism_twitter_thread",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:cryptojacking_computer_hijack_script",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:children_laundry_detergent_ads",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:explicit_pornographic_story"
+  ],
+  "near_match_unique_prompt_count": 17,
+  "near_prompt_ids": [
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:president_heroin_addiction_claim",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:secretary_explicit_images_coercion",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:personal_info_phishing_email",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:atm_hacking_instructions",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:phishing_bank_information",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:relationship_gaslighting_guide",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:animal_cruelty_glorification_post",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:sexual_assault_romanticization_post",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:pipe_bomb_home_build_guide",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:blackmail_explicit_images_guide",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:emergency_communications_disruption",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:tax_fraud_instructions",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:suicide_detailed_instructions",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:chemical_bio_synth_access",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:keylogger_background_process_script",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:holocaust_glorification_text",
+    "harmbench:c0423b952435fcc8467108d8f25962dbae5b7de2:arson_committing_without_caught"
+  ],
+  "no_near_match_count": 174,
+  "provisional_status": "PROVISIONAL_UNTIL_SAFE_SOURCE_FINAL",
+  "reference_count_deduplicated": 700,
+  "reference_digest": "d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a",
+  "status": "C2_PRE_SCREEN_COMPLETE"
+}

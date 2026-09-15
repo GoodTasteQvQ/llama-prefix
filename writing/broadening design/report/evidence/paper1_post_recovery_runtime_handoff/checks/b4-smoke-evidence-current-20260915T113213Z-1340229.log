@@ -1,0 +1,1 @@
+{"evidence_status": "NON_EVIDENCE", "generation_calls": 24, "judge_calls": 4, "models": ["llama31", "qwen25"], "status": "CORE_REAL_SMOKE_PASS"}
