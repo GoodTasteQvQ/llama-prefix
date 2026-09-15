@@ -1,31 +1,34 @@
 # Safe-pair 恢复后的当前任务入口
 
-更新：2026-09-15，依据 C2/B4 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4任务均不重新执行。
+更新：2026-09-15，依据 C3、B5 与 F 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4/C3/B5/F 任务均不重新执行。
 
 ## 当前决定
 
-服务器报告safe-pair gate通过：516 source − 7 exact = 509 preliminary；旧221 + 新79 = 300 executable；5×40 construction + 100 development = 300，unused=0。无需新增来源或再次审核旧/新safe pairs。报告的 `READY_FOR_CONSTRUCTION` 仅是数据gate，尚未构造向量或运行正式generation。
+服务器报告safe-pair gate通过：516 source − 7 exact = 509 preliminary；旧221 + 新79 = 300 executable；5×40 construction + 100 development = 300，unused=0。无需新增来源或再次审核旧/新safe pairs。`READY_FOR_CONSTRUCTION` 是数据gate；其后已用于 Core direction/calibration 构造，但尚未运行任何正式 generation。
 
-服务器已交付 B4 运行时证据和 C2 overlap 产物。C2 派生文件仍绑定旧 reference digest，B4 consumer 正确 fail-closed；先完成最终派生物收尾，再建立含最终 E1 frames 的正式 run。
+C3 已将 E1 final 派生物绑定到 `d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a`：200 candidates、9 exact exclusions、17 near-match rows、180 include、40 fixed selections 和 6 native categories，状态为 `E1_CONSUMER_PASS` / `E1_FRAME_READY`。B5 以纯 CPU consumer 检查确认 `E1_CONSUMER_PASS` / `READY_FOR_RUN`；其 run-specific config 是 `configs/paper1_broadening/mbd_nm_v212_public_expanded_e1_final_d148.json`，canonical config 未改。
+
+F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。Qwen layer 9 和 Llama layer 11 均有 8 Rogue + 5 contrastive 方向，分别记录 `mu_content=56.86973966266515`（1172 tokens）和 `7.615247755784255`（1170 tokens）。E2/E3 自动方向资产状态已记录；Gemma release 未序列化仍是明确的记录缺口，不构成 E2 实验通过。screen、剂量选择、generation、Judge、analysis、human audit 和 archive 均未开始。
 
 ## 当前任务顺序
 
-| 会话 | 任务书 | 范围与停止点 |
+| 会话 | 任务书 | 已同步结果 / 当前停止点 |
 |---|---|---|
-| 原C会话，续作C3 | [最终 E1 派生物收尾](paper1_server_codex_c3_e1_consumer_finalize_prompt_nohup.md) | 复用 C2 raw；只重建 digest/状态/路径绑定，不重审、不加载模型、不改共享实现 |
-| 原B会话，续作B5 | [E1 消费复核与运行入口交接](paper1_server_codex_b5_e1_consumer_handoff_prompt_nohup.md) | 等 C3 final 文件后纯 CPU 验证 `READY_FOR_RUN`，必要时创建 run-specific config，不运行模型 |
-| 新F会话 | [Core 方向构造与 calibration](paper1_server_codex_core_directions_calibration_prompt_nohup.md) | B5 PASS 后 `prepare + build-directions`；单卡顺序构造 Core，并记录自动接入的 E2/E3 方向资产；不screen、不generation |
+| 原C会话，续作C3 | [最终 E1 派生物收尾](paper1_server_codex_c3_e1_consumer_finalize_prompt_nohup.md) | 已完成；final derived files 独立保存，旧 C2 provisional 文件未改，`E1_CONSUMER_PASS` |
+| 原B会话，续作B5 | [E1 消费复核与运行入口交接](paper1_server_codex_b5_e1_consumer_handoff_prompt_nohup.md) | 已完成；CPU consumer 为 `READY_FOR_RUN`，新增仅 run-specific E1 config，未加载模型 |
+| F会话 | [Core 方向构造与 calibration](paper1_server_codex_core_directions_calibration_prompt_nohup.md) | 已完成；单卡顺序完成 `prepare + build-directions`，`CORE_DIRECTIONS_READY`，未 screen 或 generation |
+| 下一阶段 | 尚未建立单独任务书 | Core development screen；必须在独立授权任务中选择 A/S 剂量，不能由本次报告同步自动启动 |
 | 原E、A、D | 本轮无需新任务 | E完成；A证据沿用；D的Gemma探针不重复 |
 
-若原C/B会话无法继续，可新开会话承接对应任务，不能让新旧会话同时写同一输出。C3完成后才启动B5；F可提前做静态检查，但在 B5 PASS 前不得创建正式 run。
+三项已完成任务不重跑。后续任务如消费 E1，只能读取已固定的 final E1 输入和 Core direction assets，不能回写 C2 provisional、C3 final 或 canonical scientific config。
 
 ## 输入和并行归属
 
 - 固定safe-pair输入：`data/safe_pairs_public_semantic_v2_expanded.json`、同前缀 `_ledger.json`/`.manifest.json`；config=`configs/paper1_broadening/mbd_nm_v212_public_expanded.json`。
 - 数据型prepare：`results/paper1_broadening/public-safe-pair-recovery-v2-final-20260915T041534Z/`。保持其source、ledger、300个分配ID和原run不变；E1补全不回头改safe split。
-- C3只读 C2 raw/reference 和 safe-source snapshot，输出写独立 final 目录，保留旧 provisional 文件；不对 safe-pair 或 E1 near queue 重发 reviewer。
-- B5只读 C3 final 文件和当前实现，必要时写最小 E1 path adapter/run-specific config；不改 canonical scientific config。
-- F 是唯一 GPU 方向构造者；使用 B5 通过后的稳定 config/run。C3、B5、F 不共享同一正在写入的 run 目录。
+- C3 final 输出为 `.codex-temp/paper1_e1_consumer_final/`；旧 provisional 文件保留，且不对 safe-pair 或 E1 near queue 重发 reviewer。
+- B5 的 E1 路径绑定使用 `configs/paper1_broadening/mbd_nm_v212_public_expanded_e1_final_d148.json`。F 实际使用的 `mbd_nm_v212_public_expanded_e1_final.json` 与其 SHA256 相同（`606721864c4870543c63964fedd4d5a7f4001d54809cb38875ea460152d8e98a`），两者相对 canonical config 仅改变最终 E1 decision path。
+- F 的已完成 run 为 `results/paper1_broadening/core-directions-calibration-20260915T140731Z-1382603/`。后续任务不得与它或上述 final 派生目录共享写入目标。
 
 ## 原实验设计保护
 
@@ -75,14 +78,12 @@ launch_nohup() {
 
 批量检查、测试及实际runner/smoke通过nohup保存PID/log/exit。同一会话一次一个后台步骤，核对进程结束、退出码和业务JSON再继续；退出0不等于业务PASS。原生subagent调用保存实际事件，无需伪造nohup外壳。历史freeze/review缺exit如实标记，已有完整raw/产物可用于证明结果，不重发已完成请求、不事后编造exit。
 
-只有B4可使用GPU0；启动前确认空闲/足够显存，不终止其他用户进程，不切双卡、不在线下载、不升级现有模型环境。被测模型和Judge顺序加载并释放。小型检查无需下载模型、重hash所有权重或重新建立环境。
+F 已在 GPU0 完成方向构造并记录顺序释放。后续获授权的 GPU 任务仍须启动前确认空闲/足够显存，不终止其他用户进程，不切双卡、不在线下载、不升级现有模型环境；被测模型和 Judge 必须顺序加载并释放。小型检查无需下载模型、重 hash 所有权重或重新建立环境。
 
 ## 输出与下一阶段
 
-C3报告：`writing/broadening design/report/paper1_e1_consumer_finalization_report.md`。
-B5报告：`writing/broadening design/report/paper1_e1_consumer_handoff_report.md`。
-F报告：`writing/broadening design/report/paper1_core_direction_calibration_report.md`。
+C3报告：`writing/broadening design/report/paper1_e1_consumer_finalization_report.md`（报告 SHA256：`4e92522754280bba9f8512abe2368255ffab2ae9aafb717f0ec2d09925c71a95`；`tests/paper1_broadening` 为 50 passed）。任务期间发生过一次外部 `git pull --ff` 到 `107a2412`，该同步与 C3 自身工作明确区分；C3 未 commit/push。
+B5报告：`writing/broadening design/report/paper1_e1_consumer_handoff_report.md`（CPU PID `1386866`、exit `0`；syntax/JSON PID `1388726`、exit `0`）。
+F报告：`writing/broadening design/report/paper1_core_direction_calibration_report.md`（prepare PID `1382607`、build-directions PID `1383422`，均 exit `0`；`git diff --check` 与 47 项源码快照核验通过）。
 
-两份报告分别做一次任务内自审，有问题只修相关项并复核，不加新审计轮次。服务器不commit/push（用户另有明确授权则按其限定范围执行），不清理他人文件。将B4列出的实际代码/数据/配置/来源addendum和C2结果一起同步；raw留服务器，需要复核具体项再转移，不强制大包或双份备份。
-
-C3/B5通过后，F 才建立最终 run 并运行 `prepare -> build-directions`。现有 `build-directions` 可能自动构造 E2/E3 方向资产，按实际状态分别记录；不会因扩展资产缺失而改写 Core gate。F 完成后再单独交付 Core development screen 任务，锁定 A/S 后才可安排正式 evaluation。
+三份报告均已完成各自边界自审，且没有 commit/push。此次仅同步执行状态；不改写 C2 provisional、canonical config、safe-pair 数据、科学设计或既有历史 run report。下一步是另行交付并授权 Core development screen，锁定 A/S 后才可安排正式 evaluation。
