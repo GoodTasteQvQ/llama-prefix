@@ -1,14 +1,14 @@
 # Safe-pair 恢复后的当前任务入口
 
-更新：2026-09-15，依据 C3、B5 与 F 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4/C3/B5/F 任务均不重新执行。
+更新：2026-09-16，依据 C3、B5、F、F2 与 B6 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4/C3/B5/F 任务均不重新执行。
 
 ## 当前决定
 
-服务器报告safe-pair gate通过：516 source − 7 exact = 509 preliminary；旧221 + 新79 = 300 executable；5×40 construction + 100 development = 300，unused=0。无需新增来源或再次审核旧/新safe pairs。`READY_FOR_CONSTRUCTION` 是数据gate；其后已用于 Core direction/calibration 构造，但尚未运行任何正式 generation。
+服务器报告safe-pair gate通过：516 source − 7 exact = 509 preliminary；旧221 + 新79 = 300 executable；5×40 construction + 100 development = 300，unused=0。无需新增来源或再次审核旧/新safe pairs。`READY_FOR_CONSTRUCTION` 是数据gate；其后已用于 Core direction/calibration 构造和 Core dose screen，后者已完成但被 Judge 解析失败门槛阻断。
 
 C3 已将 E1 final 派生物绑定到 `d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a`：200 candidates、9 exact exclusions、17 near-match rows、180 include、40 fixed selections 和 6 native categories，状态为 `E1_CONSUMER_PASS` / `E1_FRAME_READY`。B5 以纯 CPU consumer 检查确认 `E1_CONSUMER_PASS` / `READY_FOR_RUN`；其 run-specific config 是 `configs/paper1_broadening/mbd_nm_v212_public_expanded_e1_final_d148.json`，canonical config 未改。
 
-F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。Qwen layer 9 和 Llama layer 11 均有 8 Rogue + 5 contrastive 方向，分别记录 `mu_content=56.86973966266515`（1172 tokens）和 `7.615247755784255`（1170 tokens）。E2/E3 自动方向资产状态已记录；Gemma release 未序列化仍是明确的记录缺口，不构成 E2 实验通过。screen、剂量选择、generation、Judge、analysis、human audit 和 archive 均未开始。
+F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。Qwen layer 9 和 Llama layer 11 均有 8 Rogue + 5 contrastive 方向，分别记录 `mu_content=56.86973966266515`（1172 tokens）和 `7.615247755784255`（1170 tokens）。F2 已完成 Core screen 的 1,200 generation 与 Judge，但 13 条解析失败使 contrastive 缺失超过 2%，状态为 `CORE_DOSE_SCREEN_BLOCKED`，尚无合法的 contrastive A/S。E2/E3 自动方向资产状态已记录；Gemma release 未序列化仍是明确的记录缺口，不构成 E2 实验通过。正式 evaluation、E1/E2/E3 generation、analysis、human audit 和 archive 均未开始。
 
 ## 当前任务顺序
 
@@ -17,9 +17,11 @@ F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。
 | 原C会话，续作C3 | [最终 E1 派生物收尾](paper1_server_codex_c3_e1_consumer_finalize_prompt_nohup.md) | 已完成；final derived files 独立保存，旧 C2 provisional 文件未改，`E1_CONSUMER_PASS` |
 | 原B会话，续作B5 | [E1 消费复核与运行入口交接](paper1_server_codex_b5_e1_consumer_handoff_prompt_nohup.md) | 已完成；CPU consumer 为 `READY_FOR_RUN`，新增仅 run-specific E1 config，未加载模型 |
 | F会话 | [Core 方向构造与 calibration](paper1_server_codex_core_directions_calibration_prompt_nohup.md) | 已完成；单卡顺序完成 `prepare + build-directions`，`CORE_DIRECTIONS_READY`，未 screen 或 generation |
-| 原F会话，续作F2 | [Core development dose screen](paper1_server_codex_core_dose_screen_prompt_nohup.md) | 先校验F run的47项source snapshot；1,200 logical generation + four-class Judge，锁定A/S；不运行正式evaluation |
-| 原B会话，续作B6 | [Core静态证据交接](paper1_server_codex_b6_static_evidence_handoff_prompt_nohup.md) | 只读核对并同步C3/B5/F的实际小型文件和hash，不占GPU、不改代码 |
-| 原E、A、D | 本轮无需新任务 | E完成；A证据沿用；D的Gemma探针不重复 |
+| 原F会话，续作F2 | [Core development dose screen](paper1_server_codex_core_dose_screen_prompt_nohup.md) | 已完成 1,200 generation/1,200 Judge；13 条 parse failure 使 contrastive 缺失超 2%，状态 `CORE_DOSE_SCREEN_BLOCKED` |
+| 原B会话，续作B6 | [Core静态证据交接](paper1_server_codex_b6_static_evidence_handoff_prompt_nohup.md) | 已完成；`B6_STATIC_HANDOFF_PASS`，69 文件 bundle；动态 screen 原件由 F2 另行交付 |
+| 新F3会话 | [Core screen parse failure forensic](paper1_server_codex_f3_screen_parse_failure_forensic_prompt_nohup.md) | 只读取证 13 条失败；不新增 Judge 调用，不修改 F2 结果 |
+| 新E2会话 | [Gemma release gap audit](paper1_server_codex_e2_gemma_release_gap_audit_prompt_nohup.md) | 只读确认 release 缺口和最小修复建议；不运行 E2、不占 GPU |
+| 原E、A、D | 暂不运行新实验 | E/A证据沿用；Core gate 阻断期间不启动正式 evaluation |
 
 三项已完成任务不重跑。后续任务如消费 E1，只能读取已固定的 final E1 输入和 Core direction assets，不能回写 C2 provisional、C3 final 或 canonical scientific config。
 
@@ -109,4 +111,4 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Judge、分析与人工验证 | Core 200 + E1/E2/E3 各 40 条人工样本 | 自动 Judge 与分析随对应输出完成后进行；必须有真实人工标签才称人工验证完成 |
 | 最终归档 | 已关闭的源码/配置/结果/日志 | 汇总状态、生成最终文件 hash；缺失项保留 pending，不伪造 FINAL |
 
-目前只开 F2/B6 两条线即可。C3 不重跑，其他 GPU 任务不并行；Gemma 记录修复暂不改共享实现，待 Core screen 结束后单独确定最小处理范围。
+目前只开 F3/E2 两条只读线即可。F2、B6、C3 不重跑；不要启动正式 evaluation。F3 给出 parser/证据分类后，再决定是否需要单独授权实现修复或重新 Judge；在此之前不得突破当前 retry 预算。
