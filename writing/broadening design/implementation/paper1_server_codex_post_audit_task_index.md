@@ -1,6 +1,6 @@
 # Safe-pair 恢复后的当前任务入口
 
-更新：2026-09-16，依据 C3、B5、F、F2 与 B6 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4/C3/B5/F 任务均不重新执行。
+更新：2026-09-16，依据 C3、B5、F、F2、B6、F3 与 E2 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4/C3/B5/F 任务均不重新执行。
 
 ## 当前决定
 
@@ -21,6 +21,8 @@ F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。
 | 原B会话，续作B6 | [Core静态证据交接](paper1_server_codex_b6_static_evidence_handoff_prompt_nohup.md) | 已完成；`B6_STATIC_HANDOFF_PASS`，69 文件 bundle；动态 screen 原件由 F2 另行交付 |
 | 新F3会话 | [Core screen parse failure forensic](paper1_server_codex_f3_screen_parse_failure_forensic_prompt_nohup.md) | 只读取证 13 条失败；不新增 Judge 调用，不修改 F2 结果 |
 | 新E2会话 | [Gemma release gap audit](paper1_server_codex_e2_gemma_release_gap_audit_prompt_nohup.md) | 只读确认 release 缺口和最小修复建议；不运行 E2、不占 GPU |
+| 新F4会话 | [Judge observability patch](paper1_server_codex_f4_judge_observability_patch_prompt_nohup.md) | 最小修复失败路径原文/diagnostics 留存；只跑离线测试，不重跑 F2 |
+| 新E2R会话 | [Gemma release serialization patch](paper1_server_codex_e2r_gemma_release_serialization_patch_prompt_nohup.md) | 最小修复 Gemma release 写回；只跑离线测试，不重建 F run |
 | 原E、A、D | 暂不运行新实验 | E/A证据沿用；Core gate 阻断期间不启动正式 evaluation |
 
 三项已完成任务不重跑。后续任务如消费 E1，只能读取已固定的 final E1 输入和 Core direction assets，不能回写 C2 provisional、C3 final 或 canonical scientific config。
@@ -103,7 +105,7 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 
 | 模块 | 剩余规模 | 当前依赖与执行安排 |
 |---|---:|---|
-| Core development screen | 1,200 generation | 本轮原 F 执行 F2；原 B 可并行完成 B6 静态交付 |
+| Core development screen recovery | 1,200 logical generations（原 F2 已执行） | 当前 `CORE_DOSE_SCREEN_BLOCKED`；仅在 F4/E2R 完成后、另行审查并授权 recovery proposal 后安排，不得追加旧 run 的 Judge 调用 |
 | Core harmful / benign evaluation | 10,600 + 840 generation | F2 技术 gate 通过并保存四组 A/S 后安排；保留负结果状态 |
 | E1 外部集 | 2,320 generation | final frame 已就绪；引用 Core A/S，无独立 screen |
 | E2 第三模型 | 600 screen + 1,160 evaluation | 方向已有；运行前处理 Gemma release 记录缺口并验证该模型的运行边界 |
@@ -111,4 +113,4 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Judge、分析与人工验证 | Core 200 + E1/E2/E3 各 40 条人工样本 | 自动 Judge 与分析随对应输出完成后进行；必须有真实人工标签才称人工验证完成 |
 | 最终归档 | 已关闭的源码/配置/结果/日志 | 汇总状态、生成最终文件 hash；缺失项保留 pending，不伪造 FINAL |
 
-目前只开 F3/E2 两条只读线即可。F2、B6、C3 不重跑；不要启动正式 evaluation。F3 给出 parser/证据分类后，再决定是否需要单独授权实现修复或重新 Judge；在此之前不得突破当前 retry 预算。
+F3/E2 已完成。当前只开 F4/E2R 两条实现修复线；F2、B6、C3 不重跑，不启动正式 evaluation。F4/E2R 完成并通过离线测试后，再单独提交受限 Core recovery proposal；在 proposal 获批前不得新增 Judge 调用、突破当前 retry 预算或修改旧 F2 结果。
