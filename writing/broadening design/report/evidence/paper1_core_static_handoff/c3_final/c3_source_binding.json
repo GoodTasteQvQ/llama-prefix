@@ -1,0 +1,62 @@
+{
+  "c2_complete_screening_path": ".codex-temp/paper1_e1_final_overlap/all_candidate_screening.json",
+  "c2_complete_screening_sha256": "6e0443461173fa9b4db71ca1cfc43c20a2fceb6af148c50ff06634d94e8a7964",
+  "c2_exact_exclusions_path": ".codex-temp/paper1_e1_final_overlap/exact_exclusions.json",
+  "c2_exact_exclusions_sha256": "6bb7174512913cf274881aeabaf380a405b6f6c6f3b50d295bf9e24cd22faf2e",
+  "c2_input_manifest_path": ".codex-temp/paper1_e1_final_overlap/input_manifest.json",
+  "c2_input_manifest_sha256": "93f862752b535b797390eda1a31e66b58434891d4c55561cf4669647821d4f1f",
+  "c2_near_queue_path": ".codex-temp/paper1_e1_final_overlap/near_match_queue.json",
+  "c2_near_queue_sha256": "28085774bf713b5ca4fb6b0a13babd035cbd875fc26feae6165b0d270302225f",
+  "old_provisional_digest": "8be3f0b5ba135f7f8b0bcf09e8005612f4536b25f1fde8e355036203f5f8253a",
+  "old_provisional_files_preserved_not_consumed": [
+    {
+      "binding": "old_digest_embedded",
+      "path": ".codex-temp/paper1_e1_final_overlap/reviewer_a/result.json",
+      "preserved_digest": "8be3f0b5ba135f7f8b0bcf09e8005612f4536b25f1fde8e355036203f5f8253a",
+      "sha256": "ea415a23555bac97c24434ae46af8233d7ede7011bb7afb6a5035270f71f561f"
+    },
+    {
+      "binding": "old_digest_embedded",
+      "path": ".codex-temp/paper1_e1_final_overlap/reviewer_a/final.json",
+      "preserved_digest": "8be3f0b5ba135f7f8b0bcf09e8005612f4536b25f1fde8e355036203f5f8253a",
+      "sha256": "8c804ce8f9a01a9e72141d652383135c4a5f599140df34efbb8426704840ac72"
+    },
+    {
+      "binding": "old_digest_embedded",
+      "path": ".codex-temp/paper1_e1_final_overlap/reviewer_a/raw_events.jsonl",
+      "preserved_digest": "8be3f0b5ba135f7f8b0bcf09e8005612f4536b25f1fde8e355036203f5f8253a",
+      "sha256": "6e3b624a7d9d189a4a4b064c96fdca698dbca6e5f8e726334658b343fabe80ee"
+    },
+    {
+      "binding": "old_digest_embedded",
+      "path": ".codex-temp/paper1_e1_final_overlap/reviewer_b/result.json",
+      "preserved_digest": "8be3f0b5ba135f7f8b0bcf09e8005612f4536b25f1fde8e355036203f5f8253a",
+      "sha256": "5557a11ba2f414c752ceed61a2d22271d3185ca1d1efb9fa709bc525b8b9f18d"
+    },
+    {
+      "binding": "old_digest_embedded",
+      "path": ".codex-temp/paper1_e1_final_overlap/reviewer_b/final.json",
+      "preserved_digest": "8be3f0b5ba135f7f8b0bcf09e8005612f4536b25f1fde8e355036203f5f8253a",
+      "sha256": "b4929ac9ce9221128dcdbfe7f0bc33c891d9ccdd05d39468b0627c57c868bd88"
+    },
+    {
+      "binding": "historical_unbound_raw_not_consumed",
+      "path": ".codex-temp/paper1_e1_final_overlap/reviewer_b/raw_events.jsonl",
+      "preserved_digest": null,
+      "sha256": "bbbc13c664fead8d934f782faae78736c0d9fc4eda80e5a109b8964c94606dc6"
+    }
+  ],
+  "provisional_c2_selection_compared_not_consumed_as_final": {
+    "path": ".codex-temp/paper1_e1_final_overlap/harmbench40_selection.json",
+    "sha256": "269baf7fd2d6c0dd78ccc00c3354338f640baeb14ba6d54fa898f432d72c9b60"
+  },
+  "reference_digest": "d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a",
+  "reference_snapshot_copy_sha256": "41eb9125644d8e8c9d50191ec8970902cf57fd250fd489466aeab7b6b6982311",
+  "reference_snapshot_source_path": ".codex-temp/paper1_e1_final_overlap/reference_snapshot.json",
+  "reference_snapshot_source_sha256": "41eb9125644d8e8c9d50191ec8970902cf57fd250fd489466aeab7b6b6982311",
+  "review_prompt_revision": "harmbench-e1-dual-codex-overlap-v1",
+  "reviewer_calls_reused_only": true,
+  "safe_pair_review_reused": false,
+  "schema_version": "paper1-e1-c3-source-binding-v1",
+  "status": "FINAL_REFERENCE_BOUND"
+}

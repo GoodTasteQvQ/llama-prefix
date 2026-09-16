@@ -1,0 +1,31 @@
+{
+  "dynamic_screen_files_not_copied": [
+    "screen_generation_schedule_core.jsonl",
+    "screen_generation_attempts_core.jsonl",
+    "screen_generation_ledger_core.jsonl",
+    "screen_judge_records_core.jsonl",
+    "dose_decisions.json",
+    "screen_processes_core.json",
+    "screen_release_core.json",
+    "screen_judge_runtime_status_core.json"
+  ],
+  "file_count": 69,
+  "formal_evaluation_not_run": true,
+  "gemma_release_gap_not_modified": true,
+  "manifest_path": "file_manifest.sha256.json",
+  "run_dir": "/data/goodtaste_workspace/llama-prefix/results/paper1_broadening/core-directions-calibration-20260915T140731Z-1382603",
+  "run_id": "paper1-20260915T140735Z-99331d4603",
+  "schema_version": "paper1-b6-core-static-handoff-v1",
+  "source_files_count": 47,
+  "source_snapshot_verification": {
+    "code_commit_at_prepare": "107a2412adbb66a9997244efdbdbf4ba92253cb0",
+    "run_dir": "/data/goodtaste_workspace/llama-prefix/results/paper1_broadening/core-directions-calibration-20260915T140731Z-1382603",
+    "run_id": "paper1-20260915T140735Z-99331d4603",
+    "schema_version": "paper1-broadening-source-snapshot-verification-v1",
+    "source_files": 47,
+    "source_snapshot_path": "/data/goodtaste_workspace/llama-prefix/results/paper1_broadening/core-directions-calibration-20260915T140731Z-1382603/source_snapshot",
+    "status": "PASS",
+    "verified": true,
+    "verified_at": "2026-09-15T15:50:00.503332Z"
+  }
+}

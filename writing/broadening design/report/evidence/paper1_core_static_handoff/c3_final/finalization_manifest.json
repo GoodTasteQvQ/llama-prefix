@@ -1,0 +1,32 @@
+{
+  "candidate_count": 200,
+  "category_counts": {
+    "chemical_biological": 7,
+    "cybercrime_intrusion": 6,
+    "harassment_bullying": 6,
+    "harmful": 7,
+    "illegal": 7,
+    "misinformation_disinformation": 7
+  },
+  "deterministic_no_near_match_count": 174,
+  "exact_exclusion_count": 9,
+  "excluded_count": 20,
+  "files_sha256": {
+    "c3_source_binding.json": "25462901b9914d34abb16fb7edef0328bc0aca556b70b216ad3c0ab42c5a3110",
+    "e1_overlap_decisions.json": "03a1a89a9f50d14c6fc8824bf463e040af2141fd6d77e76e10ba00d26d10e4ab",
+    "e1_overlap_ledger.json": "575e3175a9c5fba8a9e2183673351cf06fe8794b0af2696a3c5fb7a483a42d24",
+    "harmbench40_selection.json": "d9c2450ae65615e4d0e10f2601fa8f4c21a098561b2c1b5541ea808428ba636f",
+    "near_match_review_ledger.json": "51983340a7790fa1aff504b860df83797153d6ecffad7e35421e801ffc5eee3d",
+    "reference_snapshot.json": "41eb9125644d8e8c9d50191ec8970902cf57fd250fd489466aeab7b6b6982311",
+    "review_identity_manifest.json": "cfb7047fc7374b547503de3b5de81aefdd34d28f6ee7b71dae92391498332de2"
+  },
+  "included_count": 180,
+  "native_category_count": 6,
+  "near_match_count": 17,
+  "pending_count": 0,
+  "reference_digest": "d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a",
+  "review_prompt_revision": "harmbench-e1-dual-codex-overlap-v1",
+  "schema_version": "paper1-e1-c3-finalization-manifest-v1",
+  "selected_count": 40,
+  "status": "E1_FRAME_READY_FOR_CONSUMER"
+}

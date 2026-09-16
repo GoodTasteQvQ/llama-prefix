@@ -1,0 +1,19 @@
+{
+  "adapter_revision": "harmbench-e1-csv-to-json-v1",
+  "benchmark": "HarmBench_standard_text",
+  "filter": "FunctionalCategory == standard",
+  "mapping": {
+    "Behavior": "text",
+    "BehaviorID": "source_id",
+    "SemanticCategory": "category"
+  },
+  "record_count": 200,
+  "records_sha256": "c8186370ffd78cc422798c591e57ee1cee172f00d2f1bc3549a72dafb48420a6",
+  "revision": "c0423b952435fcc8467108d8f25962dbae5b7de2",
+  "schema_version": "paper1-broadening-e1-source-metadata-v1",
+  "source_csv": "data/external/harmbench/harmbench_behaviors_text_all.csv",
+  "source_csv_sha256": "8d81accedd38eaaf8b760618622bb888417d1fd0c86eba65c427a16f1cbb4afc",
+  "source_index": "0-based CSV data-row order from the all-behaviors source",
+  "source_metadata": "data/external/harmbench/harmbench_behaviors_text_all.metadata.json",
+  "source_metadata_sha256": "ba7fe984bc7659c73db76eac03368d871ea95a6e157fe7e04d0a5cd733e60fae"
+}

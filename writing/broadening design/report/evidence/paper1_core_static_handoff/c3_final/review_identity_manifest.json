@@ -1,0 +1,46 @@
+{
+  "reference_digest": "d148de7d6e89d1a5cdeac392ef94a3d281b54abcffbf7dd4d6bd4cf5229d732a",
+  "reference_snapshot_path": "reference_snapshot.json",
+  "reference_snapshot_sha256": "41eb9125644d8e8c9d50191ec8970902cf57fd250fd489466aeab7b6b6982311",
+  "review_prompt_revision": "harmbench-e1-dual-codex-overlap-v1",
+  "reviewer_a": {
+    "agent_id": "/root/e1_scopefix_a",
+    "input_path": ".codex-temp/paper1_e1_final_overlap/reviewer_a_scopefix/input.json",
+    "input_sha256": "d68c61dc07ef73eeceee5fb290295c0537c1ec5ca9bba177956f0f93588b24a5",
+    "model": "gpt-5",
+    "raw_events_path": ".codex-temp/paper1_e1_final_overlap/reviewer_a_scopefix/reviewer_a_scopefix.raw.json",
+    "raw_events_sha256": "3b5703c6ab0fde5db2eec95e9d1847234852300eeb326785e4350af5c1fe4959",
+    "result_count": 17,
+    "result_path": ".codex-temp/paper1_e1_final_overlap/reviewer_a_scopefix/reviewer_a_scopefix.result.json",
+    "result_sha256": "125f799fe5ec5662b79f8f263663ede53f1721eb39a6cd7039bc252a6304be4a",
+    "slot": "a",
+    "verdict_counts": {
+      "no_material_overlap": 6,
+      "overlap": 11,
+      "technical_failure": 0,
+      "uncertain": 0
+    }
+  },
+  "reviewer_b": {
+    "agent_id": "/root/e1_scopefix_b",
+    "input_path": ".codex-temp/paper1_e1_final_overlap/reviewer_b_scopefix/input.json",
+    "input_sha256": "185d3be42ba62955f95a5deb2a7a5e7b73aa59c25b351d9fc3e9c7103396f9c6",
+    "model": "gpt-5",
+    "raw_events_path": ".codex-temp/paper1_e1_final_overlap/reviewer_b_scopefix/raw_events.jsonl",
+    "raw_events_sha256": "4580ee3e58abd670ced6d734a6161e09e4cc27b8ee83c3ea6b4ceb933e60a139",
+    "result_count": 17,
+    "result_path": ".codex-temp/paper1_e1_final_overlap/reviewer_b_scopefix/result.json",
+    "result_sha256": "b2835530e8cd53bed6186d139d07c5114210c1a9b4638e650a5ff0660aec2cfb",
+    "slot": "b",
+    "verdict_counts": {
+      "no_material_overlap": 6,
+      "overlap": 11,
+      "technical_failure": 0,
+      "uncertain": 0
+    }
+  },
+  "reviewer_calls_reused_only": true,
+  "reviewers_are_distinct": true,
+  "schema_version": "paper1-e1-c3-review-identity-manifest-v1",
+  "status": "FINAL_REFERENCE_BOUND"
+}

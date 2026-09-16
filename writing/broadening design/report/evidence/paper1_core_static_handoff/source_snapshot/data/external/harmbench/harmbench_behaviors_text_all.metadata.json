@@ -1,0 +1,78 @@
+{
+  "source_url": "https://github.com/centerforaisafety/HarmBench/blob/main/data/behavior_datasets/harmbench_behaviors_text_all.csv",
+  "raw_download_url": "https://raw.githubusercontent.com/centerforaisafety/HarmBench/main/data/behavior_datasets/harmbench_behaviors_text_all.csv",
+  "source_repository": "https://github.com/centerforaisafety/HarmBench",
+  "revision": "c0423b952435fcc8467108d8f25962dbae5b7de2",
+  "revision_evidence": {
+    "github_api_commit_path": "data/behavior_datasets/harmbench_behaviors_text_all.csv",
+    "github_api_file_sha": "8a6b423d85e9acdc168c57a6a957755cfa86c4cb",
+    "local_sha256": "8d81accedd38eaaf8b760618622bb888417d1fd0c86eba65c427a16f1cbb4afc",
+    "local_git_blob_sha1": "8a6b423d85e9acdc168c57a6a957755cfa86c4cb",
+    "immutable_raw_recheck": "TIMEOUT_AFTER_60S; API/blob evidence retained"
+  },
+  "original_filename": "harmbench_behaviors_text_all.csv",
+  "local_raw_path": "data/external/harmbench/harmbench_behaviors_text_all.csv",
+  "derived_standard_path": "data/external/harmbench/harmbench_behaviors_text_standard.csv",
+  "license": {
+    "name": "MIT",
+    "source_path": "LICENSE",
+    "local_path": "data/external/harmbench/LICENSE",
+    "sha256": "fe29c68dd1216e81e98a6069165e1c720757b23bbcaa6c0cb8f9a957bdaaca80"
+  },
+  "row_integrity": {
+    "rows": 400,
+    "source_index": "0-based CSV data-row order, preserved externally; raw rows/text unchanged",
+    "source_id_field": "BehaviorID",
+    "text_field": "Behavior",
+    "derived_standard_rows": 200,
+    "derived_standard_filter": "FunctionalCategory == standard; source_index is original 0-based CSV data-row index; all original text/id/category fields copied unchanged"
+  },
+  "category_fields": [
+    "FunctionalCategory",
+    "SemanticCategory",
+    "Tags",
+    "ContextString"
+  ],
+  "observed_categories": {
+    "FunctionalCategory": [
+      "contextual",
+      "copyright",
+      "standard"
+    ],
+    "SemanticCategory": [
+      "chemical_biological",
+      "cybercrime_intrusion",
+      "harmful",
+      "harassment_bullying",
+      "illegal",
+      "misinformation_disinformation",
+      "copyright"
+    ]
+  },
+  "selection_rule": {
+    "status": "NOT_APPLIED",
+    "required_source_subset": "standard text behaviors only; exclude multimodal/contextual tasks",
+    "future_e1_rule": "After independent overlap review, retain at least 40 rows across at least 4 native SemanticCategory values; stable category order and within-category source index round-robin; no text rewriting or result-driven selection",
+    "overlap_gate": "NOT_RUN",
+    "jbb_substitution": "FORBIDDEN"
+  },
+  "downloaded_at_utc": "2026-09-06",
+  "format_checks": {
+    "status": "PASSED",
+    "expected_columns": [
+      "Behavior",
+      "FunctionalCategory",
+      "SemanticCategory",
+      "Tags",
+      "ContextString",
+      "BehaviorID"
+    ],
+    "checks": [
+      "CSV parses with UTF-8 and expected header",
+      "400 raw data rows and 200 FunctionalCategory=standard rows",
+      "BehaviorID non-empty and unique in raw source",
+      "derived standard source_index values point to raw rows",
+      "No overlap gate or semantic screening executed"
+    ]
+  }
+}
