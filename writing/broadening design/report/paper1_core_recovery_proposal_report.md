@@ -215,11 +215,12 @@ F4 patch, or report status substitutes for this approval.
 
 ## Evidence that protected files were not modified
 
-The pre-edit status and target diff were recorded before this report was created in:
+The pre-edit status and target diff were recorded before this report was created in the
+synced evidence bundle `.codex-temp/paper1_core_recovery_proposal/`:
 
-- `.codex-temp/recovery_status_pre_edit.log`
-- `.codex-temp/recovery_target_pre_edit.diff`
-- `.codex-temp/recovery_protected_before.sha256`
+- `.codex-temp/paper1_core_recovery_proposal/recovery_status_pre_edit.log`
+- `.codex-temp/paper1_core_recovery_proposal/recovery_target_pre_edit.diff`
+- `.codex-temp/paper1_core_recovery_proposal/recovery_protected_before.sha256`
 
 At pre-edit, the target report was absent and therefore had no existing diff. The
 worktree already contained unrelated user modifications; none was reset or reverted.
@@ -242,8 +243,16 @@ The pre-edit SHA256 values were:
 
 This report is the only intended new tracked artifact for this task. No F2 file,
 source snapshot, direction, dose decision, generation completion, or design file was
-written. Post-write hash verification and a final boundary self-audit are recorded
-in the task-local `.codex-temp` evidence; no commit or push was made.
+written. Post-write hash verification, the 13-row identity check, final status, and
+the boundary self-audit are synced in
+`.codex-temp/paper1_core_recovery_proposal/`; no commit or push was made.
+
+The synced bundle contains the read-only evidence needed to reproduce the boundary
+check: the pre-edit status/diff, protected before/after SHA256 manifests, the 13-row
+identity/hash JSONL, command logs with their PID and `.exit` files, protected-hash
+comparison, identity-manifest comparison, final status, and the final boundary
+self-audit. The original `.codex-temp/recovery_*` files remain in place as the
+uncopied source evidence; the bundle is a synchronized copy, not a replacement.
 
 ## Final boundary self-audit
 
