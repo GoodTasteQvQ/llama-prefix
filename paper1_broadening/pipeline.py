@@ -626,69 +626,101 @@ def _build_e2_assets(
         return {
             "status": "BLOCKED",
             "reason": f"GEMMA_PROBE_RELEASE_FAILURE: {probe_release_error}",
+            "release_error": probe_release_error,
         }
+    runtime = None
+    model_record: dict[str, Any] | None = None
+    all_vectors: list[Any] | None = None
+    tensor_path = run_dir / "directions_gemma2_9b_it.pt"
+    construction_error: str | None = None
+    release_record: Any = None
+    release_error: str | None = None
+    layer: int | None = None
+    layer_count_value: int | None = None
     try:
         layer = third_model_layer(layer_count)
         runtime = BehaviorRuntime.from_pretrained(
             model_id="gemma2_9b_it", details=details, layer_override=layer,
         )
-        try:
-            identity = runtime.identity()
-            record_loaded_identity(run_dir=run_dir, role="behavior", identity=identity)
-            fold_vectors = _contrastive_fold_vectors(
-                runtime=runtime, record_by_pair=record_by_pair, folds=folds,
-            )
-            harmful_means, harmless_residuals = _development_residuals(
-                runtime=runtime, record_by_pair=record_by_pair, development=development,
-            )
-            mu, token_count = content_mu(harmless_residuals)
-            harmless_means = [
-                masked_token_mean(value, torch.ones(value.shape[0], dtype=torch.bool))
-                for value in harmless_residuals
-            ]
-            rogue = rogue_directions(hidden_size=runtime.hidden_size, model_index=3, count=4)
-            all_vectors = [*rogue, *fold_vectors]
-            tensor_path = run_dir / "directions_gemma2_9b_it.pt"
-            torch.save(torch.stack(all_vectors).to(dtype=torch.float32, device="cpu"), tensor_path)
-            diagnostics = [
-                sign_diagnostic(harmful_means, harmless_means, vector)
-                for vector in fold_vectors
-            ]
-            return {
-                "status": "COMPLETED",
-                "source_run_id": source_run_id,
-                "layer": layer,
-                "layer_count": runtime.layer_count,
-                "model": {
-                    "status": "COMPLETED",
-                    "tensor_path": str(tensor_path),
-                    "hidden_size": runtime.hidden_size,
-                    "layer": layer,
-                    "layer_count": runtime.layer_count,
-                    "mu_content": mu,
-                    "mu_content_token_count": token_count,
-                    "runtime_identity": identity,
-                    "directions": [
-                        {
-                            "direction_id": f"rogue:{index}", "family": "rogue", "tensor_index": index,
-                            "seed": 420000 + 3, "dtype": "float32", "norm": 1.0,
-                            "source_fold_ids": None, "sign_check": "NOT_APPLICABLE_RANDOM",
-                        }
-                        for index in range(4)
-                    ] + [
-                        {
-                            "direction_id": f"contrastive:fold:{index}", "family": "contrastive",
-                            "tensor_index": 4 + index, "seed": 42, "dtype": "float32", "norm": 1.0,
-                            "source_fold_ids": folds[index], "sign_check": diagnostics[index],
-                        }
-                        for index in range(5)
-                    ],
-                },
-            }
-        finally:
-            runtime.release()
+        identity = runtime.identity()
+        record_loaded_identity(run_dir=run_dir, role="behavior", identity=identity)
+        fold_vectors = _contrastive_fold_vectors(
+            runtime=runtime, record_by_pair=record_by_pair, folds=folds,
+        )
+        harmful_means, harmless_residuals = _development_residuals(
+            runtime=runtime, record_by_pair=record_by_pair, development=development,
+        )
+        mu, token_count = content_mu(harmless_residuals)
+        harmless_means = [
+            masked_token_mean(value, torch.ones(value.shape[0], dtype=torch.bool))
+            for value in harmless_residuals
+        ]
+        rogue = rogue_directions(hidden_size=runtime.hidden_size, model_index=3, count=4)
+        all_vectors = [*rogue, *fold_vectors]
+        diagnostics = [
+            sign_diagnostic(harmful_means, harmless_means, vector)
+            for vector in fold_vectors
+        ]
+        layer_count_value = runtime.layer_count
+        model_record = {
+            "status": "COMPLETED",
+            "tensor_path": str(tensor_path),
+            "hidden_size": runtime.hidden_size,
+            "layer": layer,
+            "layer_count": runtime.layer_count,
+            "mu_content": mu,
+            "mu_content_token_count": token_count,
+            "runtime_identity": identity,
+            "directions": [
+                {
+                    "direction_id": f"rogue:{index}", "family": "rogue", "tensor_index": index,
+                    "seed": 420000 + 3, "dtype": "float32", "norm": 1.0,
+                    "source_fold_ids": None, "sign_check": "NOT_APPLICABLE_RANDOM",
+                }
+                for index in range(4)
+            ] + [
+                {
+                    "direction_id": f"contrastive:fold:{index}", "family": "contrastive",
+                    "tensor_index": 4 + index, "seed": 42, "dtype": "float32",
+                    "norm": 1.0, "source_fold_ids": folds[index], "sign_check": diagnostics[index],
+                }
+                for index in range(5)
+            ],
+        }
+    except Exception as exc:
+        construction_error = f"{type(exc).__name__}: {exc}"
+    finally:
+        if runtime is not None:
+            try:
+                release_record = runtime.release()
+            except Exception as exc:
+                release_error = f"{type(exc).__name__}: {exc}"
+    if release_error is not None:
+        result: dict[str, Any] = {
+            "status": "BLOCKED",
+            "reason": f"GEMMA_RELEASE_FAILURE: {release_error}",
+            "release_error": release_error,
+        }
+        if construction_error is not None:
+            result["construction_error"] = construction_error
+        return result
+    if construction_error is not None:
+        return {"status": "BLOCKED", "reason": construction_error}
+    if model_record is None or all_vectors is None or layer is None or layer_count_value is None:
+        return {"status": "BLOCKED", "reason": "GEMMA_MODEL_RECORD_MISSING"}
+    # Keep the runtime's release result intact; it is the lifecycle evidence schema.
+    model_record["release"] = release_record
+    try:
+        torch.save(torch.stack(all_vectors).to(dtype=torch.float32, device="cpu"), tensor_path)
     except Exception as exc:
         return {"status": "BLOCKED", "reason": f"{type(exc).__name__}: {exc}"}
+    return {
+        "status": "COMPLETED",
+        "source_run_id": source_run_id,
+        "layer": layer,
+        "layer_count": layer_count_value,
+        "model": model_record,
+    }
 
 
 def build_directions(*, run_dir: Path, config: Mapping[str, Any]) -> dict[str, Any]:
@@ -840,7 +872,10 @@ def build_directions(*, run_dir: Path, config: Mapping[str, Any]) -> dict[str, A
     else:
         output["E3"] = {"status": "NOT_RUN", "reason": "CORE_DIRECTION_ASSET_BLOCKED"}
         output["E2"] = {"status": "NOT_RUN", "reason": "CORE_DIRECTION_ASSET_BLOCKED_OR_GEMMA_MISSING"}
-    if any(item.get("status") != "COMPLETED" for item in output["models"].values()):
+    if (
+        any(item.get("status") != "COMPLETED" for item in output["models"].values())
+        or output.get("E2", {}).get("status") == "BLOCKED"
+    ):
         output["status"] = "BLOCKED"
     atomic_write_json(run_dir / "directions.json", output, overwrite=False)
     return output

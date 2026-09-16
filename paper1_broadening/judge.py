@@ -31,8 +31,44 @@ from .runtime import (
 )
 
 
+OBSERVABILITY_RAW_AND_DIAGNOSTICS_AVAILABLE = "RAW_AND_DIAGNOSTICS_AVAILABLE"
+OBSERVABILITY_RAW_AVAILABLE_DIAGNOSTICS_UNAVAILABLE = "RAW_AVAILABLE_DIAGNOSTICS_UNAVAILABLE"
+OBSERVABILITY_DIAGNOSTICS_AVAILABLE_RAW_UNAVAILABLE = "DIAGNOSTICS_AVAILABLE_RAW_UNAVAILABLE"
+OBSERVABILITY_RAW_UNAVAILABLE = "RAW_UNAVAILABLE"
+OBSERVABILITY_NOT_EXECUTED = "NOT_EXECUTED"
+OBSERVABILITY_NOT_REQUESTED = "NOT_REQUESTED"
+
+
+def _observability_status(*, raw: Any, diagnostics: Mapping[str, Any] | None, status: str | None = None) -> str:
+    """Classify only what this call actually exposed; never synthesize a completion."""
+    if status == "UNEXECUTED":
+        return OBSERVABILITY_NOT_EXECUTED
+    has_raw = raw is not None
+    has_diagnostics = bool(diagnostics)
+    if has_raw and has_diagnostics:
+        return OBSERVABILITY_RAW_AND_DIAGNOSTICS_AVAILABLE
+    if has_raw:
+        return OBSERVABILITY_RAW_AVAILABLE_DIAGNOSTICS_UNAVAILABLE
+    if has_diagnostics:
+        return OBSERVABILITY_DIAGNOSTICS_AVAILABLE_RAW_UNAVAILABLE
+    return OBSERVABILITY_RAW_UNAVAILABLE
+
+
 class JudgeParseError(BroadeningError):
     """The Judge final channel does not meet the exact Paper 1 JSON contract."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        raw: str | None = None,
+        diagnostics: Mapping[str, Any] | None = None,
+        observability_status: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.raw = raw
+        self.diagnostics = dict(diagnostics or {})
+        self.observability_status = observability_status
 
 
 def labels_for_domain(domain: str) -> tuple[str, ...]:
@@ -117,6 +153,7 @@ class Qwen3JudgeRuntime:
         self.lifecycle = dict(lifecycle)
         self._torch = torch_module
         self.released = False
+        self._last_raw_completion: str | None = None
 
     @classmethod
     def from_pretrained(
@@ -187,6 +224,7 @@ class Qwen3JudgeRuntime:
     def _final_completion(self, prompt: str) -> tuple[str, dict[str, Any]]:
         if self.released or self.model is None or self.tokenizer is None:
             raise RuntimeGateError("Judge runtime has been released")
+        self._last_raw_completion = None
         try:
             rendered = self.tokenizer.apply_chat_template(
                 [{"role": "user", "content": prompt}],
@@ -219,18 +257,32 @@ class Qwen3JudgeRuntime:
             )
         generated = sequences[0, input_ids.shape[1] :]
         raw = self.tokenizer.decode(generated, skip_special_tokens=True)
+        self._last_raw_completion = raw
+        base_diagnostics = {
+            "raw_completion_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+            "rendered_prompt_sha256": hashlib.sha256(rendered.encode("utf-8")).hexdigest(),
+            "prompt_token_count": int(input_ids.shape[1]),
+        }
         try:
             split = split_qwen3_thinking_final(generated, self.tokenizer)
         except Exception as exc:
-            raise JudgeParseError("Qwen3 Judge completion has no valid semantic final channel") from exc
+            diagnostics = {
+                **base_diagnostics,
+                "split_error_type": type(exc).__name__,
+                "split_error": str(exc),
+            }
+            raise JudgeParseError(
+                "Qwen3 Judge completion has no valid semantic final channel",
+                raw=raw,
+                diagnostics=diagnostics,
+                observability_status=_observability_status(raw=raw, diagnostics=diagnostics),
+            ) from exc
         final = split.pop("final_completion")
         thinking = split.pop("thinking")
         return final, {
-            "raw_completion_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+            **base_diagnostics,
             "final_completion_sha256": hashlib.sha256(final.encode("utf-8")).hexdigest(),
             "thinking_sha256": hashlib.sha256(thinking.encode("utf-8")).hexdigest(),
-            "rendered_prompt_sha256": hashlib.sha256(rendered.encode("utf-8")).hexdigest(),
-            "prompt_token_count": int(input_ids.shape[1]),
             **split,
         }
 
@@ -238,17 +290,31 @@ class Qwen3JudgeRuntime:
         if not isinstance(prompt, str) or not prompt or not isinstance(response, str):
             raise BroadeningError("Judge prompt/response are invalid")
         template = _template(domain)
+        final: str | None = None
+        diagnostics: dict[str, Any] = {}
+        self._last_raw_completion = None
         try:
             final, diagnostics = self._final_completion(template.format(prompt=prompt, response=response))
             label, rationale = strict_four_class_parse(final, domain)
         except JudgeParseError as exc:
+            raw = exc.raw if exc.raw is not None else (
+                self._last_raw_completion if self._last_raw_completion is not None else final
+            )
+            failure_diagnostics = dict(diagnostics)
+            failure_diagnostics.update(exc.diagnostics)
+            if failure_diagnostics:
+                failure_diagnostics.setdefault("parse_error_type", type(exc).__name__)
+            observability_status = _observability_status(raw=raw, diagnostics=failure_diagnostics)
+            if raw is None and not failure_diagnostics and exc.observability_status is not None:
+                observability_status = exc.observability_status
             return {
                 "status": "PARSE_FAILURE",
                 "label": None,
                 "rationale": None,
-                "raw": None,
+                "raw": raw,
                 "error": str(exc),
-                "diagnostics": {},
+                "diagnostics": failure_diagnostics,
+                "observability_status": observability_status,
                 "actual_call_count": 1,
             }
         return {
@@ -258,6 +324,7 @@ class Qwen3JudgeRuntime:
             "raw": final,
             "error": None,
             "diagnostics": diagnostics,
+            "observability_status": _observability_status(raw=final, diagnostics=diagnostics),
             "actual_call_count": 1,
         }
 
@@ -270,21 +337,37 @@ class Qwen3JudgeRuntime:
                 "short_rule_applied": True,
                 "raw": "safe",
                 "error": None,
+                "observability_status": OBSERVABILITY_NOT_REQUESTED,
                 "actual_call_count": 0,
             }
+        final: str | None = None
+        diagnostics: dict[str, Any] = {}
+        self._last_raw_completion = None
         try:
             final, diagnostics = self._final_completion(
                 ROGUE_BINARY_JUDGE_TEMPLATE.format(prompt=prompt, response=response)
             )
             value = strict_binary_parse(final)
         except JudgeParseError as exc:
+            raw = exc.raw if exc.raw is not None else (
+                self._last_raw_completion if self._last_raw_completion is not None else final
+            )
+            failure_diagnostics = dict(diagnostics)
+            failure_diagnostics.update(exc.diagnostics)
+            if failure_diagnostics:
+                failure_diagnostics.setdefault("parse_error_type", type(exc).__name__)
+            observability_status = _observability_status(raw=raw, diagnostics=failure_diagnostics)
+            if raw is None and not failure_diagnostics and exc.observability_status is not None:
+                observability_status = exc.observability_status
             return {
                 "status": "PARSE_FAILURE",
                 "value": None,
                 "rule_source": "Rogue_binary_rubric",
                 "short_rule_applied": False,
-                "raw": None,
+                "raw": raw,
                 "error": str(exc),
+                "diagnostics": failure_diagnostics,
+                "observability_status": observability_status,
                 "actual_call_count": 1,
             }
         return {
@@ -295,6 +378,7 @@ class Qwen3JudgeRuntime:
             "raw": final,
             "error": None,
             "diagnostics": diagnostics,
+            "observability_status": _observability_status(raw=final, diagnostics=diagnostics),
             "actual_call_count": 1,
         }
 
@@ -345,9 +429,25 @@ def build_judge_record(
         raise BroadeningError("four-class Judge status is invalid")
     elif four_class.get("label") is not None or four_class.get("rationale") is not None:
         raise BroadeningError("failed four-class Judge record cannot carry a label or rationale")
+    four_observability_status = four_class.get("observability_status")
+    if not isinstance(four_observability_status, str):
+        four_observability_status = _observability_status(
+            raw=four_class.get("raw"),
+            diagnostics=four_class.get("diagnostics") if isinstance(four_class.get("diagnostics"), Mapping) else {},
+            status=four_status,
+        )
+    if four_observability_status not in {
+        OBSERVABILITY_RAW_AND_DIAGNOSTICS_AVAILABLE,
+        OBSERVABILITY_RAW_AVAILABLE_DIAGNOSTICS_UNAVAILABLE,
+        OBSERVABILITY_DIAGNOSTICS_AVAILABLE_RAW_UNAVAILABLE,
+        OBSERVABILITY_RAW_UNAVAILABLE,
+        OBSERVABILITY_NOT_EXECUTED,
+    }:
+        raise BroadeningError("four-class Judge observability status is invalid")
     binary = dict(binary) if binary is not None else {
         "status": "NOT_REQUESTED", "value": None, "rule_source": None,
-        "short_rule_applied": False, "raw": None, "actual_call_count": 0
+        "short_rule_applied": False, "raw": None, "actual_call_count": 0,
+        "observability_status": OBSERVABILITY_NOT_REQUESTED,
     }
     binary_status = binary.get("status")
     if binary_status not in {"NOT_REQUESTED", "SHORT_RULE_SAFE", "PARSED", "PARSE_FAILURE", "TECHNICAL_FAILURE", "UNEXECUTED"}:
@@ -362,6 +462,26 @@ def build_judge_record(
         raise BroadeningError("binary short-rule flag is invalid")
     if short_rule_applied != (binary_status == "SHORT_RULE_SAFE"):
         raise BroadeningError("binary short-rule flag does not match status")
+    binary_observability_status = binary.get("observability_status")
+    if not isinstance(binary_observability_status, str):
+        binary_observability_status = (
+            OBSERVABILITY_NOT_REQUESTED
+            if binary_status == "NOT_REQUESTED"
+            else _observability_status(
+                raw=binary.get("raw"),
+                diagnostics=binary.get("diagnostics") if isinstance(binary.get("diagnostics"), Mapping) else {},
+                status=binary_status,
+            )
+        )
+    if binary_observability_status not in {
+        OBSERVABILITY_RAW_AND_DIAGNOSTICS_AVAILABLE,
+        OBSERVABILITY_RAW_AVAILABLE_DIAGNOSTICS_UNAVAILABLE,
+        OBSERVABILITY_DIAGNOSTICS_AVAILABLE_RAW_UNAVAILABLE,
+        OBSERVABILITY_RAW_UNAVAILABLE,
+        OBSERVABILITY_NOT_EXECUTED,
+        OBSERVABILITY_NOT_REQUESTED,
+    }:
+        raise BroadeningError("binary Judge observability status is invalid")
     four_calls = four_class.get("actual_call_count", 0)
     binary_calls = binary.get("actual_call_count", 0)
     if any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in (four_calls, binary_calls)):
@@ -377,12 +497,15 @@ def build_judge_record(
         "four_class_raw": four_class.get("raw"),
         "four_class_error": four_class.get("error"),
         "four_class_diagnostics": dict(four_class.get("diagnostics") or {}),
+        "four_class_observability_status": four_observability_status,
         "binary_status": binary_status,
         "binary_value": binary.get("value"),
         "binary_rule_source": binary.get("rule_source"),
         "binary_short_rule_applied": short_rule_applied,
         "binary_raw": binary.get("raw"),
         "binary_error": binary.get("error"),
+        "binary_diagnostics": dict(binary.get("diagnostics") or {}),
+        "binary_observability_status": binary_observability_status,
         "actual_call_counts": {
             "four_class": four_calls,
             "binary": binary_calls,
