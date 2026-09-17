@@ -1,5 +1,7 @@
 # Safe-pair 恢复后的当前任务入口
 
+> **状态更新（2026-09-17）**：`A-recovery-run` 已按批准消耗完 13 条请求，但 13/13 均为缺少 Qwen3 semantic `</think>` 边界的 `PARSE_FAILURE`，原 2% missing gate 仍失败，状态为 `CORE_RECOVERY_BLOCKED`。不得追加 Judge 请求、重跑旧 F2 或启动正式 evaluation。当前唯一执行入口是只读收尾任务 [paper1_server_codex_core_recovery_failure_closure_prompt_nohup.md](paper1_server_codex_core_recovery_failure_closure_prompt_nohup.md)（会话 `A-closure`）；任何 parser/decoder/protocol 调整必须另写 `DESIGN_CHANGE_REQUIRED` proposal 并取得负责人批准。
+
 更新：2026-09-16，依据 C3、B5、F、F2、B6、F3 与 E2 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4/C3/B5/F 任务均不重新执行。
 
 ## 当前决定
@@ -23,9 +25,10 @@ F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。
 | 新E2会话 | [Gemma release gap audit](paper1_server_codex_e2_gemma_release_gap_audit_prompt_nohup.md) | 只读确认 release 缺口和最小修复建议；不运行 E2、不占 GPU |
 | 新F4会话 | [Judge observability patch](paper1_server_codex_f4_judge_observability_patch_prompt_nohup.md) | 最小修复失败路径原文/diagnostics 留存；只跑离线测试，不重跑 F2 |
 | 新E2R会话 | [Gemma release serialization patch](paper1_server_codex_e2r_gemma_release_serialization_patch_prompt_nohup.md) | 最小修复 Gemma release 写回；只跑离线测试，不重建 F run |
-| 新 A-recovery 会话 | [Core recovery proposal](paper1_server_codex_core_recovery_proposal_prompt_nohup.md) | 只冻结 13 条旧 generation 输入并写 proposal；不发送 Judge 请求 |
-| A-recovery-run 会话 | [Core recovery execution](paper1_server_codex_core_recovery_execution_prompt_nohup.md) | 仅在负责人书面批准后运行，最多 13 条独立 four-class Judge 请求；当前未授权 |
-| 原E、A、D | 暂不运行新实验 | E/A证据沿用；Core gate 阻断期间不启动正式 evaluation |
+| 新 A-recovery 会话 | [Core recovery proposal](paper1_server_codex_core_recovery_proposal_prompt_nohup.md) | 已完成；冻结了 13 条旧 generation 输入和批准记录，未发送 Judge 请求 |
+| A-recovery-run 会话 | [Core recovery execution](paper1_server_codex_core_recovery_execution_prompt_nohup.md) | 已完成 13/13 four-class 请求；全部 `PARSE_FAILURE`，2% gate 仍阻断，旧 F2 未改写 |
+| 新 A-closure 会话 | [Core recovery failure closure](paper1_server_codex_core_recovery_failure_closure_prompt_nohup.md) | 当前唯一可执行入口；只读闭合 recovery 证据并记录 `DESIGN_CHANGE_REQUIRED`，不得新增请求 |
+| 原E、A、D | 暂不运行新实验 | 等待 A-closure 和后续协议 proposal；Core gate 阻断期间不启动正式 evaluation |
 
 三项已完成任务不重跑。后续任务如消费 E1，只能读取已固定的 final E1 输入和 Core direction assets，不能回写 C2 provisional、C3 final 或 canonical scientific config。
 
@@ -107,7 +110,9 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 
 | 模块 | 剩余规模 | 当前依赖与执行安排 |
 |---|---:|---|
-| Core development screen recovery | 1,200 logical generations（原 F2 已执行） | 当前 `CORE_DOSE_SCREEN_BLOCKED`；仅在 F4/E2R 完成后、另行审查并授权 recovery proposal 后安排，不得追加旧 run 的 Judge 调用 |
+| Core recovery failure closure | 0 新请求 | 读取 recovery run 的 13 条失败和旧 F2 保护哈希；完成后才能决定是否提出 Judge 协议变更 |
+| Core Judge protocol proposal | 0 新请求（proposal only） | 仅在 closure 证据闭合后提出最小 `DESIGN_CHANGE_REQUIRED` 方案；负责人批准前不改代码、不重跑、不开始评估 |
+| Core development screen recovery | 新 run，规模待 proposal 批准后固定 | 旧 1,200 logical screen 已执行且 gate blocked；不得追加旧 run 请求。只有批准的新 Judge 协议验证通过后，才能新建独立 screen/recovery run |
 | Core harmful / benign evaluation | 10,600 + 840 generation | F2 技术 gate 通过并保存四组 A/S 后安排；保留负结果状态 |
 | E1 外部集 | 2,320 generation | final frame 已就绪；引用 Core A/S，无独立 screen |
 | E2 第三模型 | 600 screen + 1,160 evaluation | 方向已有；运行前处理 Gemma release 记录缺口并验证该模型的运行边界 |
@@ -115,4 +120,4 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Judge、分析与人工验证 | Core 200 + E1/E2/E3 各 40 条人工样本 | 自动 Judge 与分析随对应输出完成后进行；必须有真实人工标签才称人工验证完成 |
 | 最终归档 | 已关闭的源码/配置/结果/日志 | 汇总状态、生成最终文件 hash；缺失项保留 pending，不伪造 FINAL |
 
-F3/E2 已完成，F4/E2R 实现修复和离线测试也已完成，A-recovery proposal 已完成并通过边界审查。当前只允许准备负责人批准后的 recovery execution；F2、B6、C3 不重跑，不启动正式 evaluation。批准文件缺失或不完整时不得新增 Judge 调用、突破旧 retry 预算或修改旧 F2 结果。
+F3/E2 已完成，F4/E2R 实现修复和离线测试也已完成，A-recovery proposal 已完成并通过边界审查，批准的 recovery run 也已结束但仍被 Judge 解析门槛阻断。当前只允许 A-closure 的只读收尾；之后若证据支持，另立并审查 Judge 协议 proposal。F2、B6、C3 不重跑，不启动正式 evaluation；不得追加旧 run Judge 调用、突破已用预算或修改旧 F2 结果。
