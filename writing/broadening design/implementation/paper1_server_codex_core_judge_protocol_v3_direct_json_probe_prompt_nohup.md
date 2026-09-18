@@ -30,6 +30,9 @@ Phase 0 已完成 direct-JSON 离线适配，报告状态为
 2. 服务器代码哈希必须与上表完全一致。任一不一致时写 `DIRECT_JSON_PROBE_CODE_HASH_MISMATCH` 并停止。
 3. 旧 v2.1 设计、旧 F2、旧 recovery、旧 Judge ledger、旧 dose decisions、v2 probe、canonical config、方向、safe-pair 数据和全部 behavior completion 只读。不得覆盖、合并、删除、重命名或回写。
 4. 只改变 Judge 输出协议：`enable_thinking=false`、`max_new_tokens=1296`、`strict_direct_json_v1`。Phase 0 离线实现检查使用过 512；本次 probe 将预算固定为 1296。不得改变模型、endpoint、tokenizer/chat template、dtype、greedy/beam、rubric、label domain、behavior decoder、generation retry 规则或 2% missing gate。
+   在发送第一条请求前，必须从 resolved run config、Judge identity 和
+   diagnostics 预检中确认实际值为 1296；若仍解析为 512、缺失或出现其他值，
+   写 `DIRECT_JSON_PROBE_BUDGET_MISMATCH`，不加载模型、不发送请求并停止。
 5. direct JSON 必须是去除首尾空白后的完整 JSON 对象，恰好包含 `label` 和 `rationale` 两个键。拒绝 Markdown、额外文本、额外/缺失键、非法 label、空 rationale、`<think>` 或 `</think>`。禁止 regex 修复、substring 提取、手工标签、completion-derived label 和旧 parser fallback。
 6. 每条最多一次 four-class Judge 请求；binary Judge、generation retry、additional Judge retry 均为 0。首条失败后立即停止，不发送后续条目。
 7. 不执行 v2.3 设计创建、recovery、1,200 条 full rescore、A/S 选择、formal evaluation、E1/E2/E3、analysis 或 human review。probe 通过后只报告 `READY_FOR_V2.3_DESIGN_REVIEW`，等待负责人下一次批准。

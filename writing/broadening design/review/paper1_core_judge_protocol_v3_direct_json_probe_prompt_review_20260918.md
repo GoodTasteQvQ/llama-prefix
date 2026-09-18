@@ -16,6 +16,8 @@ Judge 请求均为 0；历史设计、旧 F2、旧 recovery、v2 probe 均保持
 - Phase 0 离线实现检查使用 `max_new_tokens=512`；本次 probe 固定使用
   `enable_thinking=false`、`max_new_tokens=1296` 和
   `strict_direct_json_v1`。不提高到 1296 以上，不切回 thinking。
+- 发送请求前必须核验 resolved config、Judge identity 和 diagnostics 的实际
+  budget 均为 1296；若仍为 512 或其他值，fail-closed 停止且不发送请求。
 - 任一条失败立即停止；不发送剩余请求，不创建 recovery 或 full-rescore run。
 - Probe 通过后只停在 `READY_FOR_V2.3_DESIGN_REVIEW`，v2.3 设计、recovery、
   全量重评分和正式实验仍需后续批准。
