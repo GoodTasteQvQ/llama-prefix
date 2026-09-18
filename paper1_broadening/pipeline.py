@@ -30,7 +30,13 @@ from .extensions import (
     build_e3_schedule,
     build_e3_screen_schedule,
 )
-from .judge import Qwen3JudgeRuntime, build_judge_record, judge_rubric_revision, labels_for_domain
+from .judge import (
+    Qwen3JudgeRuntime,
+    build_judge_record,
+    judge_settings,
+    judge_rubric_revision,
+    labels_for_domain,
+)
 from .ledger import (
     append_generation_attempt,
     canonical_generation_records,
@@ -1358,8 +1364,13 @@ def run_real_judge(
         atomic_write_json(run_dir / judge_status_filename, failure, overwrite=True)
         return {"judge_records": len(records), "binary": binary, "status": "RUNTIME_NOT_RUN", "failure": failure}
     try:
+        configured_judge = judge_settings(config)
         judge = Qwen3JudgeRuntime.from_pretrained(
-            details=config["models"]["judge"], lifecycle=lifecycle_records[next(iter(sorted(expected_lifecycle_keys)))],
+            details=config["models"]["judge"],
+            lifecycle=lifecycle_records[next(iter(sorted(expected_lifecycle_keys)))],
+            max_new_tokens=int(configured_judge["max_new_tokens"]),
+            enable_thinking=bool(configured_judge["enable_thinking"]),
+            parser=str(configured_judge["parser"]),
         )
     except Exception as exc:
         failure = {

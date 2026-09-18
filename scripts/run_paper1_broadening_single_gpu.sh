@@ -6,6 +6,7 @@ MBD_PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$MBD_PROJECT_ROOT" || exit 1
 mkdir -p "$MBD_PROJECT_ROOT/.codex-temp"
 export MBD_PROJECT_ROOT
+export PYTHONPATH="$MBD_PROJECT_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 export TMPDIR="$MBD_PROJECT_ROOT/.codex-temp"
 export TMP="$TMPDIR"
 export TEMP="$TMPDIR"

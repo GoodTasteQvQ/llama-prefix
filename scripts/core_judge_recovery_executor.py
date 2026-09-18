@@ -23,7 +23,12 @@ DESIGN_PATH = ROOT / "writing/broadening design/paper1_minimal_broadening_experi
 REPORT_PATH = ROOT / "writing/broadening design/report/paper1_core_judge_protocol_v3_recovery_proposal_report.md"
 OLD_F2_DIR = ROOT / "results/paper1_broadening/core-directions-calibration-20260915T140731Z-1382603"
 OLD_F2_JUDGE_PATH = OLD_F2_DIR / "screen_judge_records_core.jsonl"
+OLD_F2_ATTEMPTS_PATH = OLD_F2_DIR / "screen_generation_attempts_core.jsonl"
+OLD_F2_LEDGER_PATH = OLD_F2_DIR / "screen_generation_ledger_core.jsonl"
+OLD_F2_SCHEDULE_PATH = OLD_F2_DIR / "screen_generation_schedule_core.jsonl"
+OLD_F2_FRAMES_PATH = OLD_F2_DIR / "frames.json"
 EXECUTOR_RELATIVE_PATH = "scripts/core_judge_recovery_executor.py"
+LAUNCHER_RELATIVE_PATH = "scripts/core_judge_recovery_run.py"
 PARSER = "strict_direct_json_v1"
 
 
@@ -45,6 +50,17 @@ def canonical(value: Any) -> str:
 
 def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(canonical(value).encode("utf-8")).hexdigest()
+
+
+def request_identity_for_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "ordinal": row["ordinal"],
+        "response_id": row["source_response_id"],
+        "request_sha256": row["request_sha256"],
+        "parser": PARSER,
+        "enable_thinking": False,
+        "max_new_tokens": 1296,
+    }
 
 
 def load_json(path: Path) -> Any:
@@ -95,13 +111,20 @@ def load_manifest(path: Path = MANIFEST_PATH) -> list[dict[str, Any]]:
             raise RecoveryContractError("manifest source evidence is incomplete")
         if Path(source_paths.get("judge", "")).resolve() != OLD_F2_JUDGE_PATH.resolve():
             raise RecoveryContractError("manifest judge source is not the protected old F2")
+        canonical_sources = {
+            "frames": OLD_F2_FRAMES_PATH,
+            "generation_attempt": OLD_F2_ATTEMPTS_PATH,
+            "generation_ledger": OLD_F2_LEDGER_PATH,
+            "judge": OLD_F2_JUDGE_PATH,
+            "schedule": OLD_F2_SCHEDULE_PATH,
+        }
         source_path = source_paths.get("frames")
-        if not isinstance(source_path, str) or not Path(source_path).is_file():
+        if not isinstance(source_path, str) or Path(source_path).resolve() != canonical_sources["frames"].resolve() or not Path(source_path).is_file():
             raise RecoveryContractError("manifest source evidence is invalid: frames")
         for source_name in ("generation_attempt", "generation_ledger", "judge", "schedule"):
             source_path = source_paths.get(source_name)
             source_line = source_lines.get(source_name)
-            if not isinstance(source_path, str) or not Path(source_path).is_file() or not isinstance(source_line, int) or source_line < 1:
+            if not isinstance(source_path, str) or Path(source_path).resolve() != canonical_sources[source_name].resolve() or not Path(source_path).is_file() or not isinstance(source_line, int) or source_line < 1:
                 raise RecoveryContractError(f"manifest source evidence is invalid: {source_name}")
         source_row = _read_jsonl_row(Path(source_paths["judge"]), source_lines["judge"])
         _verify_old_f2_row(row, source_row)
@@ -136,6 +159,48 @@ def _verify_old_f2_row(row: Mapping[str, Any], source_row: Mapping[str, Any]) ->
     identity = row.get("logical_identity")
     if isinstance(identity, Mapping) and "domain" in identity and identity.get("domain") != source_row.get("domain"):
         raise RecoveryContractError("manifest domain does not match old F2")
+
+
+def load_recovery_payload(row: Mapping[str, Any]) -> dict[str, Any]:
+    """Load the immutable prompt/completion pair for one frozen old-F2 row."""
+    source_paths = row.get("source_paths")
+    source_lines = row.get("source_line_numbers")
+    if not isinstance(source_paths, Mapping) or not isinstance(source_lines, Mapping):
+        raise RecoveryContractError("recovery source evidence is incomplete")
+    attempt = _read_jsonl_row(Path(source_paths["generation_attempt"]), int(source_lines["generation_attempt"]))
+    ledger = _read_jsonl_row(Path(source_paths["generation_ledger"]), int(source_lines["generation_ledger"]))
+    schedule = _read_jsonl_row(Path(source_paths["schedule"]), int(source_lines["schedule"]))
+    frames = load_json(OLD_F2_FRAMES_PATH)
+    records = frames.get("safe_pair_split", {}).get("records", []) if isinstance(frames, Mapping) else []
+    pair_id = str(row["logical_identity"]["prompt_id"]).split(":harmful", 1)[0]
+    frame_record = next((item for item in records if isinstance(item, Mapping) and item.get("pair_id") == pair_id), None) if isinstance(records, list) else records.get(pair_id)
+    if not isinstance(frame_record, Mapping):
+        raise RecoveryContractError(f"old F2 frame record is missing: {pair_id}")
+    prompt = frame_record.get("harmful")
+    response = attempt.get("text")
+    if not isinstance(prompt, str) or not prompt or not isinstance(response, str):
+        raise RecoveryContractError("old F2 prompt/completion payload is invalid")
+    if attempt.get("response_id") != row.get("source_response_id") or ledger.get("response_id") != row.get("source_response_id") or schedule.get("response_id") != row.get("source_response_id"):
+        raise RecoveryContractError("old F2 payload response identity mismatch")
+    if attempt.get("status") != "COMPLETED" or ledger.get("terminal_status") != "COMPLETED" or schedule.get("status") != "SCHEDULED":
+        raise RecoveryContractError("old F2 payload source status is not immutable terminal state")
+    if hashlib.sha256(response.encode("utf-8")).hexdigest() != row.get("generation_sha256"):
+        raise RecoveryContractError("old F2 completion hash mismatch")
+    if hashlib.sha256(prompt.encode("utf-8")).hexdigest() != row.get("prompt_sha256"):
+        raise RecoveryContractError("old F2 prompt hash mismatch")
+    request_sha = canonical_sha256({"prompt": prompt, "response": response, "domain": row.get("logical_identity", {}).get("domain", "harmful")})
+    if request_sha != row.get("request_sha256"):
+        raise RecoveryContractError("old F2 prompt/completion request hash mismatch")
+    return {
+        "prompt": prompt,
+        "response": response,
+        "domain": row.get("logical_identity", {}).get("domain", "harmful"),
+        "request_sha256": request_sha,
+        "source_response_id": row["source_response_id"],
+        "source_schedule_id": schedule.get("schedule_id"),
+        "source_prompt_sha256": row.get("prompt_sha256"),
+        "source_generation_sha256": row.get("generation_sha256"),
+    }
 
 
 def _approval_fields(approval: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -183,8 +248,9 @@ def verify_approval(
     code_hashes = approval["code_hashes"]
     if not isinstance(code_hashes, dict) or not code_hashes:
         raise RecoveryContractError("approval code_hashes must be nonempty")
-    if EXECUTOR_RELATIVE_PATH not in code_hashes:
-        raise RecoveryContractError("approval must bind the current recovery executor source")
+    for required_code in (EXECUTOR_RELATIVE_PATH, LAUNCHER_RELATIVE_PATH):
+        if required_code not in code_hashes:
+            raise RecoveryContractError(f"approval must bind current source: {required_code}")
     for name, expected in code_hashes.items():
         path = ROOT / name
         if not isinstance(expected, str) or len(expected) != 64 or not path.is_file() or sha256_file(path) != expected:
@@ -202,6 +268,8 @@ def verify_approval(
     if cfg.get("models", {}).get("judge", {}).get("dtype") != "float32":
         raise RecoveryContractError("Judge dtype is not float32")
     rows = load_manifest(manifest_path)
+    for row in rows:
+        load_recovery_payload(row)
     return {"approval_path": str(APPROVAL_PATH), "manifest_sha256": manifest_sha, "row_count": len(rows), "parser": PARSER, "enable_thinking": False, "max_new_tokens": 1296, "decoder_max_new_tokens": 512}
 
 
@@ -233,6 +301,7 @@ class RecoveryExecutor:
         self.approval = approval
         self.approval_path = approval_path
         self.calls = 0
+        self.backend_instance: Any | None = None
 
     def preflight(self) -> dict[str, Any]:
         return verify_approval(approval_path=self.approval_path, manifest_path=self.manifest_path, approval=self.approval)
@@ -280,6 +349,7 @@ class RecoveryExecutor:
                 raise RecoveryContractError("no bounded backend or backend_factory supplied")
             try:
                 backend = self.backend_factory()
+                self.backend_instance = backend
             except Exception as exc:
                 summary = {"status": "STOPPED_ON_FAILURE", "records": 0, "actual_four_class_requests": 0, "binary_requests": 0, "generation_retries": 0, "additional_judge_retries": 0, "model_construction": "FAILED", "error": str(exc), "preflight": preflight}
                 (self.run_dir / "recovery_runtime_status.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -289,7 +359,7 @@ class RecoveryExecutor:
             if self.calls >= 13:
                 raise RecoveryContractError("request budget exceeded")
             started = time.time()
-            request_identity = {"ordinal": row["ordinal"], "response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "parser": PARSER, "enable_thinking": False, "max_new_tokens": 1296}
+            request_identity = request_identity_for_row(row)
             record: dict[str, Any] = {"ordinal": row["ordinal"], "source_response_id": row["source_response_id"], "input_sha256": row["request_sha256"], "request_identity": request_identity, "actual_call_counts": {"four_class": 0, "binary": 0}, "generation_retries": 0, "additional_judge_retries": 0, "parser_status": "NOT_STARTED", "status": "UNEXECUTED"}
             self._record_observability(record, None)
             self._append_event(events_path, {"event": "REQUEST_READY", "record": record})
@@ -297,16 +367,16 @@ class RecoveryExecutor:
             try:
                 self.calls += 1
                 record["actual_call_counts"]["four_class"] = 1
-                result = dict(backend(row))
+                result = dict(backend({**row, "payload": load_recovery_payload(row)}))
                 self._record_observability(record, result)
                 returned_identity = result.get("request_identity")
-                if returned_identity is not None and returned_identity != request_identity:
+                if returned_identity != request_identity:
                     raise RecoveryContractError("backend request identity mismatch")
                 reported_counts = result.get("actual_call_counts")
-                if reported_counts is not None and reported_counts != {"binary": 0, "four_class": 1}:
+                if reported_counts != {"binary": 0, "four_class": 1}:
                     raise RecoveryContractError("backend reported a retry or binary call")
                 for key in ("generation_retries", "additional_judge_retries", "binary_requests"):
-                    if key in result and result[key] != 0:
+                    if key not in result or result[key] != 0:
                         raise RecoveryContractError(f"backend reported nonzero {key}")
                 self._append_event(events_path, {"event": "RESPONSE_RECEIVED", "record": record})
                 if not isinstance(result.get("raw"), str):

@@ -12,8 +12,9 @@ from typing import Any, Mapping
 
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+ROOT_TEXT = str(ROOT)
+sys.path[:] = [entry for entry in sys.path if entry != ROOT_TEXT]
+sys.path.insert(0, ROOT_TEXT)
 
 from paper1_broadening.analysis import analyze_records, write_analysis_artifacts
 from paper1_broadening.archive import archive_run

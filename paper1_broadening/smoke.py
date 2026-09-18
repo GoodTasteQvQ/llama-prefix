@@ -13,7 +13,7 @@ from torch import nn
 
 from .common import BroadeningError, atomic_write_json, utc_now
 from .directions import contrastive_direction, rogue_directions, validate_unit_vector
-from .judge import Qwen3JudgeRuntime
+from .judge import Qwen3JudgeRuntime, judge_settings
 from .runtime import BehaviorRuntime, RuntimeGateError
 
 
@@ -170,7 +170,14 @@ def run_real_smoke(
             lifecycle = report.get("lifecycle", {}).get("qwen25") or report.get("lifecycle", {}).get("llama31")
             if lifecycle is None:
                 raise RuntimeGateError("no completed behavior lifecycle available for Judge")
-            judge = Qwen3JudgeRuntime.from_pretrained(details=judge_details, lifecycle=lifecycle)
+            judge_settings_value = judge_settings(config)
+            judge = Qwen3JudgeRuntime.from_pretrained(
+                details=judge_details,
+                lifecycle=lifecycle,
+                max_new_tokens=int(judge_settings_value["max_new_tokens"]),
+                enable_thinking=bool(judge_settings_value["enable_thinking"]),
+                parser=str(judge_settings_value["parser"]),
+            )
             for model_id, prompt, response in judge_candidates:
                 if report["judge_calls"] >= max_judge_calls:
                     break

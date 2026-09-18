@@ -6,11 +6,13 @@ import copy
 from pathlib import Path
 from typing import Any, Mapping
 
-from .common import BroadeningError, canonical_sha256, read_json
+from .common import BroadeningError, canonical_sha256, file_sha256, read_json
 
 
 DESIGN_ID = "MBD-NM"
 DESIGN_REVISION = "v2.1-ccf-a-target"
+PUBLIC_DESIGN_REVISION = "v2.1.1-public-pairs"
+PUBLIC_EXPANDED_DESIGN_REVISION = "v2.1.2-public-pairs-expanded"
 IMPLEMENTATION_REVISION = "linux-single-gpu-v1"
 CONFIG_SCHEMA_VERSION = "paper1-broadening-config-v1"
 RHO_GRID = [0.50, 0.75, 1.00, 1.25, 1.50]
@@ -31,6 +33,42 @@ EXTENSION_BUDGET = {
     "e2_screen": 600,
     "e3_screen": 1_200,
 }
+
+LEGACY_JUDGE_PARSER = "strict_final_json_v1"
+DIRECT_JSON_JUDGE_PARSER = "strict_direct_json_v1"
+
+
+def _validate_judge_output_mode(judge: Any) -> None:
+    """Reject implicit or mixed direct-JSON settings before a runtime can load."""
+    _require(isinstance(judge, dict), "Judge runtime configuration is invalid")
+    parser_fields = [field for field in ("parser", "parser_mode") if field in judge]
+    parser_values = [judge[field] for field in parser_fields]
+    _require(
+        not parser_values or all(isinstance(value, str) for value in parser_values),
+        "Judge parser mode is invalid",
+    )
+    _require(len(set(parser_values)) <= 1, "Judge parser and parser_mode differ")
+    parser = parser_values[0] if parser_values else LEGACY_JUDGE_PARSER
+    _require(
+        parser in {LEGACY_JUDGE_PARSER, DIRECT_JSON_JUDGE_PARSER},
+        "Judge parser mode is invalid",
+    )
+    enable_thinking = judge.get("enable_thinking", True)
+    max_new_tokens = judge.get("max_new_tokens", 1296)
+    _require(isinstance(enable_thinking, bool), "Judge enable_thinking must be boolean")
+    _require(
+        not isinstance(max_new_tokens, bool) and isinstance(max_new_tokens, int) and max_new_tokens > 0,
+        "Judge max_new_tokens must be a positive integer",
+    )
+    if parser == DIRECT_JSON_JUDGE_PARSER:
+        _require(
+            bool(parser_fields) and "enable_thinking" in judge and "max_new_tokens" in judge,
+            "direct JSON Judge settings must be explicit",
+        )
+        _require(enable_thinking is False, "direct JSON Judge must disable thinking")
+        _require(max_new_tokens == 1296, "direct JSON Judge max_new_tokens must be 1296")
+    else:
+        _require(enable_thinking is True, "legacy Judge parser requires thinking")
 
 
 def budget_plan() -> dict[str, Any]:
@@ -155,13 +193,58 @@ def validate_config(config: Mapping[str, Any]) -> dict[str, Any]:
     value = copy.deepcopy(dict(config))
     _require(value.get("schema_version") == CONFIG_SCHEMA_VERSION, "config schema version differs")
     _require(value.get("design_id") == DESIGN_ID, "config design_id differs")
-    _require(value.get("design_revision") == DESIGN_REVISION, "config design revision differs")
+    design_revision = value.get("design_revision")
+    _require(
+        design_revision in {DESIGN_REVISION, PUBLIC_DESIGN_REVISION, PUBLIC_EXPANDED_DESIGN_REVISION},
+        "config design revision differs",
+    )
     _require(
         value.get("implementation_revision") == IMPLEMENTATION_REVISION,
         "config implementation revision differs",
     )
     for field in ("project_root", "output_root"):
         _require(isinstance(value.get(field), str) and value[field], f"config {field} is invalid")
+    data = value.get("data")
+    _require(isinstance(data, dict), "data configuration is missing")
+    if design_revision == DESIGN_REVISION:
+        _require(data.get("safe_pairs_path") == "data/safe_pairs.json", "legacy safe-pair path differs")
+    elif design_revision == PUBLIC_DESIGN_REVISION:
+        _require(
+            data.get("safe_pairs_path") == "data/safe_pairs_public_semantic_v1.json",
+            "public safe-pair path differs",
+        )
+        ledger_path = data.get("overlap_decisions_path")
+        _require(isinstance(ledger_path, str) and ledger_path, "public review ledger path is required")
+    else:
+        _require(
+            data.get("safe_pairs_path") == "data/safe_pairs_public_semantic_v2_expanded.json",
+            "expanded public safe-pair path differs",
+        )
+        _require(
+            data.get("safe_pairs_source_manifest_path")
+            == "data/safe_pairs_public_semantic_v2_expanded.manifest.json",
+            "expanded public source manifest path differs",
+        )
+        ledger_path = data.get("overlap_decisions_path")
+        _require(isinstance(ledger_path, str) and ledger_path, "expanded public review ledger path is required")
+        manifest = resolve_path(value, data["safe_pairs_source_manifest_path"])
+        source = resolve_path(value, data["safe_pairs_path"])
+        ledger = resolve_path(value, ledger_path)
+        _require(manifest is not None and manifest.is_file(), "expanded public source manifest is missing")
+        _require(source is not None and source.is_file(), "expanded public source is missing")
+        _require(ledger is not None and ledger.is_file(), "expanded public review ledger is missing")
+        manifest_doc = read_json(manifest)
+        _require(
+            isinstance(manifest_doc, dict)
+            and manifest_doc.get("design_revision") == "MBD-NM v2.1.2-public-pairs-expanded"
+            and manifest_doc.get("source_path") == str(source)
+            and manifest_doc.get("ledger_path") == str(ledger)
+            and manifest_doc.get("source_count") == 516
+            and manifest_doc.get("ledger_count") == 509
+            and manifest_doc.get("source_sha256") == file_sha256(source)
+            and manifest_doc.get("ledger_sha256") == file_sha256(ledger),
+            "expanded public manifest does not bind source and ledger",
+        )
     models = value.get("models")
     _require(isinstance(models, dict) and set(models) == {"qwen25", "llama31", "gemma2_9b_it", "judge"}, "model registry differs")
     for model_id in ("qwen25", "llama31"):
@@ -175,7 +258,16 @@ def validate_config(config: Mapping[str, Any]) -> dict[str, Any]:
         _require(model.get("dtype") == "bfloat16", f"{model_id} dtype differs")
     gemma = models["gemma2_9b_it"]
     _require(gemma.get("model_index") == 3, "Gemma model index differs")
-    _require(gemma.get("layer") is None, "Gemma core layer must be resolved at runtime")
+    gemma_path = gemma.get("model_path")
+    gemma_tokenizer_path = gemma.get("tokenizer_path")
+    if design_revision in {PUBLIC_DESIGN_REVISION, PUBLIC_EXPANDED_DESIGN_REVISION} and isinstance(gemma_path, str) and gemma_path:
+        _require(
+            isinstance(gemma_tokenizer_path, str) and gemma_tokenizer_path,
+            "public Gemma asset template requires tokenizer path",
+        )
+        _require(gemma.get("layer") == 14, "public Gemma asset template layer differs")
+    else:
+        _require(gemma.get("layer") is None, "Gemma core layer must be resolved at runtime")
     _require(gemma.get("dtype") == "bfloat16", "Gemma dtype differs")
     judge = models["judge"]
     _require(isinstance(judge, dict), "Judge config is invalid")
@@ -208,6 +300,7 @@ def validate_config(config: Mapping[str, Any]) -> dict[str, Any]:
     _require(runtime.get("batch_size") == 1, "runtime batch size differs")
     _require(runtime.get("local_files_only") is True, "runtime must be local-files-only")
     _require(runtime.get("trust_remote_code") is False, "remote code must be disabled")
+    _validate_judge_output_mode(runtime.get("judge"))
     decoder = runtime.get("decoder")
     _require(
         isinstance(decoder, dict)
