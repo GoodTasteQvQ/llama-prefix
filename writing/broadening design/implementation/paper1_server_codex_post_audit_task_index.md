@@ -114,7 +114,7 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Core recovery failure closure | 已完成；0 新请求 | `CORE_RECOVERY_FAILURE_CLOSURE_PASS`；确认 13 条输出边界失败，旧 F2/recovery 只读 |
 | Judge protocol v2 compatibility probe | 已完成；2/6 请求后失败 | 第 2 条在 4096 token 达到上限且无 semantic `</think>`；标记 `JUDGE_PROTOCOL_PROBE_FAIL`，不再追加 v2 请求 |
 | Judge protocol v3 direct-JSON offline adaptation | 0 新请求（当前入口） | `A-judge-v3` 参数化 `enable_thinking=false` 与 strict direct JSON；旧默认保持 true/1296；完成后等待 direct-JSON probe 批准 |
-| Judge protocol v3 direct-JSON compatibility probe | 6 Judge 请求（需新批准） | 复用同一 6 条固定输入；512 token、无 thinking、零 retry；失败即停，不自动升 token 或切回 thinking |
+| Judge protocol v3 direct-JSON compatibility probe | 6 Judge 请求（需新批准） | 复用同一 6 条固定输入；1296 token、无 thinking、零 retry；失败即停，不提高到 1296 以上或切回 thinking |
 | Core Judge v3 independent recovery | 最多 13 Judge 请求（需批准） | 只处理旧 F2 的 13 条失败输入；通过后仍不与旧 1,187 条混合；失败则保持 blocked |
 | Core screen v3 full rescore | 1,200 logical Judge（需 recovery 通过及再次批准） | 使用统一 direct-JSON 协议重评分全部旧 generation completion；通过 2% gate 后才产生新的 A/S |
 | Core harmful / benign evaluation | 10,600 + 840 generation | F2 技术 gate 通过并保存四组 A/S 后安排；保留负结果状态 |

@@ -45,8 +45,10 @@ preserving the old default:
   `max_new_tokens=1296`, semantic `</think>` split, and
   `strict_final_json_v1`.
 - New direct mode only when explicitly configured:
-  `enable_thinking=false`, `max_new_tokens=512`, and parser identifier
-  `strict_direct_json_v1`.
+  `enable_thinking=false`, an explicit run-configured `max_new_tokens`, and
+  parser identifier `strict_direct_json_v1`. Phase 0 offline validation used
+  `max_new_tokens=512`; the separately approved Phase 1 probe uses
+  `max_new_tokens=1296` while keeping the other protocol variables fixed.
 
 In direct mode, pass `enable_thinking=false` to the existing Qwen3 chat
 template. Parse the generated completion as a complete JSON object after
@@ -59,7 +61,8 @@ labels, or a fallback to the old parser.
 
 Record the selected mode in Judge identity and diagnostics, including
 `thinking_enabled=false`, `thinking_final_split=disabled_direct_final_json`,
-`parser=strict_direct_json_v1`, and `max_new_tokens=512`. Keep the existing raw,
+`parser=strict_direct_json_v1`, and the actual run-configured
+`max_new_tokens` value. Keep the existing raw,
 diagnostics, stop-reason, token-count, request-hash, and call-count evidence.
 
 The implementation must remain backward compatible for callers and configs
@@ -111,8 +114,9 @@ After approval:
    `results/paper1_broadening/core-judge-protocol-v3-direct-json-probe-<UTC>-<shortid>/`.
 2. Use the existing Qwen3 Judge, tokenizer, chat template, rubric, model
    endpoint, float32, greedy decoding, and one beam. The only protocol changes
-   are `enable_thinking=false`, `max_new_tokens=512`, and the strict direct
-   JSON parser.
+   are `enable_thinking=false`, `max_new_tokens=1296`, and the strict direct
+   JSON parser. This is a run-specific Judge budget; it does not alter the
+   behavior decoder's 512-token setting or any scientific design parameter.
 3. Send exactly one four-class request for each of the six bound inputs. Use
    `binary Judge=0`, behavior generation retry `0`, and additional Judge retry
    `0`. Stop immediately after any failed row; do not send remaining rows.
@@ -128,8 +132,8 @@ if no row fails, six requests with zero retries.
 
 On any failed row, missing evidence, OOM, identity mismatch, or hidden retry,
 write `DIRECT_JSON_PROBE_FAIL` and `DESIGN_CHANGE_REQUIRED`, issue no further
-request, and stop. Do not increase the token limit and do not silently switch
-back to thinking mode.
+request, and stop. Do not increase above the approved 1296-token budget and do
+not silently switch back to thinking mode.
 
 Only on 6/6 success write `DIRECT_JSON_PROBE_PASS`. A probe pass does not
 authorize recovery or a full rescore.
@@ -143,7 +147,7 @@ If and only if Phase 1 passes 6/6, create:
 
 Copy the v2.1 scientific design without changing data, model, direction, dose,
 generation, endpoint, or metrics. Document only the new Judge protocol:
-`enable_thinking=false`, `max_new_tokens=512`, and strict direct JSON parsing.
+`enable_thinking=false`, `max_new_tokens=1296`, and strict direct JSON parsing.
 Mark v2.1 and the failed v2 probe as historical pilot artifacts. Never modify
 the v2.1 file or an old/canonical config. Run offline syntax and contract
 checks, perform a boundary self-audit, record

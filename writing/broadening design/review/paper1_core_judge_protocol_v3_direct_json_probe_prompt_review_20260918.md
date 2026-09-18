@@ -13,8 +13,9 @@ Judge 请求均为 0；历史设计、旧 F2、旧 recovery、v2 probe 均保持
 
 - probe 仅使用原 v2 probe 的 6 条固定输入，最多 6 次请求。
 - 每条最多一次 four-class 请求，binary/generation/additional retry 均为 0。
-- 使用 `enable_thinking=false`、`max_new_tokens=512` 和
-  `strict_direct_json_v1`，不自动提高 token，不切回 thinking。
+- Phase 0 离线实现检查使用 `max_new_tokens=512`；本次 probe 固定使用
+  `enable_thinking=false`、`max_new_tokens=1296` 和
+  `strict_direct_json_v1`。不提高到 1296 以上，不切回 thinking。
 - 任一条失败立即停止；不发送剩余请求，不创建 recovery 或 full-rescore run。
 - Probe 通过后只停在 `READY_FOR_V2.3_DESIGN_REVIEW`，v2.3 设计、recovery、
   全量重评分和正式实验仍需后续批准。
