@@ -28,7 +28,7 @@ F 已完成 `prepare -> build-directions`，状态为 `CORE_DIRECTIONS_READY`。
 | 新 A-recovery 会话 | [Core recovery proposal](paper1_server_codex_core_recovery_proposal_prompt_nohup.md) | 已完成；冻结了 13 条旧 generation 输入和批准记录，未发送 Judge 请求 |
 | A-recovery-run 会话 | [Core recovery execution](paper1_server_codex_core_recovery_execution_prompt_nohup.md) | 已完成 13/13 four-class 请求；全部 `PARSE_FAILURE`，2% gate 仍阻断，旧 F2 未改写 |
 | 新 A-closure 会话 | [Core recovery failure closure](paper1_server_codex_core_recovery_failure_closure_prompt_nohup.md) | 已完成；`CORE_RECOVERY_FAILURE_CLOSURE_PASS`，仅取证闭合，旧 F2/recovery 不变 |
-| 新 A-judge-v3 会话 | [Core Judge protocol v3 direct JSON](paper1_server_codex_core_judge_protocol_v3_direct_json_prompt_nohup.md) | 当前下一入口；先做 direct-JSON 离线适配并停在 `READY_FOR_DIRECT_JSON_PROBE_APPROVAL`；probe、recovery 与全量重评分分别等待批准 |
+| 新 A-judge-v3 会话 | [Core Judge v3 direct-JSON budget repair](paper1_server_codex_core_judge_protocol_v3_direct_json_budget_repair_prompt_nohup.md) | 当前下一入口；修复 512/1296 契约和预检导入，仅做离线验证；完成后重新生成代码哈希并等待新的 probe 批准 |
 | 原E、A、D | 暂不运行新实验 | Core Judge v3 链条完成并取得对应 gate 后，才安排 Core formal evaluation、E1、E2、E3 |
 
 三项已完成任务不重跑。后续任务如消费 E1，只能读取已固定的 final E1 输入和 Core direction assets，不能回写 C2 provisional、C3 final 或 canonical scientific config。
@@ -114,7 +114,8 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Core recovery failure closure | 已完成；0 新请求 | `CORE_RECOVERY_FAILURE_CLOSURE_PASS`；确认 13 条输出边界失败，旧 F2/recovery 只读 |
 | Judge protocol v2 compatibility probe | 已完成；2/6 请求后失败 | 第 2 条在 4096 token 达到上限且无 semantic `</think>`；标记 `JUDGE_PROTOCOL_PROBE_FAIL`，不再追加 v2 请求 |
 | Judge protocol v3 direct-JSON offline adaptation | 0 新请求（当前入口） | `A-judge-v3` 参数化 `enable_thinking=false` 与 strict direct JSON；旧默认保持 true/1296；完成后等待 direct-JSON probe 批准 |
-| Judge protocol v3 direct-JSON compatibility probe | 6 Judge 请求（需新批准） | 复用同一 6 条固定输入；1296 token、无 thinking、零 retry；失败即停，不提高到 1296 以上或切回 thinking |
+| Judge protocol v3 direct-JSON budget repair | 0 请求（当前入口） | 修复 direct-JSON 预算硬编码 512→1296，并修复预检导入路径；只做离线验证，完成后必须重新生成代码哈希和批准文件 |
+| Judge protocol v3 direct-JSON compatibility probe | 6 Judge 请求（修复后需新批准） | 复用同一 6 条固定输入；1296 token、无 thinking、零 retry；失败即停，不提高到 1296 以上或切回 thinking |
 | Core Judge v3 independent recovery | 最多 13 Judge 请求（需批准） | 只处理旧 F2 的 13 条失败输入；通过后仍不与旧 1,187 条混合；失败则保持 blocked |
 | Core screen v3 full rescore | 1,200 logical Judge（需 recovery 通过及再次批准） | 使用统一 direct-JSON 协议重评分全部旧 generation completion；通过 2% gate 后才产生新的 A/S |
 | Core harmful / benign evaluation | 10,600 + 840 generation | F2 技术 gate 通过并保存四组 A/S 后安排；保留负结果状态 |
@@ -124,4 +125,4 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Judge、分析与人工验证 | Core 200 + E1/E2/E3 各 40 条人工样本 | 自动 Judge 与分析随对应输出完成后进行；必须有真实人工标签才称人工验证完成 |
 | 最终归档 | 已关闭的源码/配置/结果/日志 | 汇总状态、生成最终文件 hash；缺失项保留 pending，不伪造 FINAL |
 
-F3/E2 已完成，F4/E2R 实现修复和离线测试也已完成，A-recovery proposal、批准的 recovery run 和 A-closure 均已结束；v2 的 4096 probe 在重复 thinking 输出上失败。下一步只执行 A-judge-v3 任务书的离线适配；direct-JSON probe 通过后再创建 v2.3 设计，之后的 13 条 recovery 和 1,200 条一致协议重评分必须分别获得批准。F2、旧 recovery、B6、C3、v2 probe 不重跑或回写，不启动正式 evaluation；不得追加旧 run Judge 调用或突破批准预算。
+F3/E2 已完成，F4/E2R 实现修复和离线测试也已完成，A-recovery proposal、批准的 recovery run 和 A-closure 均已结束；v2 的 4096 probe 在重复 thinking 输出上失败。Phase 1 direct-JSON probe 随后在首个请求前因 512/1296 契约冲突和预检导入失败而停止，实际请求数为 0。下一步只执行 A-judge-v3 budget repair 任务书的离线修复；修复后必须重新生成代码哈希并取得新的 direct-JSON probe 批准。direct-JSON probe 通过后再创建 v2.3 设计，之后的 13 条 recovery 和 1,200 条一致协议重评分必须分别获得批准。F2、旧 recovery、B6、C3、v2 probe 不重跑或回写，不启动正式 evaluation；不得追加旧 run Judge 调用或突破批准预算。
