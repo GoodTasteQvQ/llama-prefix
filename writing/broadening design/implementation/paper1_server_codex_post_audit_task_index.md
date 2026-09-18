@@ -116,8 +116,9 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Judge protocol v3 direct-JSON offline adaptation | 已完成；0 请求 | direct-JSON 实现和 legacy 兼容性已离线验证 |
 | Judge protocol v3 direct-JSON budget repair | 已完成；0 请求 | `DIRECT_JSON_BUDGET_CONTRACT_REPAIRED` / `IMPORT_PREFLIGHT_PASS`，修复后重新生成代码哈希 |
 | Judge protocol v3 direct-JSON R2 compatibility probe | 已完成；6 Judge 请求 | `DIRECT_JSON_PROBE_PASS`；6/6 严格 JSON，零 retry，未创建后续 run |
-| Judge protocol v3 v2.3 design revision | 0 请求（当前入口） | 创建版本化 v2.3 direct-JSON 设计和 run-specific config；只做离线 hash/config/loader 检查，完成后等待 recovery 批准 |
-| Core Judge v3 independent recovery | 最多 13 Judge 请求（需批准） | 只处理旧 F2 的 13 条失败输入；通过后仍不与旧 1,187 条混合；失败则保持 blocked |
+| Judge protocol v3 v2.3 design revision | 已完成；0 请求 | `DESIGN_REVISION_V2.3_WRITTEN` / `READY_FOR_RECOVERY_APPROVAL`；v2.3 设计沿用 base 416 描述，expanded config 绑定已授权 516 overlay，需在 recovery proposal 中记录有效数据版本 |
+| Core Judge v3 recovery proposal | 0 请求（当前入口） | 冻结旧 F2 的 13 条解析失败输入，记录 416 base/516 expanded overlay，生成独立 proposal；等待 recovery approval |
+| Core Judge v3 independent recovery | 最多 13 Judge 请求（proposal 后需批准） | 只处理冻结的 13 条失败输入；通过后仍不与旧 1,187 条混合；失败则保持 blocked |
 | Core screen v3 full rescore | 1,200 logical Judge（需 recovery 通过及再次批准） | 使用统一 direct-JSON 协议重评分全部旧 generation completion；通过 2% gate 后才产生新的 A/S |
 | Core harmful / benign evaluation | 10,600 + 840 generation | F2 技术 gate 通过并保存四组 A/S 后安排；保留负结果状态 |
 | E1 外部集 | 2,320 generation | final frame 已就绪；引用 Core A/S，无独立 screen |
@@ -126,4 +127,4 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Judge、分析与人工验证 | Core 200 + E1/E2/E3 各 40 条人工样本 | 自动 Judge 与分析随对应输出完成后进行；必须有真实人工标签才称人工验证完成 |
 | 最终归档 | 已关闭的源码/配置/结果/日志 | 汇总状态、生成最终文件 hash；缺失项保留 pending，不伪造 FINAL |
 
-F3/E2 已完成，F4/E2R 实现修复和离线测试也已完成，A-recovery proposal、批准的 recovery run 和 A-closure 均已结束；v2 的 4096 probe 在重复 thinking 输出上失败。R1 direct-JSON probe 在首个请求前停止，预算修复后 R2 已以 6/6 通过。下一步只创建 v2.3 direct-JSON 设计副本和 run-specific config，完成离线 hash/config/loader 检查后等待 recovery 批准。之后的 13 条 recovery 和 1,200 条一致协议重评分必须分别获得批准。F2、旧 recovery、B6、C3、v2 probe 不重跑或回写，不启动 formal evaluation；不得追加旧 run Judge 调用或突破批准预算。
+F3/E2 已完成，F4/E2R 实现修复和离线测试也已完成，A-recovery proposal、批准的 recovery run 和 A-closure 均已结束；v2 的 4096 probe 在重复 thinking 输出上失败。R1 direct-JSON probe 在首个请求前停止，预算修复后 R2 已以 6/6 通过；v2.3 direct-JSON 设计副本和 config 已完成，未运行请求。下一步先冻结 13 条旧 F2 解析失败输入并记录 base 416/expanded 516 overlay，随后再单独批准 recovery。之后的 1,200 条一致协议重评分必须再次获得批准。F2、旧 recovery、B6、C3、v2 probe 不重跑或回写，不启动 formal evaluation；不得追加旧 run Judge 调用或突破批准预算。
