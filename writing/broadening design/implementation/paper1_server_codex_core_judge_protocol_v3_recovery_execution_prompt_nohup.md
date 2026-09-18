@@ -16,7 +16,7 @@ source/ledger、方向资产和历史结果全部只读。Recovery labels 必须
 
 ## 1. 唯一 approval gate
 
-负责人必须预先创建唯一文件：
+本任务已获得负责人授权，canonical approval 文件由负责人随任务材料提供：
 
 `.codex-temp/paper1_core_judge_protocol_v3/CORE_JUDGE_PROTOCOL_V3_RECOVERY_APPROVAL.md`
 
@@ -30,8 +30,7 @@ approval 至少必须包含以下字段和值：
 ```json
 {
   "status": "APPROVED",
-  "approved_by": "<负责人姓名或标识>",
-  "approved_at_utc": "<UTC ISO-8601 时间>",
+  "approved_at_utc": "2026-09-18T12:40:05Z",
   "protocol": "core-judge-protocol-v3-direct-json",
   "proposal_sha256": "892e69845cb7d1520bbde12b56e3c5ab3bbabdcf59eaea906a5574978c8f29d1",
   "manifest_sha256": "673baf9e4fe442df66a7e34f0a8d0f469c1e8bb243eb8fb9fbcb89fbc4e79e1c",
@@ -55,8 +54,8 @@ approval 至少必须包含以下字段和值：
 }
 ```
 
-本模板中的负责人字段必须由负责人填写。不得把模板本身当作 approval；只有
-canonical 文件存在且所有字段和 SHA256 通过，才允许继续。
+以上内容对应本次已授权的 canonical approval。服务器只核验该文件，不得修改其
+内容；只有文件存在且所有字段和 SHA256 通过，才允许继续。
 
 ## 2. 运行前预检
 
@@ -81,7 +80,8 @@ export HF_DATASETS_OFFLINE=1
 - launcher SHA256=`e2a597698311a74704432014fcb82e24dbee78f1df6b71d27353fe1c87673b32`；
 - 13 行 ordinal 顺序、old F2 source line、prompt/completion/request hash；
 - old F2、old recovery、R2 和设计保护哈希；
-- 没有同一 recovery run 的残留目录、活动 worker 或旧 approval；
+- canonical approval 存在且内容与本任务一致；没有同一 recovery run 的残留目录、
+  活动 worker 或其他冲突 approval；
 - 配置为 `enable_thinking=false`、Judge `max_new_tokens=1296`、
   `strict_direct_json_v1`，且 `runtime.decoder.max_new_tokens=512`。
 

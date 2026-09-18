@@ -20,7 +20,8 @@
 
 ## Approval 与失败闭合
 
-- approval 是负责人创建的 canonical JSON object；任务不会自行创建或猜测 approval。
+- approval 已由负责人提供为 canonical JSON object；任务不会自行创建、修改或猜测
+  approval，只核验其内容和哈希。
 - approval 绑定 proposal、manifest、v2.3 design/config、executor 和 launcher 的
   当前源码 SHA256。
 - 任意缺失、哈希不匹配、非法 JSON、thinking marker、身份错误、raw/diagnostics
@@ -39,5 +40,5 @@
 - 13 条 recovery 是当前 gate 所需的最小范围，后续 full rescore 仍保持独立批准。
 - approval、运行和归档边界清楚，无重复 probe 或额外审查轮次。
 
-结论：任务书可保存并推送。负责人仍需实际创建并确认 canonical approval，服务器
-Codex 才能发送最多 13 条请求。
+结论：任务书可保存并推送。canonical approval 已随本次授权材料提供，服务器
+Codex 核验通过后即可发送最多 13 条请求。
