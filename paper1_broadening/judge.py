@@ -38,6 +38,101 @@ OBSERVABILITY_RAW_UNAVAILABLE = "RAW_UNAVAILABLE"
 OBSERVABILITY_NOT_EXECUTED = "NOT_EXECUTED"
 OBSERVABILITY_NOT_REQUESTED = "NOT_REQUESTED"
 
+LEGACY_JUDGE_PARSER = "strict_final_json_v1"
+DIRECT_JSON_JUDGE_PARSER = "strict_direct_json_v1"
+LEGACY_JUDGE_MAX_NEW_TOKENS = 1296
+DIRECT_JSON_JUDGE_MAX_NEW_TOKENS = 1296
+LEGACY_THINKING_FINAL_SPLIT = "semantic_closing_think_token"
+DIRECT_JSON_THINKING_FINAL_SPLIT = "disabled_direct_final_json"
+
+
+def _validated_judge_max_new_tokens(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise BroadeningError("Judge max_new_tokens must be a positive integer")
+    return value
+
+
+def _validated_judge_enable_thinking(value: Any) -> bool:
+    if not isinstance(value, bool):
+        raise BroadeningError("Judge enable_thinking must be a boolean")
+    return value
+
+
+def _resolved_judge_parser(*, parser: Any = None, parser_mode: Any = None) -> str:
+    supplied = [value for value in (parser, parser_mode) if value is not None]
+    if len(set(supplied)) > 1:
+        raise BroadeningError("Judge parser and parser_mode differ")
+    selected = supplied[0] if supplied else LEGACY_JUDGE_PARSER
+    if selected not in {LEGACY_JUDGE_PARSER, DIRECT_JSON_JUDGE_PARSER}:
+        raise BroadeningError("Judge parser mode is invalid")
+    return selected
+
+
+def _validated_judge_protocol(
+    *, enable_thinking: Any, max_new_tokens: Any, parser: Any,
+) -> dict[str, Any]:
+    thinking = _validated_judge_enable_thinking(enable_thinking)
+    budget = _validated_judge_max_new_tokens(max_new_tokens)
+    selected_parser = _resolved_judge_parser(parser=parser)
+    if selected_parser == LEGACY_JUDGE_PARSER:
+        if thinking is not True:
+            raise BroadeningError("strict_final_json_v1 requires enable_thinking=true")
+        split = LEGACY_THINKING_FINAL_SPLIT
+    else:
+        if thinking is not False or budget != DIRECT_JSON_JUDGE_MAX_NEW_TOKENS:
+            raise BroadeningError(
+                "strict_direct_json_v1 requires enable_thinking=false and max_new_tokens=1296"
+            )
+        split = DIRECT_JSON_THINKING_FINAL_SPLIT
+    return {
+        "enable_thinking": thinking,
+        "max_new_tokens": budget,
+        "parser": selected_parser,
+        "thinking_final_split": split,
+    }
+
+
+def judge_settings(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Resolve the explicit Judge mode while preserving omitted-field legacy behavior."""
+    runtime = config.get("runtime")
+    if not isinstance(runtime, Mapping):
+        raise BroadeningError("runtime configuration is missing")
+    judge = runtime.get("judge", {})
+    if not isinstance(judge, Mapping):
+        raise BroadeningError("Judge runtime configuration is invalid")
+    parser_fields = [field for field in ("parser", "parser_mode") if field in judge]
+    if any(not isinstance(judge[field], str) for field in parser_fields):
+        raise BroadeningError("Judge parser mode is invalid")
+    parser = _resolved_judge_parser(
+        parser=judge.get("parser"), parser_mode=judge.get("parser_mode"),
+    )
+    if parser == DIRECT_JSON_JUDGE_PARSER and (
+        not parser_fields
+        or "enable_thinking" not in judge
+        or "max_new_tokens" not in judge
+    ):
+        raise BroadeningError(
+            "strict_direct_json_v1 must explicitly configure parser, enable_thinking, and max_new_tokens"
+        )
+    return _validated_judge_protocol(
+        enable_thinking=judge.get("enable_thinking", True),
+        max_new_tokens=judge.get("max_new_tokens", LEGACY_JUDGE_MAX_NEW_TOKENS),
+        parser=parser,
+    )
+
+
+def judge_max_new_tokens(config: Mapping[str, Any]) -> int:
+    """Read the Judge budget from a run config while preserving the legacy default."""
+    return int(judge_settings(config)["max_new_tokens"])
+
+
+def judge_enable_thinking(config: Mapping[str, Any]) -> bool:
+    return bool(judge_settings(config)["enable_thinking"])
+
+
+def judge_parser_mode(config: Mapping[str, Any]) -> str:
+    return str(judge_settings(config)["parser"])
+
 
 def _observability_status(*, raw: Any, diagnostics: Mapping[str, Any] | None, status: str | None = None) -> str:
     """Classify only what this call actually exposed; never synthesize a completion."""
@@ -97,6 +192,97 @@ def strict_four_class_parse(text: str, domain: str) -> tuple[str, str]:
     return label, rationale.strip()
 
 
+def _contains_thinking_marker(text: str) -> bool:
+    normalized = text.lower()
+    return "<think" in normalized or "</think" in normalized
+
+
+def _contains_markdown_fence(text: str) -> bool:
+    return "```" in text
+
+
+class _DuplicateDirectJSONKey(ValueError):
+    pass
+
+
+def _strict_direct_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise _DuplicateDirectJSONKey(key)
+        value[key] = item
+    return value
+
+
+def strict_direct_json_parse(text: str, domain: str) -> tuple[str, str]:
+    """Accept only one complete, non-thinking four-class JSON object."""
+    if not isinstance(text, str):
+        raise JudgeParseError("Direct JSON Judge completion is not text")
+    stripped = text.strip()
+    if _contains_markdown_fence(stripped):
+        raise JudgeParseError("Direct JSON Judge completion contains Markdown fences")
+    if _contains_thinking_marker(stripped):
+        raise JudgeParseError("Direct JSON Judge completion contains thinking markers")
+    try:
+        value = json.loads(
+            stripped,
+            object_pairs_hook=_strict_direct_json_object,
+            parse_constant=lambda constant: (_ for _ in ()).throw(ValueError(constant)),
+        )
+    except _DuplicateDirectJSONKey as exc:
+        raise JudgeParseError("Direct JSON Judge completion has duplicate keys") from exc
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise JudgeParseError("Direct JSON Judge completion is not valid JSON") from exc
+    if not isinstance(value, dict) or set(value) != {"label", "rationale"}:
+        raise JudgeParseError("Direct JSON Judge keys differ")
+    label, rationale = value["label"], value["rationale"]
+    if not isinstance(label, str) or label not in labels_for_domain(domain):
+        raise JudgeParseError("Direct JSON Judge label is outside the domain")
+    if not isinstance(rationale, str) or not rationale.strip():
+        raise JudgeParseError("Direct JSON Judge rationale is empty")
+    if _contains_markdown_fence(label) or _contains_markdown_fence(rationale):
+        raise JudgeParseError("Direct JSON Judge completion contains Markdown fences")
+    if _contains_thinking_marker(label) or _contains_thinking_marker(rationale):
+        raise JudgeParseError("Direct JSON Judge completion contains thinking markers")
+    return label, rationale.strip()
+
+
+def _token_ids(value: Any) -> list[int]:
+    token_ids = value.tolist() if hasattr(value, "tolist") else list(value)
+    if token_ids and isinstance(token_ids[0], list):
+        if len(token_ids) != 1:
+            return []
+        token_ids = token_ids[0]
+    if any(isinstance(token_id, bool) or not isinstance(token_id, int) for token_id in token_ids):
+        return []
+    return token_ids
+
+
+def _generated_direct_thinking_marker(generated: Any, tokenizer: Any) -> bool:
+    """Detect semantic Qwen thinking delimiters even when decode hides special tokens."""
+    token_ids = _token_ids(generated)
+    if not token_ids:
+        return False
+    converter = getattr(tokenizer, "convert_tokens_to_ids", None)
+    if not callable(converter):
+        return False
+    unknown_token_id = getattr(tokenizer, "unk_token_id", None)
+    for marker in ("<think>", "</think>"):
+        try:
+            marker_id = converter(marker)
+        except Exception:
+            continue
+        if (
+            not isinstance(marker_id, bool)
+            and isinstance(marker_id, int)
+            and marker_id >= 0
+            and marker_id != unknown_token_id
+            and marker_id in token_ids
+        ):
+            return True
+    return False
+
+
 def strict_binary_parse(text: str) -> str:
     normalized = text.strip().lower()
     if normalized not in {"safe", "unsafe"}:
@@ -138,11 +324,15 @@ def _require_released_behavior(lifecycle: Mapping[str, Any]) -> None:
 
 
 class Qwen3JudgeRuntime:
-    """A local Qwen3 Judge that splits thinking/final output semantically."""
+    """A local Qwen3 Judge with an explicit legacy or direct-JSON output mode."""
 
     def __init__(
         self, *, model: Any, tokenizer: Any, model_path: Path, device: str,
         lifecycle: Mapping[str, Any], tokenizer_path: Path | None = None,
+        max_new_tokens: int = LEGACY_JUDGE_MAX_NEW_TOKENS,
+        enable_thinking: bool = True,
+        parser: str | None = None,
+        parser_mode: str | None = None,
         torch_module: Any = torch,
     ) -> None:
         self.model = model
@@ -152,6 +342,15 @@ class Qwen3JudgeRuntime:
         self.device = device
         self.lifecycle = dict(lifecycle)
         self._torch = torch_module
+        settings = _validated_judge_protocol(
+            enable_thinking=enable_thinking,
+            max_new_tokens=max_new_tokens,
+            parser=_resolved_judge_parser(parser=parser, parser_mode=parser_mode),
+        )
+        self.enable_thinking = bool(settings["enable_thinking"])
+        self.max_new_tokens = int(settings["max_new_tokens"])
+        self.parser = str(settings["parser"])
+        self.thinking_final_split = str(settings["thinking_final_split"])
         self.released = False
         self._last_raw_completion: str | None = None
 
@@ -159,6 +358,10 @@ class Qwen3JudgeRuntime:
     def from_pretrained(
         cls,
         *, details: Mapping[str, Any], lifecycle: Mapping[str, Any], torch_module: Any = torch,
+        max_new_tokens: int = LEGACY_JUDGE_MAX_NEW_TOKENS,
+        enable_thinking: bool = True,
+        parser: str | None = None,
+        parser_mode: str | None = None,
         tokenizer_loader: Any = AutoTokenizer, model_loader: Any = AutoModelForCausalLM,
     ) -> "Qwen3JudgeRuntime":
         require_offline_environment()
@@ -166,6 +369,11 @@ class Qwen3JudgeRuntime:
         device = require_single_visible_gpu(torch_module=torch_module)
         if details.get("dtype") != "float32":
             raise RuntimeGateError("Paper 1 Qwen3 Judge must use float32")
+        settings = _validated_judge_protocol(
+            enable_thinking=enable_thinking,
+            max_new_tokens=max_new_tokens,
+            parser=_resolved_judge_parser(parser=parser, parser_mode=parser_mode),
+        )
         model_path = Path(str(details.get("model_path", "")))
         tokenizer_path = Path(str(details.get("tokenizer_path") or model_path))
         if not model_path.is_dir() or not tokenizer_path.is_dir():
@@ -189,8 +397,19 @@ class Qwen3JudgeRuntime:
             tokenizer_path=tokenizer_path,
             device=device,
             lifecycle=lifecycle,
+            max_new_tokens=int(settings["max_new_tokens"]),
+            enable_thinking=bool(settings["enable_thinking"]),
+            parser=str(settings["parser"]),
             torch_module=torch_module,
         )
+
+    def _protocol_diagnostics(self) -> dict[str, Any]:
+        return {
+            "thinking_enabled": self.enable_thinking,
+            "thinking_final_split": self.thinking_final_split,
+            "max_new_tokens": self.max_new_tokens,
+            "parser": self.parser,
+        }
 
     def identity(self) -> dict[str, Any]:
         config_path = self.model_path / "config.json"
@@ -210,9 +429,7 @@ class Qwen3JudgeRuntime:
             ),
             "dtype": "float32",
             "local_files_only": True,
-            "thinking_enabled": True,
-            "thinking_final_split": "semantic_closing_think_token",
-            "parser": "strict_final_json_v1",
+            **self._protocol_diagnostics(),
             "rubric": judge_rubric_revision(),
             "device": self.device,
             "eos_token_id": getattr(self.tokenizer, "eos_token_id", None),
@@ -230,10 +447,12 @@ class Qwen3JudgeRuntime:
                 [{"role": "user", "content": prompt}],
                 tokenize=False,
                 add_generation_prompt=True,
-                enable_thinking=True,
+                enable_thinking=self.enable_thinking,
             )
         except Exception as exc:
-            raise RuntimeGateError("Qwen3 Judge template did not accept enable_thinking=True") from exc
+            raise RuntimeGateError(
+                f"Qwen3 Judge template did not accept enable_thinking={self.enable_thinking!r}"
+            ) from exc
         encoded = self.tokenizer(rendered, return_tensors="pt")
         inputs = {
             key: value.to(self.device) if hasattr(value, "to") else value
@@ -247,7 +466,7 @@ class Qwen3JudgeRuntime:
                 **inputs,
                 do_sample=False,
                 num_beams=1,
-                max_new_tokens=1296,
+                max_new_tokens=self.max_new_tokens,
                 use_cache=True,
                 pad_token_id=(
                     self.tokenizer.pad_token_id
@@ -259,10 +478,29 @@ class Qwen3JudgeRuntime:
         raw = self.tokenizer.decode(generated, skip_special_tokens=True)
         self._last_raw_completion = raw
         base_diagnostics = {
+            **self._protocol_diagnostics(),
             "raw_completion_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
             "rendered_prompt_sha256": hashlib.sha256(rendered.encode("utf-8")).hexdigest(),
             "prompt_token_count": int(input_ids.shape[1]),
         }
+        if self.parser == DIRECT_JSON_JUDGE_PARSER:
+            if _contains_thinking_marker(raw) or _generated_direct_thinking_marker(generated, self.tokenizer):
+                diagnostics = {
+                    **base_diagnostics,
+                    "thinking_marker_detected": True,
+                }
+                raise JudgeParseError(
+                    "Direct JSON Judge completion contains thinking markers",
+                    raw=raw,
+                    diagnostics=diagnostics,
+                    observability_status=_observability_status(raw=raw, diagnostics=diagnostics),
+                )
+            return raw, {
+                **base_diagnostics,
+                "final_completion_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+                "thinking_token_count": 0,
+                "final_token_count": len(_token_ids(generated)),
+            }
         try:
             split = split_qwen3_thinking_final(generated, self.tokenizer)
         except Exception as exc:
@@ -295,7 +533,8 @@ class Qwen3JudgeRuntime:
         self._last_raw_completion = None
         try:
             final, diagnostics = self._final_completion(template.format(prompt=prompt, response=response))
-            label, rationale = strict_four_class_parse(final, domain)
+            parser = strict_direct_json_parse if self.parser == DIRECT_JSON_JUDGE_PARSER else strict_four_class_parse
+            label, rationale = parser(final, domain)
         except JudgeParseError as exc:
             raw = exc.raw if exc.raw is not None else (
                 self._last_raw_completion if self._last_raw_completion is not None else final
