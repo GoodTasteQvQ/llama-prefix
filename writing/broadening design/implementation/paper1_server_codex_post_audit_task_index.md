@@ -115,7 +115,7 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Judge protocol v2 compatibility probe | 已完成；2/6 请求后失败 | 第 2 条在 4096 token 达到上限且无 semantic `</think>`；标记 `JUDGE_PROTOCOL_PROBE_FAIL`，不再追加 v2 请求 |
 | Judge protocol v3 direct-JSON offline adaptation | 0 新请求（当前入口） | `A-judge-v3` 参数化 `enable_thinking=false` 与 strict direct JSON；旧默认保持 true/1296；完成后等待 direct-JSON probe 批准 |
 | Judge protocol v3 direct-JSON budget repair | 0 请求（当前入口） | 修复 direct-JSON 预算硬编码 512→1296，并修复预检导入路径；只做离线验证，完成后必须重新生成代码哈希和批准文件 |
-| Judge protocol v3 direct-JSON compatibility probe | 6 Judge 请求（修复后需新批准） | 复用同一 6 条固定输入；1296 token、无 thinking、零 retry；失败即停，不提高到 1296 以上或切回 thinking |
+| Judge protocol v3 direct-JSON R2 compatibility probe | 6 Judge 请求（R2 批准后） | 使用修复后的八个代码哈希和 `DIRECT_JSON_PROBE_APPROVAL_R2.md`；同一 6 条固定输入，1296 token、无 thinking、零 retry；失败即停 |
 | Core Judge v3 independent recovery | 最多 13 Judge 请求（需批准） | 只处理旧 F2 的 13 条失败输入；通过后仍不与旧 1,187 条混合；失败则保持 blocked |
 | Core screen v3 full rescore | 1,200 logical Judge（需 recovery 通过及再次批准） | 使用统一 direct-JSON 协议重评分全部旧 generation completion；通过 2% gate 后才产生新的 A/S |
 | Core harmful / benign evaluation | 10,600 + 840 generation | F2 技术 gate 通过并保存四组 A/S 后安排；保留负结果状态 |
@@ -125,4 +125,4 @@ F报告：`writing/broadening design/report/paper1_core_direction_calibration_re
 | Judge、分析与人工验证 | Core 200 + E1/E2/E3 各 40 条人工样本 | 自动 Judge 与分析随对应输出完成后进行；必须有真实人工标签才称人工验证完成 |
 | 最终归档 | 已关闭的源码/配置/结果/日志 | 汇总状态、生成最终文件 hash；缺失项保留 pending，不伪造 FINAL |
 
-F3/E2 已完成，F4/E2R 实现修复和离线测试也已完成，A-recovery proposal、批准的 recovery run 和 A-closure 均已结束；v2 的 4096 probe 在重复 thinking 输出上失败。Phase 1 direct-JSON probe 随后在首个请求前因 512/1296 契约冲突和预检导入失败而停止，实际请求数为 0。下一步只执行 A-judge-v3 budget repair 任务书的离线修复；修复后必须重新生成代码哈希并取得新的 direct-JSON probe 批准。direct-JSON probe 通过后再创建 v2.3 设计，之后的 13 条 recovery 和 1,200 条一致协议重评分必须分别获得批准。F2、旧 recovery、B6、C3、v2 probe 不重跑或回写，不启动正式 evaluation；不得追加旧 run Judge 调用或突破批准预算。
+F3/E2 已完成，F4/E2R 实现修复和离线测试也已完成，A-recovery proposal、批准的 recovery run 和 A-closure 均已结束；v2 的 4096 probe 在重复 thinking 输出上失败。此前 R1 direct-JSON probe 在首个请求前因 512/1296 契约冲突和预检导入失败而停止，实际请求数为 0。预算修复已通过离线验证并使 R1 批准失效；下一步执行 R2 direct-JSON probe，必须使用新的 R2 批准文件和修复后的八个代码哈希。R2 probe 通过后再创建 v2.3 设计，之后的 13 条 recovery 和 1,200 条一致协议重评分必须分别获得批准。F2、旧 recovery、B6、C3、v2 probe 不重跑或回写，不启动正式 evaluation；不得追加旧 run Judge 调用或突破批准预算。
