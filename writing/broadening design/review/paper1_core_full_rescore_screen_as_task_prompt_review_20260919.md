@@ -26,3 +26,7 @@
 - 任务结束后停止并等待负责人审查；没有把 `CORE_SCREEN_V3_PASS` 或 A/S ready 自动解释成正式实验结论。
 
 未发现过度设计、重复预算或会改变原实验设计的要求，审查通过后保存并推送该任务书及本审查记录。
+
+## 同步证据复核
+
+同步后的 readiness 目录还保留一个未被 repair 报告引用的 `full_paper1_broadening_tests_final.log`，其输出为 `108 passed, 1 deselected`。repair 报告明确绑定 PID `2426106` 和 `repair_protocol_safe_tests.log`，后者为 `105 passed`、exit 0；最终 boundary audit 也为 `FULL_RESCORE_BOUNDARY_AUDIT_PASS`。因此前者按历史/未引用日志处理，不改变 repair 结论，也不应在后续报告中把两次套件统计合并。两个修改文件的 LF 规范化 SHA256 与 repair 报告一致，Windows 本地原始 SHA256 的差异仅来自换行格式。
