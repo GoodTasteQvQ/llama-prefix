@@ -1,5 +1,9 @@
 # Safe-pair 恢复后的当前任务入口
 
+> **当前入口（2026-09-19，覆盖下方历史状态）**：`core-full-rescore-direct-20260919T094847Z-2523251` 已完成并经本机审查：1,200/1,200 解析成功、20/20 cells 通过、四组 A/S 已固定；补齐的 nohup precheck/PID/log/exit/monitor 也通过。执行 [Core 正式生成连续任务](paper1_server_codex_core_formal_generation_task_nohup.md)，建议新 A-Core-generation 会话单独执行最小运行目录衔接及 11,440 条正式 generation。无需新的 approval、CPU 启动 probe、rescore 或剂量选择。下方 probe/recovery 阻断描述是历史记录，不能据此重复旧任务。
+>
+> 后续顺序：Core 正式 generation → 本机审核与 Core 正式 Judge → E1 → E2 → E3（各块按设计完成 generation/Judge）→ 分析、人工审核、最终归档。本次只授权 Core generation；其余按各块既有契约与实际结果推进。v2.3 是当前 Judge 协议，原设计/旧 run 只读。清理建议见 [本地清理清单](../review/paper1_local_result_cleanup_inventory_20260919.md)，不执行删除。
+
 > **状态更新（2026-09-18）**：4096 compatibility probe 已在第 2 条固定输入失败：输出耗尽 4096 token、重复拒答约 470 次且没有 Qwen3 semantic `</think>`。该结果标记为 `JUDGE_PROTOCOL_PROBE_FAIL`、`DESIGN_CHANGE_REQUIRED`。不再自动提高到 8192+；当前下一入口改为 direct-JSON Judge protocol v3 的离线实现适配。旧 v2 probe、F2、recovery 和原设计仍只读。
 
 更新：2026-09-16，依据 C3、B5、F、F2、B6、F3 与 E2 完成报告。本索引替代此前顺序；旧A/B/A2/A3/B2/B3/E/E4/C2/B4/C3/B5/F 任务均不重新执行。
