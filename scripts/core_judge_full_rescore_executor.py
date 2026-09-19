@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -13,6 +14,7 @@ READINESS_DIR = ROOT / ".codex-temp/paper1_core_judge_protocol_v3/full_rescore_r
 MANIFEST_PATH = READINESS_DIR / "full_rescore_request_manifest.jsonl"
 INPUT_BINDING_PATH = READINESS_DIR / "input_binding.json"
 PROTECTED_HASH_PATH = READINESS_DIR / "protected_input_sha256.json"
+RECOVERY_HANDOFF_PATH = READINESS_DIR / "recovery_handoff_manifest.json"
 CONFIG_PATH = ROOT / "configs/paper1_broadening/mbd_nm_v212_public_expanded_judge_direct_json_v23.json"
 OLD_RECOVERY_DIR = ROOT / "results/paper1_broadening/paper1-core-fourclass-recovery-20260916-r13-a5a5936"
 PARSER = "strict_direct_json_v1"
@@ -68,6 +70,62 @@ def load_json(path: Path) -> Any:
     return value
 
 
+def _append_jsonl(path: Path, row: Mapping[str, Any]) -> None:
+    """Append one durable evidence row without rewriting prior attempts."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(canonical(dict(row)) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _request_identity(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "ordinal": row["ordinal"],
+        "response_id": row["source_response_id"],
+        "request_sha256": row["request_sha256"],
+        "parser": PARSER,
+        "enable_thinking": False,
+        "max_new_tokens": 1296,
+    }
+
+
+def _verify_recovery_handoff() -> dict[str, Any]:
+    handoff = load_json(RECOVERY_HANDOFF_PATH)
+    if not isinstance(handoff, Mapping) or handoff.get("status") != "CORE_RECOVERY_V3_PASS":
+        raise FullRescoreContractError("recovery handoff is not CORE_RECOVERY_V3_PASS")
+    expected = {
+        "records": 13,
+        "ordinals": "1..13",
+        "raw_files": 13,
+        "diagnostics_files": 13,
+        "actual_four_class": 13,
+        "binary": 0,
+        "generation_retry": 0,
+        "additional_retry": 0,
+        "run_artifact_verification": 0,
+    }
+    for key, value in expected.items():
+        if handoff.get(key) != value:
+            raise FullRescoreContractError(f"recovery handoff {key} mismatch")
+    evidence = handoff.get("recovery_evidence")
+    hashes = handoff.get("canonical_evidence_sha256")
+    if not isinstance(evidence, Mapping) or not isinstance(hashes, Mapping) or set(evidence) != set(hashes) or not hashes:
+        raise FullRescoreContractError("recovery canonical evidence manifest is incomplete")
+    for name, expected_hash in hashes.items():
+        path = Path(str(evidence.get(name, "")))
+        try:
+            path.relative_to(ROOT)
+        except ValueError as exc:
+            raise FullRescoreContractError(f"recovery evidence path escapes workspace: {name}") from exc
+        if not path.is_file() or sha256_file(path) != expected_hash:
+            raise FullRescoreContractError(f"recovery canonical evidence hash mismatch: {name}")
+    stale = handoff.get("historical_stale")
+    if not isinstance(stale, list) or not stale or not all(Path(str(path)).is_file() for path in stale):
+        raise FullRescoreContractError("historical stale recovery evidence is missing")
+    return {"status": handoff["status"], "canonical_evidence_sha256": dict(hashes), "historical_stale": list(stale)}
+
+
 def verify_readiness_inputs() -> dict[str, Any]:
     binding = load_json(INPUT_BINDING_PATH)
     if not isinstance(binding, Mapping) or binding.get("status") != "FULL_RESCORE_BINDING_PASS":
@@ -96,7 +154,8 @@ def verify_readiness_inputs() -> dict[str, Any]:
         path = ROOT / relative
         if not path.is_file() or sha256_file(path) != expected:
             raise FullRescoreContractError(f"generation source hash mismatch: {relative}")
-    return {"binding": binding, "config_sha256": sha256_file(CONFIG_PATH), "protected_hashes": len(protected)}
+    recovery = _verify_recovery_handoff()
+    return {"binding": binding, "config_sha256": sha256_file(CONFIG_PATH), "protected_hashes": len(protected), "recovery_handoff": recovery}
 
 
 def parse_direct_json(raw: Any, domain: str) -> tuple[str, str]:
@@ -218,6 +277,30 @@ def _write_jsonl(path: Path, rows: list[Mapping[str, Any]]) -> None:
     path.write_text("".join(canonical(dict(row)) + "\n" for row in rows), encoding="utf-8")
 
 
+def _write_run_closure(run_dir: Path, summary: Mapping[str, Any], *, fixture: bool) -> None:
+    runtime = {
+        "status": "FIXTURE" if fixture else "LIVE_APPROVAL_GATED",
+        "models_loaded": 0 if fixture else None,
+        "actual_judge_requests": summary.get("actual_judge_calls", 0),
+        "release": "NOT_APPLICABLE_FIXTURE" if fixture else "DEFERRED_TO_LIVE_RUNTIME",
+    }
+    (run_dir / "runtime_status.json").write_text(json.dumps(runtime, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    boundary = {
+        "status": "FULL_RESCORE_FIXTURE_BOUNDARY_PASS" if fixture else "FULL_RESCORE_LIVE_BOUNDARY_DEFERRED",
+        "models_loaded": 0 if fixture else None,
+        "judge_requests": summary.get("actual_judge_calls", 0),
+        "full_rescore_started": fixture,
+        "core_screen_started": False,
+        "formal_evaluation_started": False,
+    }
+    (run_dir / "boundary_status.json").write_text(json.dumps(boundary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    hash_lines = []
+    for path in sorted(run_dir.iterdir()):
+        if path.is_file() and path.name != "artifact_hashes.sha256":
+            hash_lines.append(f"{sha256_file(path)}  {path.name}\n")
+    (run_dir / "artifact_hashes.sha256").write_text("".join(hash_lines), encoding="utf-8")
+
+
 class FullRescoreExecutor:
     """Sequential executor. A backend is injected by tests or an offline fixture."""
 
@@ -251,8 +334,29 @@ class FullRescoreExecutor:
                 backend = self.backend_factory()
             except Exception as exc:
                 (self.run_dir / "launcher_status.json").write_text(json.dumps({"status": "BACKEND_CONSTRUCTION_BLOCKED", "models_loaded": 0, "actual_judge_requests": 0, "error": str(exc)}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-                return {"status": "CORE_SCREEN_V3_BLOCKED", "logical_identity_count": 0, "actual_judge_calls": 0, "terminal_accounting_complete": False, "stopped_on_contract_failure": True}
+                summary = {"status": "CORE_SCREEN_V3_BLOCKED", "logical_identity_count": 0, "actual_judge_calls": 0, "terminal_accounting_complete": False, "stopped_on_contract_failure": True}
+                (self.run_dir / "terminal_accounting.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+                _write_run_closure(self.run_dir, summary, fixture=False)
+                return summary
         records, events = [], []
+        attempt_path = self.run_dir / "attempt_records.jsonl"
+        event_path = self.run_dir / "events.jsonl"
+        request_path = self.run_dir / "request_records.jsonl"
+        for path in (attempt_path, event_path, request_path):
+            path.touch()
+
+        def persist_attempt(row: Mapping[str, Any], attempt: Mapping[str, Any]) -> None:
+            value = dict(attempt)
+            value.setdefault("ordinal", row["ordinal"])
+            value.setdefault("request_identity", _request_identity(row))
+            _append_jsonl(attempt_path, value)
+
+        def persist_event(event: Mapping[str, Any]) -> None:
+            _append_jsonl(event_path, event)
+
+        def persist_request(record: Mapping[str, Any]) -> None:
+            _append_jsonl(request_path, record)
+
         stopped = False
         for row in load_manifest(self.manifest_path):
             attempts, final = [], None
@@ -262,19 +366,25 @@ class FullRescoreExecutor:
             except FullRescoreContractError as exc:
                 final = {"ordinal": row["ordinal"], "logical_identity": row["logical_identity"], "source_response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "attempt": 0, "retry_count": 0, "actual_call_counts": {"four_class": 0, "binary": 0}, "parser_status": "CONTRACT_FAILURE", "stop_reason": str(exc), "status": "CONTRACT_FAILURE", "missing": True, "attempt_records": []}
                 records.append(final)
-                events.append({"event": final["status"], "ordinal": row["ordinal"]})
+                event = {"event": final["status"], "ordinal": row["ordinal"]}
+                events.append(event)
+                persist_event(event)
+                persist_request(final)
                 stopped = True
                 break
             for retry_no in range(self.max_retry + 1):
                 if self.actual_calls >= 2400:
                     raise FullRescoreContractError("actual Judge call budget exceeded")
                 self.actual_calls += 1
-                events.append({"event": "REQUEST", "ordinal": row["ordinal"], "attempt": retry_no + 1})
+                request_event = {"event": "REQUEST", "ordinal": row["ordinal"], "attempt": retry_no + 1, "request_identity": _request_identity(row)}
+                events.append(request_event)
+                persist_event(request_event)
                 raw = None
                 diagnostics = None
                 try:
                     result = dict(backend({**row, "payload": payload}, retry_no))
-                    expected = {"ordinal": row["ordinal"], "response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "parser": PARSER, "enable_thinking": False, "max_new_tokens": 1296}
+                    persist_event({"event": "RESPONSE", "ordinal": row["ordinal"], "attempt": retry_no + 1, "status": result.get("status", "RETURNED")})
+                    expected = _request_identity(row)
                     if result.get("request_identity") != expected:
                         raise FullRescoreStopError("request identity mismatch")
                     if result.get("status") == "MISSING":
@@ -282,13 +392,18 @@ class FullRescoreExecutor:
                         if reported_counts != {"four_class": 0, "binary": 0}:
                             raise FullRescoreStopError("missing record reported a Judge call")
                         self.actual_calls -= 1
-                        attempts.append({"attempt": retry_no + 1, "status": "MISSING", "reason": result.get("reason", "backend_missing")})
+                        attempt_record = {"attempt": retry_no + 1, "status": "MISSING", "reason": result.get("reason", "backend_missing")}
+                        attempts.append(attempt_record)
+                        persist_attempt(row, attempt_record)
                         final = {"ordinal": row["ordinal"], "logical_identity": row["logical_identity"], "source_response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "attempt": retry_no + 1, "retry_count": retry_no, "actual_call_counts": {"four_class": retry_no, "binary": 0}, "parser_status": "NOT_REQUESTED", "stop_reason": result.get("reason", "backend_missing"), "status": "MISSING", "missing": True, "attempt_records": attempts}
                         break
                     if result.get("status") == "TECHNICAL_FAILURE":
-                        attempts.append({"attempt": retry_no + 1, "status": "TECHNICAL_FAILURE", "error": result.get("error", "backend technical failure")})
+                        attempt_record = {"attempt": retry_no + 1, "status": "TECHNICAL_FAILURE", "error": result.get("error", "backend technical failure"), "raw": None, "raw_sha256": None, "diagnostics": result.get("diagnostics", "DIAGNOSTICS_UNAVAILABLE"), "diagnostics_sha256": None, "token_count": None}
+                        attempts.append(attempt_record)
+                        persist_attempt(row, attempt_record)
                         if retry_no >= self.max_retry:
                             final = {"ordinal": row["ordinal"], "logical_identity": row["logical_identity"], "source_response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "attempt": retry_no + 1, "retry_count": retry_no, "actual_call_counts": {"four_class": retry_no + 1, "binary": 0}, "parser_status": "NOT_REQUESTED", "stop_reason": result.get("error", "backend technical failure"), "status": "TECHNICAL_FAILURE", "missing": True, "attempt_records": attempts}
+                            stop_after = True
                             break
                         continue
                     raw = result.get("raw")
@@ -298,18 +413,30 @@ class FullRescoreExecutor:
                     label, rationale = parse_direct_json(raw, row["domain"])
                     if "actual_call_counts" in result and result["actual_call_counts"] != {"four_class": 1, "binary": 0}:
                         raise FullRescoreStopError("backend reported binary or duplicate calls")
-                    attempts.append({"attempt": retry_no + 1, "status": "PARSED", "raw": raw, "raw_sha256": sha256_bytes(raw.encode()), "diagnostics": dict(diagnostics), "diagnostics_sha256": canonical_sha256(diagnostics), "token_count": diagnostics.get("token_count")})
+                    attempt_record = {"attempt": retry_no + 1, "status": "PARSED", "raw": raw, "raw_sha256": sha256_bytes(raw.encode()), "diagnostics": dict(diagnostics), "diagnostics_sha256": canonical_sha256(diagnostics), "token_count": diagnostics.get("token_count")}
+                    attempts.append(attempt_record)
+                    persist_attempt(row, attempt_record)
+                    persist_event({"event": "PARSED", "ordinal": row["ordinal"], "attempt": retry_no + 1, "label": label})
                     final = {"ordinal": row["ordinal"], "logical_identity": row["logical_identity"], "source_response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "attempt": retry_no + 1, "retry_count": retry_no, "actual_call_counts": {"four_class": retry_no + 1, "binary": 0}, "raw": raw, "raw_sha256": sha256_bytes(raw.encode()), "diagnostics": dict(diagnostics), "diagnostics_sha256": canonical_sha256(diagnostics), "token_count": diagnostics.get("token_count"), "label": label, "rationale": rationale, "parser_status": "PARSED", "stop_reason": None, "status": "PARSED", "missing": False, "attempt_records": attempts}
                     break
                 except FullRescoreStopError as exc:
-                    attempts.append({"attempt": retry_no + 1, "status": "CONTRACT_FAILURE", "error": str(exc)})
+                    attempt_record = {"attempt": retry_no + 1, "status": "CONTRACT_FAILURE", "error": str(exc), "raw": raw if isinstance(raw, str) else None, "raw_sha256": sha256_bytes(raw.encode()) if isinstance(raw, str) else None, "diagnostics": dict(diagnostics) if isinstance(diagnostics, Mapping) else None, "diagnostics_sha256": canonical_sha256(diagnostics) if isinstance(diagnostics, Mapping) else None, "token_count": diagnostics.get("token_count") if isinstance(diagnostics, Mapping) else None}
+                    attempts.append(attempt_record)
+                    persist_attempt(row, attempt_record)
+                    persist_event({"event": "FAILURE", "ordinal": row["ordinal"], "attempt": retry_no + 1, "status": "CONTRACT_FAILURE", "error": str(exc)})
                     final = {"ordinal": row["ordinal"], "logical_identity": row["logical_identity"], "source_response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "attempt": retry_no + 1, "retry_count": retry_no, "actual_call_counts": {"four_class": retry_no + 1, "binary": 0}, "parser_status": "CONTRACT_FAILURE", "stop_reason": str(exc), "status": "CONTRACT_FAILURE", "missing": True, "attempt_records": attempts}
                     stop_after = True
                     break
                 except FullRescoreContractError as exc:
-                    attempts.append({"attempt": retry_no + 1, "status": "PARSE_FAILURE", "error": str(exc), "raw": raw if isinstance(raw, str) else "RAW_UNAVAILABLE", "raw_sha256": sha256_bytes(raw.encode()) if isinstance(raw, str) else None, "diagnostics": dict(diagnostics) if isinstance(diagnostics, Mapping) else "DIAGNOSTICS_UNAVAILABLE", "diagnostics_sha256": canonical_sha256(diagnostics) if isinstance(diagnostics, Mapping) else None, "token_count": diagnostics.get("token_count") if isinstance(diagnostics, Mapping) else None})
+                    attempt_record = {"attempt": retry_no + 1, "status": "PARSE_FAILURE", "error": str(exc), "raw": raw if isinstance(raw, str) else "RAW_UNAVAILABLE", "raw_sha256": sha256_bytes(raw.encode()) if isinstance(raw, str) else None, "diagnostics": dict(diagnostics) if isinstance(diagnostics, Mapping) else "DIAGNOSTICS_UNAVAILABLE", "diagnostics_sha256": canonical_sha256(diagnostics) if isinstance(diagnostics, Mapping) else None, "token_count": diagnostics.get("token_count") if isinstance(diagnostics, Mapping) else None}
+                    attempts.append(attempt_record)
+                    persist_attempt(row, attempt_record)
+                    persist_event({"event": "FAILURE", "ordinal": row["ordinal"], "attempt": retry_no + 1, "status": "PARSE_FAILURE", "error": str(exc)})
                 except Exception as exc:
-                    attempts.append({"attempt": retry_no + 1, "status": "CONTRACT_FAILURE", "error": f"unknown backend error: {exc}"})
+                    attempt_record = {"attempt": retry_no + 1, "status": "CONTRACT_FAILURE", "error": f"unknown backend error: {exc}", "raw": raw, "raw_sha256": sha256_bytes(raw.encode()) if isinstance(raw, str) else None, "diagnostics": dict(diagnostics) if isinstance(diagnostics, Mapping) else None, "diagnostics_sha256": canonical_sha256(diagnostics) if isinstance(diagnostics, Mapping) else None, "token_count": diagnostics.get("token_count") if isinstance(diagnostics, Mapping) else None}
+                    attempts.append(attempt_record)
+                    persist_attempt(row, attempt_record)
+                    persist_event({"event": "FAILURE", "ordinal": row["ordinal"], "attempt": retry_no + 1, "status": "CONTRACT_FAILURE", "error": f"unknown backend error: {exc}"})
                     final = {"ordinal": row["ordinal"], "logical_identity": row["logical_identity"], "source_response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "attempt": retry_no + 1, "retry_count": retry_no, "actual_call_counts": {"four_class": retry_no + 1, "binary": 0}, "parser_status": "CONTRACT_FAILURE", "stop_reason": f"unknown backend error: {exc}", "status": "CONTRACT_FAILURE", "missing": True, "attempt_records": attempts}
                     stop_after = True
                     break
@@ -319,13 +446,13 @@ class FullRescoreExecutor:
             if final is None:
                 final = {"ordinal": row["ordinal"], "logical_identity": row["logical_identity"], "source_response_id": row["source_response_id"], "request_sha256": row["request_sha256"], "attempt": len(attempts), "retry_count": max(0, len(attempts) - 1), "actual_call_counts": {"four_class": len(attempts), "binary": 0}, "parser_status": "PARSE_FAILURE", "stop_reason": "retry_limit_exceeded", "status": "PARSE_FAILURE", "missing": True, "attempt_records": attempts}
             records.append(final)
-            events.append({"event": final["status"], "ordinal": row["ordinal"]})
+            final_event = {"event": final["status"], "ordinal": row["ordinal"], "attempt": final.get("attempt")}
+            events.append(final_event)
+            persist_event(final_event)
+            persist_request(final)
             if stop_after:
                 stopped = True
                 break
-        _write_jsonl(self.run_dir / "request_records.jsonl", records)
-        _write_jsonl(self.run_dir / "attempt_records.jsonl", [attempt | {"ordinal": record["ordinal"]} for record in records for attempt in record.get("attempt_records", [])])
-        _write_jsonl(self.run_dir / "events.jsonl", events)
         cell_counts: dict[str, dict[str, int]] = {}
         for row in records:
             ident = row["logical_identity"]
@@ -340,4 +467,5 @@ class FullRescoreExecutor:
         (self.run_dir / "terminal_accounting.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         if status == "CORE_SCREEN_V3_PASS":
             (self.run_dir / "dose_decision.json").write_text(json.dumps({"status": "CORE_SCREEN_V3_PASS", "readiness": "CORE_A_S_READY_FOR_FORMAL_EVALUATION", "cells": gate}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        _write_run_closure(self.run_dir, summary, fixture=self.backend is not None)
         return summary

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.core_judge_full_rescore_executor as executor_module
 from scripts.core_judge_full_rescore_executor import (
     FullRescoreContractError,
     FullRescoreExecutor,
@@ -134,3 +135,96 @@ def test_technical_failure_retries_once_and_is_accounted_separately(tmp_path: Pa
     assert result["status"] == "CORE_SCREEN_V3_PASS"
     assert result["actual_judge_calls"] == 1201
     assert result["retry_calls"] == 1
+
+
+def test_retry_exhaustion_technical_failure_stops_before_next_identity(tmp_path: Path):
+    calls = []
+
+    def backend(row, retry_no):
+        calls.append((row["ordinal"], retry_no))
+        return {"request_identity": _identity(row), "status": "TECHNICAL_FAILURE", "error": "fixture transport"}
+
+    result = FullRescoreExecutor(run_dir=tmp_path / "run", backend=backend).run()
+    assert calls == [(1, 0), (1, 1)]
+    assert result["stopped_on_contract_failure"] is True
+    assert result["technical_failures"] == 1
+    assert result["logical_identity_count"] == 1
+    record = json.loads((tmp_path / "run/request_records.jsonl").read_text().splitlines()[0])
+    assert record["status"] == "TECHNICAL_FAILURE"
+    assert len(record["attempt_records"]) == 2
+
+
+def test_retry_exhaustion_parse_failure_stops_before_next_identity(tmp_path: Path):
+    calls = []
+
+    def backend(row, retry_no):
+        calls.append((row["ordinal"], retry_no))
+        return {"request_identity": _identity(row), "raw": "not-json", "diagnostics": {"fixture": True}}
+
+    result = FullRescoreExecutor(run_dir=tmp_path / "run", backend=backend).run()
+    assert calls == [(1, 0), (1, 1)]
+    assert result["stopped_on_contract_failure"] is True
+    assert result["parse_failures"] == 1
+    assert result["logical_identity_count"] == 1
+    record = json.loads((tmp_path / "run/request_records.jsonl").read_text().splitlines()[0])
+    assert record["status"] == "PARSE_FAILURE"
+    assert len(record["attempt_records"]) == 2
+
+
+def test_attempt_evidence_is_durable_before_later_backend_exception(tmp_path: Path):
+    def backend(row, retry_no):
+        if row["ordinal"] == 2:
+            raise RuntimeError("fixture interruption")
+        return {"request_identity": _identity(row), "raw": '{"label":"safe","rationale":"fixture"}', "diagnostics": {"token_count": 2}}
+
+    result = FullRescoreExecutor(run_dir=tmp_path / "run", backend=backend).run()
+    assert result["stopped_on_contract_failure"] is True
+    attempts = [json.loads(line) for line in (tmp_path / "run/attempt_records.jsonl").read_text().splitlines()]
+    events = [json.loads(line) for line in (tmp_path / "run/events.jsonl").read_text().splitlines()]
+    records = [json.loads(line) for line in (tmp_path / "run/request_records.jsonl").read_text().splitlines()]
+    assert attempts[0]["ordinal"] == 1 and attempts[0]["status"] == "PARSED"
+    assert any(event["event"] == "PARSED" and event["ordinal"] == 1 for event in events)
+    assert records[0]["ordinal"] == 1 and records[0]["status"] == "PARSED"
+
+
+def _handoff_fixture(tmp_path: Path, *, status="CORE_RECOVERY_V3_PASS", mutate_hash=False):
+    evidence_dir = tmp_path / "recovery"
+    evidence_dir.mkdir()
+    names = ("execution_preflight_checks.json", "final_boundary_audit.json", "record_integrity.json", "run_artifact_verification.txt", "artifact_hashes.sha256")
+    evidence, hashes = {}, {}
+    for name in names:
+        path = evidence_dir / name
+        path.write_text("fixture\n")
+        evidence[name], hashes[name] = str(path), executor_module.sha256_file(path)
+    stale = []
+    for name in ("preflight.status", "call_counts.json"):
+        path = evidence_dir / name
+        path.write_text("HISTORICAL_STALE\n")
+        stale.append(str(path))
+    if mutate_hash:
+        hashes[names[0]] = "0" * 64
+    handoff = {"status": status, "records": 13, "ordinals": "1..13", "raw_files": 13, "diagnostics_files": 13, "actual_four_class": 13, "binary": 0, "generation_retry": 0, "additional_retry": 0, "run_artifact_verification": 0, "recovery_evidence": evidence, "canonical_evidence_sha256": hashes, "historical_stale": stale}
+    path = tmp_path / "handoff.json"
+    path.write_text(json.dumps(handoff))
+    return path
+
+
+@pytest.mark.parametrize("case", ["missing", "status", "hash"])
+def test_recovery_handoff_fail_closed_before_backend_construction(tmp_path: Path, monkeypatch, case):
+    handoff = tmp_path / "handoff.json"
+    if case == "missing":
+        pass
+    elif case == "status":
+        handoff = _handoff_fixture(tmp_path, status="RECOVERY_APPROVAL_BLOCKED")
+    else:
+        handoff = _handoff_fixture(tmp_path, mutate_hash=True)
+    monkeypatch.setattr(executor_module, "RECOVERY_HANDOFF_PATH", handoff)
+    backend_constructed = []
+
+    def verify():
+        return executor_module._verify_recovery_handoff()
+
+    monkeypatch.setattr(executor_module, "verify_readiness_inputs", verify)
+    with pytest.raises(FullRescoreContractError):
+        FullRescoreExecutor(run_dir=tmp_path / "run", backend_factory=lambda: backend_constructed.append(True)).preflight()
+    assert backend_constructed == []
